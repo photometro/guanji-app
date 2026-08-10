@@ -39,3 +39,4 @@ Thumbs.db
 *.pem
 .env
 .env.*
+debug/*.csv

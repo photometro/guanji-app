@@ -242,6 +242,55 @@ async function exportEncryptedBackupFile() {
 
 let secDialogAction = null;   // 'enable' | 'change' | 'disable'
 
+/* #111：CSV 解析（观己导出格式：日期,时间,时长(分),情绪,诱因,看片,备注）→ records */
+function csvToRecords(text) {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim() !== '');
+  if (lines.length < 2) throw new Error('CSV 没有可导入的数据行');
+  const header = parseCsvLine(lines[0]);
+  const out = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = parseCsvLine(lines[i]);
+    if (cells.length < 3) continue;
+    const row = {};
+    header.forEach((h, idx) => { row[h.trim()] = (cells[idx] || '').trim(); });
+    const d = String(row['日期'] || '').split('-').map((n) => String(parseInt(n, 10)).padStart(2, '0'));
+    if (d.length !== 3 || d.some((n) => !/^\d{2,4}$/.test(n)) || parseInt(d[0], 10) < 1900) continue;   // 跳过无法识别的行（年份 4 位）
+    const rec = {
+      id: newRecordId('csv'),
+      dateKey: d.join('-'),
+      time: row['时间'] || '',
+      duration: row['时长(分)'] ? parseInt(row['时长(分)'], 10) : null,
+      moods: row['情绪'] ? String(row['情绪']).split('|').filter(Boolean) : [],
+      triggers: row['诱因'] ? String(row['诱因']).split('|').filter(Boolean) : [],
+      media: row['看片'] === '是',
+      note: row['备注'] || '',
+    };
+    out.push(rec);
+  }
+  return out;
+}
+/* 简单 CSV 行解析：支持双引号包裹与 "" 转义 */
+function parseCsvLine(line) {
+  const cells = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQ) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') inQ = false;
+      else cur += ch;
+    } else if (ch === '"') inQ = true;
+    else if (ch === ',') { cells.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  cells.push(cur);
+  return cells;
+}
+/* #111：CSV 合并指纹（CSV 无 id——按 日期+时间+时长 识别同一记录，避免回导重复） */
+function recordFingerprint(r) {
+  return (r.dateKey || '') + '|' + (r.time || '') + '|' + (r.duration || '');
+}
+
 function secureRenderStatus() {
   const enc = secureMode() === 'encrypted';
   const st = $('secureStatus');
@@ -318,27 +367,41 @@ function initSecureUI() {
   // 导出加密备份（#95：文件形式——Filesystem + Share；浏览器降级剪贴板）
   // #96 合并卡后由「导出数据」exportBtn 模式自适应调用 exportEncryptedBackupFile
 
-  // 导入加密备份（#95/#104：下载目录备份列表 + 浏览其他位置）
+  // 导入备份（#95/#104/#111：下载目录列表 + 浏览其他位置 + 模式/类型自适——CSV 明文无需口令，加密包需口令）
   let secImportData = null;   // 点选下载目录备份时暂存的内容
+  let secImportIsCsv = false; // 当前选中文件是否为 CSV（决定口令框显隐与解析路径）
+
+  /* #111：按文件类型更新口令框显隐与提示 */
+  function secImportPickFile(name) {
+    secImportIsCsv = /\.csv$/i.test(name);
+    const passEl = $('secImportPass');
+    passEl.classList.toggle('hidden', secImportIsCsv);
+    if (secImportIsCsv) passEl.value = '';
+    $('secImportInfo').textContent = secImportIsCsv
+      ? 'CSV 为明文导出数据，无需口令。导入按日期+时间+时长合并去重。'
+      : '这是加密备份，需要创建它时设置的口令（即当时开启加密用的口令）。导入按记录 id 合并去重。';
+  }
   async function loadImportFiles() {
     const box = $('secImportFiles'), list = $('secImportFileList');
     if (!window.Capacitor || !Capacitor.Plugins.GuanjiSave) { box.classList.add('hidden'); return; }
     try {
       const res = await Capacitor.Plugins.GuanjiSave.listBackupFiles();
-      const files = (res.files || []).filter((f) => f.endsWith('.json'));
+      const files = (res.files || []).filter((f) => /\.(json|csv)$/i.test(f));
       if (!files.length) { box.classList.add('hidden'); return; }
-      list.innerHTML = files.map((f, i) =>
-        `<button class="chip" data-idx="${i}" style="width:100%;justify-content:flex-start;margin-bottom:6px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f}</button>`
-      ).join('');
+      list.innerHTML = files.map((f, i) => {
+        const isCsv = /\.csv$/i.test(f);
+        return `<button class="chip" data-idx="${i}" style="width:100%;justify-content:flex-start;margin-bottom:6px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${isCsv ? '📄 ' : '🔒 '}${f}</button>`;
+      }).join('');
       box.classList.remove('hidden');
       list.querySelectorAll('.chip').forEach((btn) => {
         btn.addEventListener('click', async () => {
           try {
-            const r = await Capacitor.Plugins.GuanjiSave.readDownloadedFile({ filename: btn.textContent.trim() });
+            const r = await Capacitor.Plugins.GuanjiSave.readDownloadedFile({ filename: btn.textContent.trim().replace(/^[📄🔒]\s*/, '') });
             secImportData = r.data;
             list.querySelectorAll('.chip').forEach((c) => c.classList.remove('active'));
             btn.classList.add('active');
-            $('secImportFileLabel').textContent = '已选：' + btn.textContent.trim();
+            $('secImportFileLabel').textContent = '已选：' + btn.textContent.trim().replace(/^[📄🔒]\s*/, '');
+            secImportPickFile(btn.textContent.trim());
           } catch (e) {
             $('secImportInfo').textContent = '读取备份失败：' + ((e && e.message) || '');
           }
@@ -350,16 +413,23 @@ function initSecureUI() {
   }
   $('secureImportBtn').addEventListener('click', () => {
     secImportData = null;
+    secImportIsCsv = false;
     $('secImportFile').value = '';
     $('secImportPass').value = '';
     $('secImportFileLabel').textContent = '浏览其他位置';
-    $('secImportInfo').textContent = '可直接点选下载目录中的备份，或选择其他位置的文件；输入创建该备份时设置的口令（即开启加密时的口令）。导入按记录 id 合并去重。';
+    // #111：按模式设置默认提示——明文态说明 CSV/加密包两种选择，不再默认要求口令
+    const modeText = secureMode() === 'encrypted'
+      ? '可导入加密备份（需当初口令）或 CSV（无需口令）。导入后以本机加密方式保存。'
+      : '可导入加密备份（需当初口令）或 CSV 明文数据（无需口令）。导入按记录合并去重。';
+    $('secImportInfo').textContent = '可直接点选下载目录中的备份，或选择其他位置的文件。' + modeText;
+    $('secImportPass').classList.add('hidden');
     $('secImportBackdrop').classList.remove('hidden');
     loadImportFiles();
   });
   $('secImportFile').addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0];
     $('secImportFileLabel').textContent = f ? '已选择：' + f.name : '浏览其他位置';
+    if (f) secImportPickFile(f.name);
   });
   $('secImportCancel').addEventListener('click', () => $('secImportBackdrop').classList.add('hidden'));
   $('secImportConfirm').addEventListener('click', async () => {
@@ -370,9 +440,31 @@ function initSecureUI() {
         const file = $('secImportFile').files && $('secImportFile').files[0];
         if (!file) { info.textContent = '请先选择备份文件'; return; }
         text = await file.text();
+        secImportIsCsv = /\.csv$/i.test(file.name);
+      }
+      // #111：CSV 明文回导（无需口令）/ 加密包（需口令）分路径
+      if (secImportIsCsv || !/^\s*\{/.test(text)) {
+        const csvList = csvToRecords(text);
+        if (!csvList.length) throw new Error('CSV 没有可导入的数据');
+        // 指纹合并：同 日期+时间+时长 视为已存在，跳过
+        const existing = new Set(records.map(recordFingerprint));
+        let added = 0, skipped = 0;
+        csvList.forEach((r) => {
+          if (existing.has(recordFingerprint(r))) { skipped++; return; }
+          records.push(r); added++;
+        });
+        if (normalizeOffsets) normalizeOffsets();
+        Storage.saveRecords(records);
+        afterRecordsChanged();
+        $('secImportBackdrop').classList.add('hidden');
+        toast(`已导入 ${added} 条 CSV 记录${skipped ? '（跳过 ' + skipped + ' 条重复）' : ''}`);
+        renderHome();
+        return;
       }
       const pkg = JSON.parse(text);
-      const list = await secureImportPackage(pkg, $('secImportPass').value);
+      const pass = $('secImportPass').value;
+      if (!pass) { info.textContent = '这是加密备份，请输入创建它时设置的口令'; return; }
+      const list = await secureImportPackage(pkg, pass);
       if (!Array.isArray(list)) throw new Error('备份数据格式异常');
       // 合并去重（按 id）
       const byId = new Map();
@@ -382,12 +474,76 @@ function initSecureUI() {
       Storage.saveRecords(records);
       afterRecordsChanged();
       $('secImportBackdrop').classList.add('hidden');
-      toast(`已导入并合并 ${list.length} 条备份记录`);
+      // #111：明文态导入加密包 → 数据解密后明文落盘，如实提示
+      if (secureMode() !== 'encrypted') {
+        toast(`已导入并合并 ${list.length} 条备份记录（当前以明文保存——建议开启加密）`);
+      } else {
+        toast(`已导入并合并 ${list.length} 条备份记录`);
+      }
       renderHome();
     } catch (e) {
       info.textContent = '导入失败：' + ((e && e.message) || '口令错误或数据损坏');
     }
   });
+
+  // 备份管理（#110：列出下载目录备份/导出文件 + 删除）
+  let bkpConfirmTimer = null;
+  async function loadBackupFiles() {
+    const listEl = $('bkpManageList');
+    if (!window.Capacitor || !Capacitor.Plugins.GuanjiSave) {
+      listEl.innerHTML = '<p class="dialog-hint">当前环境不支持备份管理（仅真机可用）</p>';
+      return;
+    }
+    try {
+      const res = await Capacitor.Plugins.GuanjiSave.listBackupFiles();
+      const files = (res.files || []).filter((f) => /\.(json|csv)$/i.test(f));
+      if (!files.length) {
+        listEl.innerHTML = '<p class="dialog-hint">暂无备份文件——导出数据后这里会显示。</p>';
+        return;
+      }
+      listEl.innerHTML = files.map((f, i) => {
+        const isCsv = /\.csv$/i.test(f);
+        const label = isCsv ? 'CSV 明文' : '加密包';
+        return `<div class="bkp-row" style="display:flex;align-items:center;gap:8px;padding:10px 2px;border-bottom:1px solid var(--line)">
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px">${isCsv ? '📄 ' : '🔒 '}${f}</span>
+          <span style="font-size:10px;color:var(--ink-3);flex-shrink:0">${label}</span>
+          <button class="bkp-del" data-i="${i}" style="flex-shrink:0;border:none;background:none;color:var(--accent-deep);font-size:12px;padding:4px 8px;cursor:pointer">删除</button>
+        </div>`;
+      }).join('');
+      listEl.querySelectorAll('.bkp-del').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          // 行内二次确认（3 秒内再次点击才执行）
+          if (btn.dataset.armed !== '1') {
+            btn.dataset.armed = '1';
+            btn.textContent = '确认删除？';
+            btn.style.color = 'var(--accent-deep)';
+            clearTimeout(bkpConfirmTimer);
+            bkpConfirmTimer = setTimeout(() => {
+              listEl.querySelectorAll('.bkp-del').forEach((b) => { b.dataset.armed = ''; b.textContent = '删除'; b.style.color = ''; });
+            }, 3000);
+            return;
+          }
+          const name = files[parseInt(btn.dataset.i, 10)];
+          try {
+            const r = await Capacitor.Plugins.GuanjiSave.deleteBackupFile({ filename: name });
+            if (r && r.deleted === false) { btn.dataset.armed = ''; btn.textContent = '删除'; btn.style.color = ''; toast('文件不存在或已删除'); }
+            else toast('已删除 ' + name);
+            await loadBackupFiles();
+          } catch (e) {
+            toast('删除失败：' + ((e && e.message) || ''));
+            btn.dataset.armed = ''; btn.textContent = '删除'; btn.style.color = '';
+          }
+        });
+      });
+    } catch (e) {
+      listEl.innerHTML = '<p class="dialog-hint">读取备份列表失败</p>';
+    }
+  }
+  $('bkpManageBtn').addEventListener('click', () => {
+    $('bkpManageBackdrop').classList.remove('hidden');
+    loadBackupFiles();
+  });
+  $('bkpManageClose').addEventListener('click', () => $('bkpManageBackdrop').classList.add('hidden'));
 
   // 加密模式下 CSV 明文导出禁用（#93 定稿：离开设备的都是密文——检查在 ui-sheet.js exportBtn 内）
 }

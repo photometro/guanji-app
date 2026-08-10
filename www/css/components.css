@@ -99,6 +99,60 @@
 .btn-ghost:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
 .btn-ghost:active { transform: scale(0.97); }
 
+/* ============ #113：磨砂强度滑块（range 样式化——轨道 + 蓝圆点 thumb） ============ */
+.glass-blur-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.glass-blur-label { font-size: 13px; color: var(--ink-2); flex-shrink: 0; }
+.glass-blur-val {
+  font-size: 13px;
+  color: var(--ink);
+  min-width: 38px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.glass-blur-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+}
+.glass-blur-row input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.glass-blur-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -9px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #FFF;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+.glass-blur-row input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.glass-blur-row input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #FFF;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
 .btn-danger {
   background: var(--accent-deep);   /* 默认旧版 */
   color: #FFF;

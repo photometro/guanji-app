@@ -27,20 +27,21 @@ html.liquid-glass .calendar-sheet {
     inset 0 0 8px rgba(255, 255, 255, 0.08),
     0 10px 34px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.06);
 }
-/* #78：日历内容密集，加轻磨砂 3px 提升可读性（用户原型选档定案）；通透感保留，其余浮层不变 */
+/* #78：日历内容密集，加轻磨砂 3px 提升可读性（用户原型选档定案）；通透感保留，其余浮层不变
+   #113：磨砂强度可由设置页滑块调节（var(--lg-blur, 3px)，默认 3） */
 html.liquid-glass .calendar-sheet {
-  backdrop-filter: blur(3px) saturate(var(--lg-saturate));
-  -webkit-backdrop-filter: blur(3px) saturate(var(--lg-saturate));
+  backdrop-filter: blur(var(--lg-blur, 3px)) saturate(var(--lg-saturate));
+  -webkit-backdrop-filter: blur(var(--lg-blur, 3px)) saturate(var(--lg-saturate));
 }
 /* #82：tab 栏内容密集（图标+文字+玻璃胶囊），加轻磨砂 3px 提升可读性——与 #78 日历同款配方；通透感保留 */
 html.liquid-glass .tabbar {
-  backdrop-filter: blur(3px) saturate(var(--lg-saturate));
-  -webkit-backdrop-filter: blur(3px) saturate(var(--lg-saturate));
+  backdrop-filter: blur(var(--lg-blur, 3px)) saturate(var(--lg-saturate));
+  -webkit-backdrop-filter: blur(var(--lg-blur, 3px)) saturate(var(--lg-saturate));
 }
 /* #109：记录面板（.sheet）对齐 #78/#82 同款轻磨砂 blur(3px)——透明度观感与日历/tab 统一 */
 html.liquid-glass .sheet {
-  backdrop-filter: blur(3px) saturate(var(--lg-saturate));
-  -webkit-backdrop-filter: blur(3px) saturate(var(--lg-saturate));
+  backdrop-filter: blur(var(--lg-blur, 3px)) saturate(var(--lg-saturate));
+  -webkit-backdrop-filter: blur(var(--lg-blur, 3px)) saturate(var(--lg-saturate));
 }
 html.liquid-glass .sheet {
   box-shadow:
@@ -179,6 +180,18 @@ html.liquid-glass .ask-answer::before {
     linear-gradient(105deg, rgba(255,255,255,var(--lg-glow-b)), transparent 40%);
   pointer-events: none;
   z-index: 2;
+}
+/* #112 方案 C（用户拍板）：深色模式去除大面积光带——深色底 #121212 对比度高，
+   130%×70% 椭圆 + 0.12 峰值 = 大片灰白晕染刺眼；只保留 ::after 边框环 + inset 顶部高光
+   （Material 深色语言：无大面积高光）；浅色光带完全不变 */
+:root[data-theme="dark"].liquid-glass .tabbar::before,
+:root[data-theme="dark"].liquid-glass .sheet::before,
+:root[data-theme="dark"].liquid-glass .calendar-sheet::before,
+:root[data-theme="dark"].liquid-glass .dialog::before,
+:root[data-theme="dark"].liquid-glass .card::before,
+:root[data-theme="dark"].liquid-glass .report-card::before,
+:root[data-theme="dark"].liquid-glass .ask-answer::before {
+  background: none;
 }
 
 /* 按压反馈（tab 栏饱和度增强） */

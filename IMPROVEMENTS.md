@@ -291,6 +291,14 @@ renderHome();
 - 2026-08-10：**#107/#108/#109 实施完成（v3.8）**：#107 加密态「修改口令」分割线修复（screens.css 新增 #secureActions .row-btn 显式 border-bottom，规避 last-child 移除）；#108 「液态玻璃」→「玻璃效果」（index.html 设置页标题/开关/说明 + 注释同步，内部标识符 guanji_liquid_glass 键与 html.liquid-glass class 保持不变）；#109 记录面板 .sheet 对齐 #78/#82 同款 blur(3px) saturate（glass.css，与日历/tab 透明度观感统一）；versionCode 29 / versionName 3.8 / 资源 v=90；浏览器回归 + 真机验证
 - 2026-08-10：**「本周」口径文案修正（v3.8 内补丁）**（用户拍板：「不用改统计口径，更改文字近七天不就好了」）：index.html「本周次数」→「近 7 天」「较上周」→「较上 7 天」「生成本周分析」→「生成近 7 天分析」；ai.js 10 处（本周记录数/时段分布/诱因分布/情绪分布/含看片占比/概览/提示词「本周手淫习惯」→「近 7 天记录习惯」等）；统计口径不变（countRange(-6,0) 近 7 天）；资源 v=91；**顺带清理 P1 拆分残留死文件** www/app.js（101KB 旧版）+ www/styles.css（55.8KB 旧版，git 历史可恢复）——不再打进 APK
 - 2026-08-10：新增第 110 条意见（备份管理——列表/删除/清理下载目录备份文件，用户「把备份管理列入计划」），仅记录
+- 2026-08-10：新增第 111 条【Bug】（导入弹窗逻辑不自适——用户「数据根本没加密，导入却要求输入密钥」，并要求彻底检查数据卡）：全面审查数据卡全部交互路径，定位 7 处逻辑问题——①明文态导入弹窗无条件要求口令（secure.js:356 文案 + index.html:453 口令框不区分模式）②明文 CSV 导出不可回导（导入只认 JSON 加密包）③备份列表混列 CSV/加密包点选即失败 ④accept 过滤 CSV 文件选择器不可选 ⑤加密态 0 记录导出空包（与明文分支提示不一致）⑥明文态导入加密包明文落盘无提示 ⑦明文 CSV 导出无明文提示；设计草案：导入弹窗按模式+文件类型自适应（口令按需显隐、CSV 解析合并、类型徽标、accept 扩展、加密空包提示）；1 个待确认（CSV 合并指纹：CSV 无 id，按日期+时间+时长？）；仅记录
+- 2026-08-10：新增第 112 条【Bug】（玻璃模式边框白色晕染面积过大——用户「继续修复，玻璃模式下边框白色晕染面积过大影响卡片显示效果」）：根因已定位（浏览器实测 344×278 卡片 ::before 光带 130%×70% 椭圆 + 峰值白 0.4 + 50% 衰减 → 卡片上半部 1/3 白色渐变罩）；#84 只做深色降白，浅色面积/峰值未收敛；方案 A 面积收窄（90% 55% at 18% + 42% 衰减）+ B 浅色降白（0.40→0.30 / 0.16→0.12）+ C 组合推荐；深色不动；仅记录
+- 2026-08-10：#112 范围澄清（用户：「浅色模式不用修改，还是深色模式的问题大一点」）——只修深色：深色底 #121212 对比度高，0.12 峰值 × 130%×70% 大面积 = 灰白晕染刺眼；方案更新为 C 去光带（推荐，深色 ::before background none，保留边框环+顶部高光，浅色零改动）/ B 深色小光带（80% 45% + 0.08 + 35% 衰减）/ A 仅降白 0.04；仅记录
+- 2026-08-10：**#112 实施完成（v3.9 内补丁，方案 C）**：glass.css 新增深色专属覆盖 `:root[data-theme="dark"] html.liquid-glass .tabbar/.sheet/.calendar-sheet/.dialog/.card/.report-card/.ask-answer::before { background: none }`——深色大面积灰白光带移除，保留 ::after 渐变边框环（edge 0.35/0.15/0.08）+ inset 顶部高光（hi 0.20）；浅色光带（0.40）完全不变；资源 v=93；浏览器深浅双态验证 + 真机
+- 2026-08-10：新增第 113 条意见（玻璃效果「磨砂强度」滑块——用户「日历、tab、记录下都有 blur(3px)，想在玻璃效果设置上增加滑动调节，默认 3 可上下调节」）：现状 blur(3px) 硬编码 3 处（glass.css calendar-sheet/tabbar/sheet）；方案 CSS 变量化 var(--lg-blur, 3px) + 设置页滑块（0-10px）+ liquid-glass.js 持久化（guanji_glass_blur）+ 实时预览；对话框/卡片 0px 不参与；2 个待确认（范围 0-10？深浅共用？）；仅记录
+- 2026-08-10：#113 决策确认（用户：「0-10，深浅共用」）——滑块范围 0-10px、深浅模式共用同一强度；✅ 已确认，未修改任何代码
+- 2026-08-10：**#113 实施完成（v3.9 内补丁）**：玻璃效果卡新增「磨砂强度」滑块（0-10px 默认 3，深浅共用）——glass.css 三处 blur(3px) 变量化 var(--lg-blur, 3px)（calendar-sheet/tabbar/sheet）；liquid-glass.js 新增 LG_BLUR_KEY 持久化 + applyGlassBlur（默认 3 时移除内联走 CSS 兜底）+ input 实时预览；components.css 样式化 range（22px 蓝圆 thumb + 4px 轨道）；玻璃关着也能调；资源 v=94；浏览器 + 真机验证
+- 2026-08-10：**#110/#111 实施完成（v3.9）**：#110 备份管理——SaveToDownloadsPlugin 新增 deleteBackupFile（MediaStore delete + API<29 fallback）、数据卡「备份管理」入口、管理弹窗（🔒/📄 类型徽标 + 行内二次确认删除 + 空态 + 删除后刷新）；#111 导入弹窗逻辑自适——口令框默认隐藏按需显隐（.json 显示/.csv 隐藏）、明文态文案「可导入加密备份（需当初口令）或 CSV 明文数据（无需口令）」、新增 csvToRecords 解析 + 日期+时间+时长指纹合并（重复跳过）、备份列表类型徽标、accept 扩展 .csv、加密分支空数据提示与明文一致、明文导入加密包 toast「当前以明文保存——建议开启加密」；versionCode 30 / versionName 3.9 / 资源 v=92；浏览器回归 + 真机验证
 - 2026-08-09：**#88 配色拍板（按 App 整体风格蓝色系）+ #85 确认已解决 + #90 搁置**：#88 热力图色阶用 --blue 主色系（0 灰→浅→中→深蓝，深色模式跟随）；#85 用户确认已修改（实测曾未复现，关闭）；#90 实况回顾先搁置（语义待定）
 - 2026-08-09：**#88/#87/#93 实施完成（v3.5 内补丁）**：#88 次数趋势热力图（曲线/热力图视图 seg + GitHub 风格网格行=星期列=周 + 蓝系色阶 --heat-0..3 深浅两套 + 图例，数据 countRange 复用）；#87 返回兜底（装 @capacitor/app 8.1.1 + backButton 分层关闭：自定义词弹窗→删除确认→数据管理弹窗→日历→全屏计时→记录面板→首页二次确认「再按一次退出」）；#93 全链路加密核心链路（secure.js：DEK/KEK 信封 + PBKDF2-SHA-256 600k + AES-256-GCM + 12B nonce + 原子迁移 + 密文导出包 + 导入合并 + 改口令/关闭加密 UI + 加密模式禁用 CSV 明文导出；DEK 存 Keystore（@aparajita/capacitor-secure-storage 8.0.0，internal* API）+ 浏览器降级；启动异步化）；资源 ?v=66；浏览器全链路 + 真机验证（热力图 14 格/插件注册/加密开启→密文→信封→关闭→明文恢复）全过；截图 p2_heatmap_device / p2_secure_card
 - 2026-08-09：**#19/#30/#31 已解决（用户确认已修改完成）**
@@ -3544,7 +3552,102 @@ Android 16 实况通知的**未展开状态（状态条状标签 chip）**有点
 
 ---
 
-## 110. 备份管理（列表 + 删除，清理下载目录备份文件） 🆕 待实施
+## 113. 玻璃效果增加「磨砂强度」滑动调节（默认 3，可上下调节） ✅ 已实施（v3.9）
+
+### 需求（用户 2026-08-10）
+> 现在玻璃模式下日历、tab、记录下都有 blur(3px)，我想在玻璃效果设置上面，增加一个滑动调节的功能，默认值是 3，可以上下调节。
+
+### 现状（✅ 代码确认）
+- blur(3px) **硬编码** 3 处：glass.css:32-33（.calendar-sheet #78）、37-38（.tabbar #82）、42-43（.sheet #109）——`backdrop-filter: blur(3px) saturate(var(--lg-saturate))`
+- 玻璃开关：liquid-glass.js（LG_KEY='guanji_liquid_glass'，html.liquid-glass class 切换，localStorage 持久化）
+- 无任何 blur 可调能力；对话框/卡片保持 0px（不动）
+
+### 方案（✅ 已实施 v3.9）
+1. **CSS 变量化**：glass.css 三处 `blur(3px)` → `blur(var(--lg-blur, 3px))`（默认 3 兜底）；对话框/卡片 0px 不变
+2. **设置页滑块**：玻璃效果卡开关下方「磨砂强度」行——range（0-10px step 1）+ 实时值显示（「3 px」）；样式化 range（22px 蓝圆 thumb + 4px 轨道，components.css）
+3. **JS（liquid-glass.js）**：LG_BLUR_KEY='guanji_glass_blur'；applyGlassBlur 设置 html.style --lg-blur（默认 3 时移除内联走 CSS 兜底）+ 滑块/值同步；initLiquidGlass 启动读取；input 事件实时生效 + localStorage
+4. **深浅共用**（用户拍板）；玻璃关着也能调（下次开启生效）
+
+### 实施清单（✅ 全部完成）
+1. glass.css：3 处 blur(3px) → var(--lg-blur, 3px)
+2. index.html：玻璃效果卡滑块行（label + range + 值）
+3. liquid-glass.js：applyGlassBlur / init / input 监听 / 持久化
+4. components.css：.glass-blur-row 滑块样式（webkit + moz）
+5. 资源 v=94（v3.9 内补丁）
+
+### 验收要点
+- 玻璃效果卡出现滑块，默认 3 且与现状 blur(3px) 一致
+- 拖动滑块日历/tab/记录面板磨砂实时变化；值持久化（重启保持）
+- 滑到 0 无磨砂；非玻璃态不受影响；对话框/卡片 blur 不变
+
+---
+
+## 112. 【Bug】玻璃模式下边框白色晕染面积过大，影响卡片显示 ✅ 已修复（v3.9）
+
+### 需求（用户 2026-08-10）
+> 继续修复，玻璃模式下，边框白色晕染面积过大影响卡片显示效果的问题。
+> （2026-08-10 用户澄清：**浅色模式不用修改，深色模式的问题大一点**，输出深色模式解决方法；拍板方案 C）
+
+### 根因（✅ 代码 + 浏览器复现实锤）
+- glass.css:173 `::before` 光带：`radial-gradient(130% 70% at 15% 0%, rgba(255,255,255,var(--lg-glow-a)), transparent 50%)` + `linear-gradient(105deg, rgba(255,255,255,var(--lg-glow-b)), transparent 40%)`
+- 实测（浏览器玻璃态）：344×278 卡片 → 光带椭圆 **130%×70% ≈ 447×195px**、50% 处才衰减为 0 → 卡片上半部约 1/3 面积被白色渐变罩住
+- **浅色**：`--lg-glow-a 0.40`——白底上白加白几乎不可见（用户确认不改）
+- **深色（问题更大）**：`--lg-glow-a 0.12` / `--lg-glow-b 0.05`（#84 已降白）——但**面积与浅色共享**（130%×70% + 50% 衰减），深色底 #121212 对比度高，大片 0.12 白点形成明显灰白晕染
+- #84 只做了深色降白，面积从未收敛；深色下「低峰值 × 大面积」依然刺眼
+
+### 方案（✅ 已实施 v3.9，用户拍板方案 C）
+- **深色 ::before 光带 `background: none`**——`:root[data-theme="dark"] html.liquid-glass .tabbar/.sheet/.calendar-sheet/.dialog/.card/.report-card/.ask-answer::before` 覆盖
+- 保留 ::after 渐变边框环（edge 0.35/0.15/0.08）+ inset 顶部 1px 高光（hi 0.20）——玻璃结构感完整
+- **浅色零改动**（0.40 光带原样）
+- 资源 ?v=93（v3.9 内补丁）
+
+### 实施清单（✅ 全部完成）
+1. glass.css：深色专属 ::before background none 覆盖（7 个玻璃元素）
+2. index.html 资源 bump v=93
+
+### 验收要点
+- 深色玻璃态卡片/浮层无大面积灰白晕染
+- 深色边框环与顶部高光保留（玻璃结构感）
+- 浅色玻璃态与现状完全一致
+
+---
+
+## 111. 【Bug】导入弹窗逻辑不自适：明文态仍要求口令 + CSV 导出不可回导 ✅ 已修复（v3.9）
+
+### 需求（用户 2026-08-10）
+> 我发现数据卡片还是有逻辑性问题，比如我的数据根本都没有加密，但是我导入的时候输入框就有写请输入密钥。请你彻底的检查数据卡片，还有没有类似的逻辑性问题。
+
+### 根因（✅ 全面审查，代码实锤）
+1. **明文态导入弹窗无条件要求口令**：secure.js:356 弹窗文案（「输入创建该备份时设置的口令…」）与 index.html:453 口令框 `secImportPass` **均不区分明文/加密模式**——明文态用户无口令概念，困惑
+2. **明文 CSV 导出不可回导（导出/导入不对称）**：明文模式导出 `guanji-export-*.csv`（ui-sheet.js:639）；导入只支持 JSON 加密包（secure.js:374 `JSON.parse` + secureImportPackage 只认 `guanji-backup` 类型，`pkg.mode !== 'encrypted'` 直接报错）——**导出的东西导不回来**
+3. **备份列表混列不区分类型**：listBackupFiles 同时返回 `guanji-backup-*.json` 与 `guanji-export-*.csv`（原生 SQL LIKE 含 export 前缀），点选 CSV 后按 JSON 解析必失败（「备份数据格式异常」）
+4. **系统文件选择器过滤 CSV**：index.html:452 `accept=".json,application/json"`——CSV 连选都选不了
+5. **加密态无记录导出空包**：exportBtn 明文分支有 `!records.length` 空提示（ui-sheet.js:618），**加密分支没有**——0 条记录时照样导出空备份包（行为不一致）
+6. **明文态导入加密包后明文落盘无提示**：明文模式导入加密备份 → 解密后以明文保存（Storage.saveRecords 明文分支），无「导入后将以明文保存」提示
+7. **明文 CSV 导出无明文提示**：CSV 含全部记录细节（备注/情绪/诱因）以明文文件离开设备，导出时无提示（#96 用户拍板保留 CSV，但可加温和提示）
+
+### 方案（✅ 已实施 v3.9）
+1. **口令按需显隐**：弹窗打开时口令框默认隐藏；选中 .json 加密包显示、.csv 隐藏；文案按模式+类型自适应（明文态：「可导入加密备份（需当初口令）或 CSV 明文数据（无需口令）」；加密态：「导入后以本机加密方式保存」）
+2. **CSV 明文回导**：新增 csvToRecords（解析表头：日期,时间,时长(分),情绪,诱因,看片,备注 + 双引号转义）+ 指纹合并（日期+时间+时长，重复跳过）——导出/导入闭环打通
+3. **备份列表类型徽标**：🔒 加密包 / 📄 CSV，点选后按类型走对应路径
+4. **accept 扩展**：`.json,application/json,.csv,text/csv`
+5. **加密分支空数据提示**：与明文分支统一「还没有记录可导出」
+6. **明文态导入加密包成功 toast**：「已导入 N 条备份记录（当前以明文保存——建议开启加密）」
+
+### 实施清单（✅ 全部完成）
+1. secure.js：导入弹窗重构（口令显隐/CSV 解析/指纹合并/徽标/模式文案）
+2. index.html：secImportPass 初始隐藏 + accept 扩展 + 备份管理入口与弹窗
+3. ui-sheet.js：加密分支空数据提示
+4. 真机验证全路径
+
+### 验收要点
+- 明文态导入弹窗不再默认显示口令框；选 CSV 全程无需口令
+- 明文 CSV 导出后可导入（按指纹合并去重）
+- 加密态 0 记录导出有提示；明文态导入加密包有落盘提示
+
+---
+
+## 110. 备份管理（列表 + 删除，清理下载目录备份文件） ✅ 已实施（v3.9）
 
 ### 需求（用户 2026-08-10）
 > 把备份管理列入计划。
@@ -3555,21 +3658,20 @@ Android 16 实况通知的**未展开状态（状态条状标签 chip）**有点
 - 导入弹窗已列出下载目录备份 chips（#104），点选即读文件导入
 - 数据卡「导出数据」row-btn 旁无备份管理入口
 
-### 理解与设计（草案）
-- 数据卡新增「备份管理」row-btn → 备份管理弹窗：列表（文件名 / 日期 / 大小，复用 listBackupFiles 扩展返回 size+date）
-- 每项带删除按钮 → 确认弹窗（「删除后不可恢复，确认？」）→ SaveToDownloadsPlugin 新增 deleteBackupFile（MediaStore contentResolver.delete，按 DISPLAY_NAME）
-- 删除后刷新列表；空态「暂无备份文件」
-- 可顺带清理今天测试残留的 guanji-backup-2026-08-10(.json / (1).json)
+### 方案（✅ 已实施 v3.9）
+- 数据卡新增「备份管理」row-btn（导入备份下方）
+- 管理弹窗：文件列表（🔒 加密包 / 📄 CSV 徽标 + 类型标签）+ 行内二次确认删除（3 秒内再点执行）+ 空态文案
+- SaveToDownloadsPlugin 新增 `deleteBackupFile{filename}`：MediaStore.Downloads 按 DISPLAY_NAME delete（API<29 走公共 Download 目录文件删除）
+- 删除后自动刷新列表 + toast「已删除 xxx」
 
-### 实施清单
-1. SaveToDownloadsPlugin.java：新增 `deleteBackupFile{filename}`（MediaStore delete，返回 {deleted:boolean}）
-2. index.html：数据卡加「备份管理」row-btn + 弹窗结构（列表容器/删除按钮/确认）
-3. ui-sheet.js（或 secure.js）：备份管理弹窗逻辑（加载列表/删除/刷新/空态）
-4. 资源版本 bump + 真机验证（列表→删除→列表刷新→文件管理器确认消失）
+### 实施清单（✅ 全部完成）
+1. SaveToDownloadsPlugin.java：deleteBackupFile（MediaStore delete + fallback）
+2. index.html：数据卡「备份管理」row-btn + bkpManageBackdrop 弹窗
+3. secure.js：loadBackupFiles / 行内二次确认 / 删除刷新 / 空态
 
-### 待确认
-- 入口位置：数据卡内独立 row-btn（推荐）vs 并入导入弹窗？
-- 删除是否也支持明文 CSV 导出文件（guanji-export-*）？（listBackupFiles 已含 export 前缀）
+### 待确认（✅ 已解决）
+- 入口位置：独立 row-btn（推荐）——已采用
+- 删除覆盖 CSV 明文导出文件：是（listBackupFiles 已含 guanji-export-*）
 
 ### 验收要点
 - 下载目录备份可在 App 内列出并删除（文件管理器确认消失）

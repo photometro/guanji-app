@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>观己 · UI 原型</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23007AFF'/%3E%3Cpath d='M32 18c-6 0-10 4.2-10 9.8 0 6.5 7.5 11.8 9.4 13.1a1.2 1.2 0 0 0 1.2 0c1.9-1.3 9.4-6.6 9.4-13.1C42 22.2 38 18 32 18Zm0 13.3a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z' fill='%23FFFFFF'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/theme.css?v=91">
-<link rel="stylesheet" href="css/base.css?v=91">
-<link rel="stylesheet" href="css/components.css?v=91">
-<link rel="stylesheet" href="css/tabbar.css?v=91">
-<link rel="stylesheet" href="css/sheets.css?v=91">
-<link rel="stylesheet" href="css/screens.css?v=91">
-<link rel="stylesheet" href="css/responsive.css?v=91">
-<link rel="stylesheet" href="css/glass.css?v=91">
+<link rel="stylesheet" href="css/theme.css?v=94">
+<link rel="stylesheet" href="css/base.css?v=94">
+<link rel="stylesheet" href="css/components.css?v=94">
+<link rel="stylesheet" href="css/tabbar.css?v=94">
+<link rel="stylesheet" href="css/sheets.css?v=94">
+<link rel="stylesheet" href="css/screens.css?v=94">
+<link rel="stylesheet" href="css/responsive.css?v=94">
+<link rel="stylesheet" href="css/glass.css?v=94">
 <script src="vendor/anime.min.js"></script>   <!-- #72：anime v3.2（弹簧动画），缺失时 app.js 自动回退 CSS -->
 <script>
   /* 防闪烁：在渲染前根据 localStorage + 系统设置确定主题 + 玻璃效果开关（#72，默认 on） */
@@ -188,6 +188,12 @@
           <span>玻璃效果</span>
           <span class="switch" id="liquidGlassSwitch"><span class="knob"></span></span>
         </label>
+        <!-- #113：磨砂强度滑块（0-10px，默认 3，深浅共用；拖动实时预览） -->
+        <div class="glass-blur-row" style="margin-top:12px">
+          <span class="glass-blur-label">磨砂强度</span>
+          <input type="range" id="glassBlurSlider" min="0" max="10" step="1" value="3" aria-label="磨砂强度">
+          <span class="glass-blur-val" id="glassBlurVal">3 px</span>
+        </div>
         <p class="disclaimer" style="margin-top:12px">实验性视觉材质：无磨砂通透玻璃 + 玻璃边缘，随内容滚动的流动性。可随时切回经典样式。</p>
       </div>
 
@@ -276,6 +282,11 @@
           <span>导入备份</span>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
+        <!-- #110：备份管理（列表/删除下载目录备份文件） -->
+        <button class="row-btn" id="bkpManageBtn">
+          <span>备份管理</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
 
         <!-- 危险操作 -->
         <button class="row-btn danger" id="clearBtn">
@@ -296,7 +307,7 @@
           <svg width="26" height="26" viewBox="0 0 46 46"><path d="M23 12c-6 0-10 4.2-10 9.8 0 6.5 7.5 11.8 9.4 13.1a1.2 1.2 0 0 0 1.2 0c1.9-1.3 9.4-6.6 9.4-13.1C33 16.2 29 12 23 12Zm0 13.3a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" fill="#FFFFFF"/></svg>
         </div>
         <p class="about-name">观己</p>
-        <p class="about-ver">v3.8 · 数据仅存本地</p>
+        <p class="about-ver">v3.9 · 数据仅存本地</p>
         <!-- #69：隐私条目直接跟随品牌区（无分割线/无标题，苹果页脚风格） -->
         <ul class="privacy-list about-privacy">
           <li><span class="dot"></span>所有记录只保存在这台设备上，不上传云端</li>
@@ -449,11 +460,24 @@
           <div id="secImportFileList"></div>
         </div>
         <label class="row-btn" id="secImportFileLabel" for="secImportFile" style="margin-top:10px;justify-content:center">浏览其他位置</label>
-        <input type="file" id="secImportFile" accept=".json,application/json" style="display:none">
+        <input type="file" id="secImportFile" accept=".json,application/json,.csv,text/csv" style="display:none">
+        <!-- #111：口令框按需显隐——选中加密包（.json）才显示，CSV 无需口令 -->
         <input type="password" id="secImportPass" placeholder="创建该备份时设置的口令" autocomplete="off" style="margin-top:8px">
         <div class="dialog-actions">
           <button class="btn-ghost" id="secImportCancel">取消</button>
           <button class="btn-primary" id="secImportConfirm">导入</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- #110：备份管理弹层（下载目录备份/导出文件列表 + 删除） -->
+    <div class="backdrop dialog-layer hidden" id="bkpManageBackdrop">
+      <div class="dialog">
+        <p class="dialog-title">备份管理</p>
+        <p class="dialog-text" id="bkpManageHint">下载目录中的备份与导出文件。删除后不可恢复。</p>
+        <div id="bkpManageList" style="margin-top:6px"></div>
+        <div class="dialog-actions">
+          <button class="btn-ghost" id="bkpManageClose">关闭</button>
         </div>
       </div>
     </div>
@@ -539,16 +563,16 @@
   </defs>
 </svg>
 
-<script src="js/secure.js?v=91"></script>
-<script src="js/storage.js?v=91"></script>
-<script src="js/records.js?v=91"></script>
-<script src="js/stats.js?v=91"></script>
-<script src="js/ai.js?v=91"></script>
-<script src="js/ui-home.js?v=91"></script>
-<script src="js/ui-timer.js?v=91"></script>
-<script src="js/ui-sheet.js?v=91"></script>
-<script src="js/ui-calendar.js?v=91"></script>
-<script src="js/liquid-glass.js?v=91"></script>
-<script src="js/app.js?v=91"></script>
+<script src="js/secure.js?v=94"></script>
+<script src="js/storage.js?v=94"></script>
+<script src="js/records.js?v=94"></script>
+<script src="js/stats.js?v=94"></script>
+<script src="js/ai.js?v=94"></script>
+<script src="js/ui-home.js?v=94"></script>
+<script src="js/ui-timer.js?v=94"></script>
+<script src="js/ui-sheet.js?v=94"></script>
+<script src="js/ui-calendar.js?v=94"></script>
+<script src="js/liquid-glass.js?v=94"></script>
+<script src="js/app.js?v=94"></script>
 </body>
 </html>

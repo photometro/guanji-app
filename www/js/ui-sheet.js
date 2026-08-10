@@ -604,6 +604,8 @@ $('positiveSwitch').addEventListener('click', () => {
 
 // 我的页：导出数据（#96：按模式自适应——明文 CSV / 加密密文备份文件）
 $('exportBtn').addEventListener('click', async () => {
+  // #111：两种模式统一空数据提示（此前加密分支无检查，会导出空备份包）
+  if (!records.length) { toast('还没有记录可导出'); return; }
   if (secureMode() === 'encrypted') {
     try {
       const r = await exportEncryptedBackupFile();
@@ -615,7 +617,6 @@ $('exportBtn').addEventListener('click', async () => {
     }
     return;
   }
-  if (!records.length) { toast('还没有记录可导出'); return; }
   const rows = [['日期', '时间', '时长(分)', '情绪', '诱因', '看片', '备注']];
   [...records]
     .sort((a, b) => (a.offset - b.offset) || a.time.localeCompare(b.time))

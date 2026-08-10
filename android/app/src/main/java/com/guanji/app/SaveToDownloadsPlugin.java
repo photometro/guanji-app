@@ -133,4 +133,28 @@ public class SaveToDownloadsPlugin extends Plugin {
             call.reject("read failed: " + e.getMessage());
         }
     }
+
+    /* #110：删除下载目录中的备份/导出文件（MediaStore，按文件名） */
+    @PluginMethod
+    public void deleteBackupFile(PluginCall call) {
+        String filename = call.getString("filename");
+        if (filename == null || filename.isEmpty()) { call.reject("filename required"); return; }
+        boolean deleted = false;
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                Uri collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI;
+                String selection = MediaStore.Downloads.DISPLAY_NAME + " = ?";
+                String[] selArgs = { filename };
+                deleted = getContext().getContentResolver().delete(collection, selection, selArgs) > 0;
+            } else {
+                File f = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), filename);
+                deleted = f.exists() && f.delete();
+            }
+            JSObject ret = new JSObject();
+            ret.put("deleted", deleted);
+            call.resolve(ret);
+        } catch (Exception e) {
+            call.reject("delete failed: " + e.getMessage());
+        }
+    }
 }
