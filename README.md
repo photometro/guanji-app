@@ -129,7 +129,7 @@ guanji-app/
 
 ## 版本历史
 
-见 [CHANGELOG.md](./CHANGELOG.md)——从 v1.0 到 v3.6，持续迭代更新。
+见 [CHANGELOG.md](./CHANGELOG.md)——从 v1.0 到 v3.9，持续迭代更新。
 
 ## 致谢
 
