@@ -1,0 +1,171 @@
+/* 观己 App · components（P1 搬移式拆分，2026-08-09——规则原样搬移，零逻辑改动） */
+/* ============ 今日焦点区（无卡片） ============ */
+
+.focus-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 10px 0 14px;
+}
+.focus-left { display: flex; align-items: baseline; gap: 10px; }
+.focus-num {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  color: var(--accent);
+}
+.focus-num small { font-size: 16px; font-weight: 700; color: var(--ink-2); letter-spacing: 0; margin-left: 2px; }
+.focus-meta { text-align: right; padding-bottom: 4px; }
+.focus-status { font-size: 13px; font-weight: 600; color: var(--ink); }
+.focus-sub { font-size: 12px; color: var(--ink-2); margin-top: 4px; letter-spacing: 0.02em; }
+
+.rule { border: none; border-top: 1px solid var(--line); margin: 0 0 20px; }
+
+/* ============ 统计行（无卡片 + 竖分割线） ============ */
+
+.stats-row {
+  display: flex;
+  align-items: stretch;
+  margin-bottom: 24px;
+}
+.stat-cell { flex: 1; text-align: center; padding: 4px 0; }
+.stat-cell + .stat-cell { border-left: 1px solid var(--line); }
+.stat-num { font-size: 26px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.1; }
+.stat-num.down { color: var(--sage); }
+.stat-num.plain { color: var(--ink); }
+.stat-label { font-size: 11px; color: var(--ink-2); margin-top: 4px; letter-spacing: 0.04em; }
+
+/* ============ 卡片与区块 ============ */
+
+.card {
+  background: var(--card);   /* 默认旧版白底（液态玻璃态由 html.liquid-glass 覆盖层接管） */
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.card-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
+/* #96：数据卡区块分隔线 */
+.card-section-divider { border-top: 1px solid var(--line); margin: 12px 0; }
+/* textZoom 兜底：标题让位截断，右侧胶囊/按钮完整不压缩 */
+.card-head > div:first-child { flex: 1; min-width: 0; }
+.card-head > div:first-child p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-head > .seg-row.mini { flex-shrink: 0; }
+.card-title { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; }
+.card-sub { font-size: 12px; color: var(--ink-2); letter-spacing: 0.02em; }
+
+
+/* ============ 按钮 ============ */
+
+.btn-primary {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--accent);   /* 默认旧版实色（液态玻璃态由 html.liquid-glass 覆盖层接管） */
+  color: #FFF;
+  border: none;
+  border-radius: 999px;
+  padding: 14px 26px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: var(--shadow-2);
+  transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+@media (hover: hover) {
+.btn-primary:hover { background: var(--accent-deep); transform: translateY(-1px); }
+}
+.btn-primary:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+.btn-primary:active { transform: scale(0.97); box-shadow: none; }
+.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-ghost {
+  background: var(--bg-elev);   /* 默认旧版 */
+  color: var(--ink);
+  border: 1px solid var(--line);   /* #40：加边框 + 主文字色，避免「灰到像禁用」 */
+  border-radius: 999px;
+  padding: 14px 26px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease;
+}
+@media (hover: hover) {
+.btn-ghost:hover { background: #DCDCE0; border-color: var(--ink-3); }
+:root[data-theme="dark"] .btn-ghost:hover { background: #3A3A3C; border-color: #48484A; }
+}
+.btn-ghost:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+.btn-ghost:active { transform: scale(0.97); }
+
+.btn-danger {
+  background: var(--accent-deep);   /* 默认旧版 */
+  color: #FFF;
+  border: none;
+  border-radius: 999px;
+  padding: 13px 26px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+@media (hover: hover) {
+.btn-danger:hover { background: #743614; }
+}
+.btn-danger:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+.btn-danger:active { transform: scale(0.97); }
+
+/* ============ 记录主按钮 ============ */
+
+.record-btn {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--accent);   /* 默认旧版实色（液态玻璃态由 html.liquid-glass 覆盖层接管） */
+  color: #FFF;
+  border: none;
+  border-radius: 999px;
+  padding: 13px 22px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  box-shadow: var(--shadow-2);
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+@media (hover: hover) {
+.record-btn:hover { background: var(--accent-deep); }
+}
+.record-btn:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+.record-btn:active { transform: scale(0.96); }
+
+/* ============ 空态 / 加载 ============ */
+
+.empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+  padding: 40px 20px;
+}
+.empty-text { font-size: 14px; color: var(--ink-2); line-height: 1.9; letter-spacing: 0.02em; }
+
+.loading-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 36px 20px;
+  font-size: 13px;
+  color: var(--ink-2);
+  letter-spacing: 0.03em;
+}
+.spinner {
+  width: 26px; height: 26px;
+  border: 2.5px solid var(--accent-soft);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

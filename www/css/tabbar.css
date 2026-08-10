@@ -1,0 +1,71 @@
+/* 观己 App · tabbar（P1 搬移式拆分，2026-08-09——规则原样搬移，零逻辑改动） */
+/* ============ 底部 Tab（iOS 悬浮胶囊毛玻璃） ============ */
+
+.tabbar {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: calc(12px + var(--safe-bottom));
+  height: 58px;
+  display: flex;
+  /* 默认旧版：iOS 悬浮胶囊毛玻璃（液态玻璃态由 html.liquid-glass 覆盖层接管） */
+  background: var(--glass);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 0.5px solid rgba(255, 255, 255, 0.65);
+  border-radius: 26px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.06);
+  padding: 0 10px;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+/* #42：软键盘弹出时移出屏外（视觉视口被压缩，避免 tab 栏被顶到键盘上方） */
+.tabbar.keyboard-up {
+  transform: translateY(180%);
+  opacity: 0;
+  pointer-events: none;
+}
+.tab {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  font-size: 11px;
+  font-family: var(--font);
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: color 0.2s ease;
+  min-height: 44px;
+}
+@media (hover: hover) {
+.tab:hover { color: var(--ink-2); }
+}
+.tab:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: -2px; border-radius: 8px; }
+.tab.active { color: var(--accent-deep); font-weight: 700; }
+.tab.active svg { stroke-width: 2.2; }
+
+/* 滑块跟踪层（点击滑动 + 弹性过渡）——圆角与容器一致（26px），视觉同心 */
+.tab-slide {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  border-radius: 26px;
+  background: var(--slide-bg);
+  transition: left 0.55s cubic-bezier(0.23, 1, 0.32, 1.05), width 0.55s cubic-bezier(0.23, 1, 0.32, 1.05);
+}
+
+/* 选中胶囊（与记录模块分段控件同款视觉语言） */
+.tab-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 7px 18px;
+  border-radius: 17px;
+}
+

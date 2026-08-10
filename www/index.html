@@ -5,10 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>观己 · UI 原型</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23007AFF'/%3E%3Cpath d='M32 18c-6 0-10 4.2-10 9.8 0 6.5 7.5 11.8 9.4 13.1a1.2 1.2 0 0 0 1.2 0c1.9-1.3 9.4-6.6 9.4-13.1C42 22.2 38 18 32 18Zm0 13.3a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z' fill='%23FFFFFF'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="styles.css?v=60">
+<link rel="stylesheet" href="css/theme.css?v=91">
+<link rel="stylesheet" href="css/base.css?v=91">
+<link rel="stylesheet" href="css/components.css?v=91">
+<link rel="stylesheet" href="css/tabbar.css?v=91">
+<link rel="stylesheet" href="css/sheets.css?v=91">
+<link rel="stylesheet" href="css/screens.css?v=91">
+<link rel="stylesheet" href="css/responsive.css?v=91">
+<link rel="stylesheet" href="css/glass.css?v=91">
 <script src="vendor/anime.min.js"></script>   <!-- #72：anime v3.2（弹簧动画），缺失时 app.js 自动回退 CSS -->
 <script>
-  /* 防闪烁：在渲染前根据 localStorage + 系统设置确定主题 + 液态玻璃开关（#72，默认 on） */
+  /* 防闪烁：在渲染前根据 localStorage + 系统设置确定主题 + 玻璃效果开关（#72，默认 on） */
   (function () {
     try {
       var t = localStorage.getItem('guanji_theme') || 'system';
@@ -72,11 +79,11 @@
       <div class="stats-row">
         <div class="stat-cell">
           <p class="stat-num" id="weekCount">—</p>
-          <p class="stat-label">本周次数</p>
+          <p class="stat-label">近 7 天</p>
         </div>
         <div class="stat-cell">
           <p class="stat-num down" id="weekDelta">—</p>
-          <p class="stat-label">较上周</p>
+          <p class="stat-label">较上 7 天</p>
         </div>
         <div class="stat-cell">
           <p class="stat-num plain" id="streakNum">—</p>
@@ -90,14 +97,21 @@
             <p class="card-title">次数趋势</p>
             <p class="card-sub">每天次数</p>
           </div>
+          <div class="seg-row mini" id="chartViewSeg">
+            <span class="seg-slide" id="chartViewSlide"></span>
+            <button class="seg active" data-view="curve">曲线</button>
+            <button class="seg" data-view="heat">热力图</button>
+          </div>
+        </div>
+        <div class="chart-wrap" id="areaChart"></div>
+        <div class="chart-footer">
+          <div class="month-summary" id="monthSummary"></div>
           <div class="seg-row mini" id="chartSeg">
             <span class="seg-slide" id="chartSegSlide"></span>
             <button class="seg active" data-days="14">14 天</button>
             <button class="seg" data-days="30">30 天</button>
           </div>
         </div>
-        <div class="chart-wrap" id="areaChart"></div>
-        <div class="month-summary" id="monthSummary"></div>
       </div>
 
       <div class="card">
@@ -130,7 +144,7 @@
         <p class="empty-text">让 AI 看看你这段时间的节奏，<br>找出藏在数据里的模式。</p>
         <button class="btn-primary" id="genBtn">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5v13M1.5 8h13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          生成本周分析
+          生成近 7 天分析
         </button>
       </div>
 
@@ -167,11 +181,11 @@
         </div>
       </div>
 
-      <!-- #73：液态玻璃独立成卡（实验性视觉材质） -->
+      <!-- #73/#108：玻璃效果独立成卡（实验性视觉材质） -->
       <div class="card">
-        <p class="card-title" style="margin-bottom:6px">液态玻璃<span style="font-size:11px;color:var(--ink-3);font-weight:500;margin-left:6px">实验性</span></p>
+        <p class="card-title" style="margin-bottom:6px">玻璃效果<span style="font-size:11px;color:var(--ink-3);font-weight:500;margin-left:6px">实验性</span></p>
         <label class="switch-row">
-          <span>液态玻璃材质</span>
+          <span>玻璃效果</span>
           <span class="switch" id="liquidGlassSwitch"><span class="knob"></span></span>
         </label>
         <p class="disclaimer" style="margin-top:12px">实验性视觉材质：无磨砂通透玻璃 + 玻璃边缘，随内容滚动的流动性。可随时切回经典样式。</p>
@@ -238,12 +252,32 @@
         <p class="disclaimer" style="margin-top:12px" id="aiTestStatus">密钥与配置只保存在这台设备上。AI 分析时仅上传聚合统计特征，不会上传单条记录。</p>
       </div>
 
+      <!-- 数据卡（#96 合并：加密 / 备份 / 危险操作三区块） -->
       <div class="card">
-        <p class="card-title" style="margin-bottom:6px">数据管理</p>
+        <p class="card-title" style="margin-bottom:6px">数据</p>
+
+        <!-- 加密区块（#106：加密态顶部「关闭加密」与「开启加密」同位置同色对称 + 状态小圆点灰/绿） -->
+        <p class="disclaimer" id="secureStatus" style="margin-bottom:10px">正在检测…</p>
+        <button class="btn-primary" id="secureEnableBtn" style="width:100%">开启加密</button>
+        <button class="btn-primary hidden" id="secureDisableBtn" style="width:100%">关闭加密</button>
+        <div class="hidden" id="secureActions">
+          <button class="row-btn" id="secureChangeBtn">
+            <span>修改口令</span>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+
+        <!-- 备份区块（#96：导出按模式自适应——明文 CSV 文件 / 加密备份文件；导入备份明文/加密均可用） -->
         <button class="row-btn" id="exportBtn">
           <span>导出数据</span>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
+        <button class="row-btn" id="secureImportBtn">
+          <span>导入备份</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+
+        <!-- 危险操作 -->
         <button class="row-btn danger" id="clearBtn">
           <span>清除全部数据</span>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -252,6 +286,8 @@
           <span>恢复演示数据</span>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
+
+        <p class="disclaimer" style="margin-top:12px">开启加密后，数据从写入那一刻起就是密文——离开设备的只有密文，只有你的口令能解开。忘记口令将无法恢复数据，建议先把口令存入密码管理器。</p>
       </div>
 
       <!-- #68：隐私说明并入关于卡（数据相关操作后展示，强调本地存储） -->
@@ -260,7 +296,7 @@
           <svg width="26" height="26" viewBox="0 0 46 46"><path d="M23 12c-6 0-10 4.2-10 9.8 0 6.5 7.5 11.8 9.4 13.1a1.2 1.2 0 0 0 1.2 0c1.9-1.3 9.4-6.6 9.4-13.1C33 16.2 29 12 23 12Zm0 13.3a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" fill="#FFFFFF"/></svg>
         </div>
         <p class="about-name">观己</p>
-        <p class="about-ver">v3.6 · 数据仅存本地</p>
+        <p class="about-ver">v3.8 · 数据仅存本地</p>
         <!-- #69：隐私条目直接跟随品牌区（无分割线/无标题，苹果页脚风格） -->
         <ul class="privacy-list about-privacy">
           <li><span class="dot"></span>所有记录只保存在这台设备上，不上传云端</li>
@@ -388,6 +424,40 @@
       </div>
     </div>
 
+    <!-- #93：数据加密口令弹层（开启/修改/关闭/导入共用） -->
+    <div class="backdrop dialog-layer hidden" id="secBackdrop">
+      <div class="dialog">
+        <p class="dialog-title" id="secDialogTitle">设置加密口令</p>
+        <p class="dialog-text" id="secDialogHint">口令是唯一钥匙——忘记口令将无法恢复数据。建议存入密码管理器。</p>
+        <input type="password" id="secPass1" placeholder="口令（建议 8 位以上，不要用简单数字）" autocomplete="off" style="margin-bottom:8px">
+        <input type="password" id="secPass2" placeholder="再次输入口令" autocomplete="off">
+        <p class="dialog-hint" id="secPassHint"></p>
+        <div class="dialog-actions">
+          <button class="btn-ghost" id="secCancel">取消</button>
+          <button class="btn-primary" id="secConfirm">确定</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- #93/#95/#104：导入备份弹层（下载目录备份列表 + 浏览其他位置） -->
+    <div class="backdrop dialog-layer hidden" id="secImportBackdrop">
+      <div class="dialog">
+        <p class="dialog-title">导入备份</p>
+        <p class="dialog-text" id="secImportInfo"></p>
+        <div class="hidden" id="secImportFiles" style="margin-top:6px">
+          <p class="dialog-hint">下载目录中的备份：</p>
+          <div id="secImportFileList"></div>
+        </div>
+        <label class="row-btn" id="secImportFileLabel" for="secImportFile" style="margin-top:10px;justify-content:center">浏览其他位置</label>
+        <input type="file" id="secImportFile" accept=".json,application/json" style="display:none">
+        <input type="password" id="secImportPass" placeholder="创建该备份时设置的口令" autocomplete="off" style="margin-top:8px">
+        <div class="dialog-actions">
+          <button class="btn-ghost" id="secImportCancel">取消</button>
+          <button class="btn-primary" id="secImportConfirm">导入</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 添加自定义情绪/诱因（#24/#47） -->
     <div class="backdrop dialog-layer hidden" id="addBackdrop">
       <div class="dialog">
@@ -458,7 +528,7 @@
   </div>
 </div>
 
-<!-- #81 方案 C：液态玻璃 tab 液体变形滤镜（feTurbulence 噪声 + feDisplacementMap 位移；
+  <!-- #81 方案 C：玻璃效果 tab 液体变形滤镜（feTurbulence 噪声 + feDisplacementMap 位移；
      仅玻璃态 .tab-slide 引用；静止 scale=0 无变形，切换时由 liquidTabPulse 驱动脉冲） -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
@@ -469,6 +539,16 @@
   </defs>
 </svg>
 
-<script src="app.js?v=60"></script>
+<script src="js/secure.js?v=91"></script>
+<script src="js/storage.js?v=91"></script>
+<script src="js/records.js?v=91"></script>
+<script src="js/stats.js?v=91"></script>
+<script src="js/ai.js?v=91"></script>
+<script src="js/ui-home.js?v=91"></script>
+<script src="js/ui-timer.js?v=91"></script>
+<script src="js/ui-sheet.js?v=91"></script>
+<script src="js/ui-calendar.js?v=91"></script>
+<script src="js/liquid-glass.js?v=91"></script>
+<script src="js/app.js?v=91"></script>
 </body>
 </html>

@@ -1,0 +1,165 @@
+/* 观己 App · theme（P1 搬移式拆分，2026-08-09——规则原样搬移，零逻辑改动） */
+/* ============================================================
+   观己 · Apple/iOS 风格设计系统
+   iOS system colors · SF 字体栈 · 分层无阴影 · 毛玻璃材料层
+   ============================================================ */
+
+:root {
+  /* 基底（iOS systemGroupedBackground / systemBackground） */
+  --bg: #F2F2F7;
+  --bg-elev: #E5E5EA;
+  --card: #FFFFFF;
+
+  /* #72 浅色背景蓝晕（玻璃卡片可透内容） */
+  --bg-glow-1: rgba(0, 122, 255, 0.06);
+  --bg-glow-2: rgba(0, 122, 255, 0.05);
+
+  /* 文字（iOS label / secondaryLabel / tertiaryLabel） */
+  --ink: #000000;
+  --ink-2: #8E8E93;
+  --ink-3: #C7C7CC;
+
+  /* 强调（iOS systemBlue） */
+  --accent: #007AFF;
+  --accent-deep: #0062CC;
+  --accent-soft: #E8F1FF;
+
+  /* 辅助（iOS systemGreen / systemOrange） */
+  --sage: #34C759;
+  --sage-soft: #E9F7EC;
+  --amber: #FF9500;
+
+  /* 结构（iOS separator） */
+  --line: #E5E5EA;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-2: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-3: 0 -2px 16px rgba(0, 0, 0, 0.08);
+  --shadow-4: 0 12px 40px rgba(0, 0, 0, 0.16);
+
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+
+  /* 全面屏安全区域（刘海/挖孔/手势条），非安全区设备回退 0 */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* 分段环配色（浅色：多彩时间色——晨光黄→日间橙→正午绿→暮色青→夜色蓝） */
+  --ring-1: #FFCC00;
+  --ring-2: #FF9500;
+  --ring-3: #34C759;
+  --ring-4: #32ADE6;
+  --ring-5: #007AFF;
+
+  /* 毛玻璃材质 */
+  --glass: rgba(255, 255, 255, 0.82);
+  --glass-strong: rgba(249, 249, 249, 0.94);
+
+  /* #72 液态玻璃（定稿 v8）：无磨砂通透配方——通透感来自饱和度 + 边缘结构 */
+  --lg-tint: rgba(255, 255, 255, 0);
+  --lg-saturate: 2;
+  /* 对话框用高 tint（0.4 遮罩之上需可读性） */
+  --lg-tint-strong: rgba(255, 255, 255, 0.85);
+  /* 内容卡用半透明 tint（透出背景渐变，保持阅读性）——#72-P2 Vibrancy 近似：微升至 0.6 */
+  --lg-tint-card: rgba(255, 255, 255, 0.60);
+  /* #84：玻璃受光层变量（光带 / 渐变边框环 / 上缘高光）——浅色保持定稿值，深色降白 */
+  --lg-glow-a: 0.40;   /* ::before 光带 radial 峰值白 */
+  --lg-glow-b: 0.16;   /* ::before 光带 linear 层白 */
+  --lg-edge-1: 0.95;   /* ::after 渐变边框环 顶 */
+  --lg-edge-2: 0.55;   /* ::after 渐变边框环 中 */
+  --lg-edge-3: 0.28;   /* ::after 渐变边框环 底 */
+  --lg-hi: 0.90;       /* 卡片 inset 上缘高光 */
+  /* #88：热力图色阶（蓝系，随 App 整体风格） */
+  --heat-0: rgba(116, 128, 150, 0.12);
+  --heat-1: rgba(0, 122, 255, 0.22);
+  --heat-2: rgba(0, 122, 255, 0.52);
+  --heat-3: rgba(0, 90, 215, 0.88);
+
+  /* tab 滑块 */
+  --slide-bg: rgba(0, 122, 255, 0.12);
+
+  /* #54：全屏计时页渐变背景（主题蓝，运动感） */
+  --timer-bg-1: #0A84FF;
+  --timer-bg-2: #0040A8;
+}
+
+/* ============ 深色模式（Material #121212 标准） ============ */
+
+:root[data-theme="dark"] {
+  --bg: #121212;
+  --bg-elev: #2C2C2E;
+  --card: #1E1E1E;
+
+  --ink: #FFFFFF;
+  --ink-2: #B0B0B4;
+  --ink-3: #6E6E73;
+
+  --accent: #0A84FF;
+  --accent-deep: #409CFF;
+  --accent-soft: rgba(10, 132, 255, 0.16);
+
+  --sage: #32D74B;
+
+  /* #72 深色背景蓝晕（玻璃卡片可透内容） */
+  --bg-glow-1: rgba(10, 132, 255, 0.09);
+  --bg-glow-2: rgba(10, 132, 255, 0.06);
+  --sage-soft: rgba(50, 215, 75, 0.16);
+  --amber: #FF9F0A;
+
+  --line: #3A3A3C;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 -12px 40px rgba(0, 0, 0, 0.6);
+  --shadow-4: 0 20px 50px rgba(0, 0, 0, 0.6);
+
+  /* 分段环（深色：iOS 深色系统色提亮版） */
+  --ring-1: #FFD60A;
+  --ring-2: #FF9F0A;
+  --ring-3: #30D158;
+  --ring-4: #64D2FF;
+  --ring-5: #0A84FF;
+
+  /* 毛玻璃（深色半透明） */
+  --glass: rgba(28, 28, 30, 0.82);
+  --glass-strong: rgba(28, 28, 30, 0.94);
+
+  /* #72 液态玻璃深色适配：深色下 saturate 无感，给极轻底色提升层次 */
+  --lg-tint: rgba(255, 255, 255, 0.05);
+  --lg-tint-strong: rgba(28, 28, 30, 0.85);
+  --lg-tint-card: rgba(255, 255, 255, 0.08);   /* #72-P2 Vibrancy 近似 */
+  /* #84：深色降白——光带/边框环/高光大幅降低透明度（保留玻璃结构感，消除白晕） */
+  --lg-glow-a: 0.12;
+  --lg-glow-b: 0.05;
+  --lg-edge-1: 0.35;
+  --lg-edge-2: 0.15;
+  --lg-edge-3: 0.08;
+  --lg-hi: 0.20;
+  /* #88：热力图深色色阶（更亮蓝保证深底可读） */
+  --heat-0: rgba(255, 255, 255, 0.07);
+  --heat-1: rgba(10, 132, 255, 0.30);
+  --heat-2: rgba(10, 132, 255, 0.60);
+  --heat-3: rgba(64, 156, 255, 0.95);
+
+  --slide-bg: rgba(10, 132, 255, 0.20);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+/* #25：关闭 UA 默认 focus outline（灰 ring 残留来源）。
+   各按钮 :focus-visible 蓝色键盘样式 specificity 更高，不受影响 */
+*:focus { outline: none; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: var(--font);
+  background: #D9D9DE;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  color: var(--ink);
+}
+

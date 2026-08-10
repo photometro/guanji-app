@@ -1,4 +1,7 @@
 // 观己功能海报系列生成器：输出 7 张竖版海报（1080×1920）到 C:\Users\43124\Desktop\观己海报\
+// 外宣字体规范（2026-08-09）：宣传物料只允许免费商用字体——首选用本机已装的 Noto Sans SC（= 思源黑体 Google 版，OFL 开源）
+// 严禁：Microsoft YaHei（微软雅黑，方正版权，商用有维权案例）/ PingFang SC（苹方，Apple 许可限制商用分发）
+// 其他可替换的免费商用字体：思源黑体 / 阿里巴巴普惠体 3.0 / HarmonyOS Sans（需安装后替换 font-family 首位）
 const fs = require('fs');
 const path = require('path');
 const OUT = 'C:\\Users\\43124\\Desktop\\观己海报';
@@ -16,7 +19,7 @@ const baseCss = `
     --sage: #34C759;
     --bg: #F2F3F7;
     --timer-grad: linear-gradient(180deg, #1288FF 0%, #0A63E8 58%, #074FB8 100%);
-    --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+    --font: "Noto Sans SC", "Source Han Sans SC", "Alibaba PuHuiTi", "HarmonyOS Sans SC", sans-serif;
   }
   html, body { height: 100%; }
   body { font-family: var(--font); background: #DFE2EA; margin: 0; overflow: hidden; }

@@ -1,0 +1,94 @@
+/* 观己 App · base（P1 搬移式拆分，2026-08-09——规则原样搬移，零逻辑改动） */
+/* ============ 手机画布 ============ */
+
+.stage { padding: 24px 0; }
+
+.phone {
+  position: relative;
+  width: 390px;
+  height: 844px;
+  background: var(--bg);   /* 默认旧版纯色；液态玻璃态（html.liquid-glass）由覆盖层加蓝晕 */
+  border-radius: 44px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.28), 0 6px 18px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.statusbar {
+  height: 46px;
+  flex: 0 0 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 26px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.sb-icons { display: flex; align-items: center; gap: 5px; }
+
+/* ============ 屏幕容器 ============ */
+
+.screen {
+  flex: 1;
+  overflow-y: auto;
+  padding: calc(4px + var(--safe-top)) 22px calc(104px + var(--safe-bottom));   /* 底部留白：避让悬浮 tab 栏 + 手势条 */
+  scrollbar-width: none;
+}
+.screen::-webkit-scrollbar { display: none; }
+.screen.hidden { display: none; }
+
+/* ============ 文字体系 ============ */
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-2);
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+.screen-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  /* 三保险之三：最长 2 行，超出省略号，页面永不破版 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.header-sub { font-size: 13px; color: var(--ink-2); margin-top: 6px; line-height: 1.6; }
+
+.home-header, .screen-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 0 20px;
+}
+/* 左侧文字区可收缩（长问候语换行），避免挤压右侧按钮 */
+.home-header > div:first-child,
+.screen-header > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.icon-btn {
+  color: var(--ink);   /* #45：图标 currentColor 跟随深浅色 */
+  flex-shrink: 0;   /* 禁止被长文本挤压变形 */
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--card);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.2s ease;
+}
+/* #50：hover 效果仅对支持悬停的设备生效（触摸设备无粘滞 hover，取消选中直接恢复基础态） */
+@media (hover: hover) {
+.icon-btn:hover { border-color: var(--ink-3); }
+}
+.icon-btn:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+.icon-btn:active { transform: scale(0.92); }
+

@@ -1,0 +1,215 @@
+/* 观己 App · glass（P1 搬移式拆分，2026-08-09——规则原样搬移，零逻辑改动） */
+/* ============ #72 液态玻璃（实验性，html.liquid-glass 时启用） ============
+   我的页「外观」卡开关切换；localStorage guanji_liquid_glass（默认 on）；
+   按钮 = 保留原实色 + 玻璃边缘（visionOS 风格：亮边/上缘高光/色相光晕） */
+
+/* 背景蓝晕（玻璃卡片可透内容） */
+html.liquid-glass .phone {
+  background:
+    radial-gradient(120% 80% at 85% -10%, var(--bg-glow-1), transparent 60%),
+    radial-gradient(100% 70% at 0% 100%, var(--bg-glow-2), transparent 55%),
+    var(--bg);
+}
+
+/* 浮层：无磨砂通透玻璃（tab 栏 / 记录面板 / 日历弹层 / 对话框） */
+html.liquid-glass .tabbar,
+html.liquid-glass .sheet,
+html.liquid-glass .calendar-sheet {
+  background: var(--lg-tint);
+  backdrop-filter: blur(0px) saturate(var(--lg-saturate));
+  -webkit-backdrop-filter: blur(0px) saturate(var(--lg-saturate));
+  border: none;
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.08),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.2),
+    inset 0 0 8px rgba(255, 255, 255, 0.08),
+    0 10px 34px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+/* #78：日历内容密集，加轻磨砂 3px 提升可读性（用户原型选档定案）；通透感保留，其余浮层不变 */
+html.liquid-glass .calendar-sheet {
+  backdrop-filter: blur(3px) saturate(var(--lg-saturate));
+  -webkit-backdrop-filter: blur(3px) saturate(var(--lg-saturate));
+}
+/* #82：tab 栏内容密集（图标+文字+玻璃胶囊），加轻磨砂 3px 提升可读性——与 #78 日历同款配方；通透感保留 */
+html.liquid-glass .tabbar {
+  backdrop-filter: blur(3px) saturate(var(--lg-saturate));
+  -webkit-backdrop-filter: blur(3px) saturate(var(--lg-saturate));
+}
+/* #109：记录面板（.sheet）对齐 #78/#82 同款轻磨砂 blur(3px)——透明度观感与日历/tab 统一 */
+html.liquid-glass .sheet {
+  backdrop-filter: blur(3px) saturate(var(--lg-saturate));
+  -webkit-backdrop-filter: blur(3px) saturate(var(--lg-saturate));
+}
+html.liquid-glass .sheet {
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.08),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.2),
+    inset 0 0 8px rgba(255, 255, 255, 0.08),
+    0 20px 50px rgba(0, 0, 0, 0.16), 0 5px 16px rgba(0, 0, 0, 0.08);   /* #74：悬浮投影 */
+}
+html.liquid-glass .calendar-sheet {
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.08),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.2),
+    inset 0 0 8px rgba(255, 255, 255, 0.08),
+    0 -18px 44px rgba(0, 0, 0, 0.12), 0 -4px 14px rgba(0, 0, 0, 0.06);   /* 日历贴底：保持向上投影 */
+}
+html.liquid-glass .dialog {
+  background: var(--lg-tint-strong);   /* 遮罩之上高 tint 保可读 */
+  backdrop-filter: blur(0px) saturate(var(--lg-saturate));
+  -webkit-backdrop-filter: blur(0px) saturate(var(--lg-saturate));
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.08),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.2),
+    inset 0 0 8px rgba(255, 255, 255, 0.08),
+    var(--shadow-4);
+}
+
+/* 内容卡：半透明 tint 透出背景蓝晕 */
+html.liquid-glass .card,
+html.liquid-glass .report-card,
+html.liquid-glass .ask-answer {
+  position: relative;   /* 伪元素定位上下文 */
+  background: var(--lg-tint-card);
+  backdrop-filter: blur(0px) saturate(var(--lg-saturate));
+  -webkit-backdrop-filter: blur(0px) saturate(var(--lg-saturate));
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.06),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, var(--lg-hi)),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.18),
+    0 10px 30px rgba(28, 42, 68, 0.07), 0 2px 8px rgba(28, 42, 68, 0.04);
+}
+
+/* 按钮：保留原实色 + 玻璃边缘（亮边 / 上缘高光 / 色相光晕） */
+html.liquid-glass .btn-primary,
+html.liquid-glass .record-btn {
+  background: var(--accent);
+  backdrop-filter: blur(0px) saturate(var(--lg-saturate));
+  -webkit-backdrop-filter: blur(0px) saturate(var(--lg-saturate));
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.15),
+    0 3px 14px rgba(0, 122, 255, 0.3);
+}
+html.liquid-glass .btn-ghost {
+  background: var(--bg-elev);
+  backdrop-filter: blur(0px) saturate(var(--lg-saturate));
+  -webkit-backdrop-filter: blur(0px) saturate(var(--lg-saturate));
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.12);
+}
+html.liquid-glass .btn-danger {
+  background: var(--accent-deep);
+  backdrop-filter: blur(0px) saturate(var(--lg-saturate));
+  -webkit-backdrop-filter: blur(0px) saturate(var(--lg-saturate));
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.12),
+    0 2px 10px rgba(255, 69, 58, 0.2);
+}
+
+/* chips：未选中灰玻璃 / 选中蓝实色玻璃 */
+html.liquid-glass .chip {
+  background: var(--bg-elev);
+  backdrop-filter: blur(0px) saturate(var(--lg-saturate));
+  -webkit-backdrop-filter: blur(0px) saturate(var(--lg-saturate));
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+html.liquid-glass .chip.active {
+  background: var(--accent);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 1px 6px rgba(0, 122, 255, 0.18);
+  color: #FFF;
+}
+
+/* 玻璃边缘结构（渐变边框环 ::after + 顶部受光/光带 ::before） */
+html.liquid-glass .tabbar::after,
+html.liquid-glass .sheet::after,
+html.liquid-glass .calendar-sheet::after,
+html.liquid-glass .dialog::after,
+html.liquid-glass .card::after,
+html.liquid-glass .report-card::after,
+html.liquid-glass .ask-answer::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  border: 1px solid transparent;
+  background: linear-gradient(180deg, rgba(255,255,255,var(--lg-edge-1)), rgba(255,255,255,var(--lg-edge-2)) 45%, rgba(255,255,255,var(--lg-edge-3))) border-box;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 2;
+}
+html.liquid-glass .tabbar::before,
+html.liquid-glass .sheet::before,
+html.liquid-glass .calendar-sheet::before,
+html.liquid-glass .dialog::before,
+html.liquid-glass .card::before,
+html.liquid-glass .report-card::before,
+html.liquid-glass .ask-answer::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(130% 70% at 15% 0%, rgba(255,255,255,var(--lg-glow-a)), transparent 50%),
+    linear-gradient(105deg, rgba(255,255,255,var(--lg-glow-b)), transparent 40%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 按压反馈（tab 栏饱和度增强） */
+html.liquid-glass .tabbar:active { --lg-saturate: 2.2; }
+
+/* #72-P2/#76/#81 玻璃态选中滑块：材质迁回单一滑块（滑动弹性 + SVG 液体变形脉冲）
+   —— #76 定稿的渐变玻璃胶囊材质由 .tab-slide 承担（::before 底座删除，避免双重渲染） */
+html.liquid-glass .tab-pill { position: relative; z-index: 1; }
+/* #81 方案 C 定稿：玻璃态滑块 = 渐变玻璃胶囊材质 + filter: url(#lg-distort) 液体变形
+   （切换时 app.js liquidTabPulse 驱动 feDisplacementMap scale 0→20→0；静止时 scale=0 无变形） */
+html.liquid-glass .tab-slide {
+  background: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, 0.60), rgba(0, 122, 255, 0.16) 75%);
+  border-radius: 22px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.2),
+    0 1px 5px rgba(0, 122, 255, 0.20);   /* 单层投影 */
+  filter: url(#lg-distort);
+}
+
+/* #72-P2 色散近似（实验）：大数字极轻 RGB 双色色边——模拟玻璃色散，克制防「假」 */
+html.liquid-glass .stat-num,
+html.liquid-glass .focus-num,
+html.liquid-glass .overview-num {
+  text-shadow: 0.6px 0 rgba(255, 59, 92, 0.18), -0.6px 0 rgba(0, 122, 255, 0.18);
+}
+
+/* reduced-transparency：玻璃态下回退实底 */
+@media (prefers-reduced-transparency: reduce) {
+  html.liquid-glass .tabbar, html.liquid-glass .sheet, html.liquid-glass .calendar-sheet,
+  html.liquid-glass .dialog, html.liquid-glass .card, html.liquid-glass .report-card,
+  html.liquid-glass .ask-answer { background: var(--card); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+

@@ -1,0 +1,549 @@
+/* 观己 App · sheets（P1 搬移式拆分，2026-08-09——规则原样搬移，零逻辑改动） */
+/* ============ 底部弹层 ============ */
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: backdropIn 0.25s ease;   /* #29：打开淡入 */
+}
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.backdrop.hidden { display: none; }
+
+/* #47：对话框类弹层（添加/删除）置于 sheet（z-index 30）之上、toast（50）之下；
+   键盘弹出不手动上移——adjustResize 已压缩视口并自动居中（-24% 上移会导致窗口整体偏上） */
+.backdrop.dialog-layer { z-index: 70; }   /* #63：> timerScreen(60)，汇总页内添加对话框不被遮 */
+
+/* #65：键盘弹出时对话框层只覆盖可见区域（--kb-h = 压缩后视口高，JS 每帧更新）——
+   冻结画布（851px）下 dialog 若居中于全高会与键盘重合（实测 bottom 541 > 可见区 528），
+   改为跟随可见区后 dialog 居中于键盘上方，完整露出 */
+body.keyboard-up .backdrop.dialog-layer {
+  bottom: auto;
+  height: var(--kb-h, 100%);
+}
+
+.sheet {
+  position: absolute;
+  left: 12px; right: 12px; bottom: 12px;   /* #74：悬浮形式（四周离边，与 tab 栏同边距体系） */
+  /* 默认旧版：毛玻璃（液态玻璃态由 html.liquid-glass 覆盖层接管） */
+  background: var(--glass-strong);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border-radius: 22px;   /* #74：全圆角（原 22px 22px 0 0 贴底样式） */
+  padding: 10px 22px 24px;   /* #75：回调至 10/24（保持两态一致前提下适度宽松） */
+  z-index: 30;
+  max-height: 86%;
+  overflow-y: auto;
+  scrollbar-width: none;
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.20), 0 6px 18px rgba(0, 0, 0, 0.10);   /* #74：增强悬浮阴影 */
+  animation: sheetUp 0.32s var(--ease-spring) both;
+}
+.sheet::-webkit-scrollbar { display: none; }
+.sheet.hidden { display: none; }
+
+/* 渐变边框环（#72 玻璃态专用，由 html.liquid-glass 覆盖层启用）——见文件尾部 */
+
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.sheet-handle {
+  width: 36px; height: 4px;
+  border-radius: 999px;
+  background: var(--line);
+  margin: 4px 0 10px;   /* #75：回调至 10 */
+}
+
+/* #29：拖拽热区（小横杠所在行，扩大点击区域；touch-action none 防滚动冲突） */
+.sheet-grab {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 2px;
+  touch-action: none;
+  cursor: grab;
+}
+.sheet-grab:active { cursor: grabbing; }
+.sheet-title { font-size: 17px; font-weight: 800; text-align: center; margin-bottom: 18px; letter-spacing: 0.02em; }   /* #75：回调至 18 */
+.sheet .field-label { margin: 12px 0 9px; }   /* #75：回调至 12/9 */
+.sheet .field-label:first-of-type { margin-top: 3px; }
+/* #28 步骤高度由 JS 过渡动画控制，不再用固定 min-height */
+
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+  margin: 0 0 8px;
+}
+
+/* 分段选择 */
+.seg-row {
+  position: relative;
+  display: flex;
+  background: var(--bg-elev);
+  border-radius: 999px;
+  padding: 4px;
+  gap: 4px;
+}
+/* 滑块层（#21/#22）：跟随选中 seg 滑动，与底部 tab 滑块同款弹性 */
+.seg-slide {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: var(--shadow-1);
+  transition: left 0.4s cubic-bezier(0.23, 1, 0.32, 1.05), width 0.4s cubic-bezier(0.23, 1, 0.32, 1.05);
+}
+.seg {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  border: none;
+  background: none;
+  border-radius: 999px;
+  padding: 10px 0;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: color 0.2s ease;
+  min-height: 40px;
+  white-space: nowrap;   /* 系统字体放大时「30 天」不在空格处断行 */
+}
+@media (hover: hover) {
+.seg:hover { color: var(--ink); }
+}
+.seg:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 1px; }
+.seg.active {
+  background: var(--card);
+  color: var(--accent-deep);
+  box-shadow: var(--shadow-1);
+}
+
+.time-display { font-size: 22px; font-weight: 800; margin-top: 8px; letter-spacing: -0.01em; color: var(--ink); }   /* #75：以真机为准调平两态 */
+
+/* #51：「就现在」计时器态 */
+#timerBox { margin-top: 10px; text-align: center; }   /* #75：回调至 10 */
+.timer-display {
+  font-size: 34px;   /* #75：回调至 34（面板内紧凑，全屏计时页 .timer-big 96px 不受影响） */
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  line-height: 1.0;
+}
+.timer-hint { font-size: 11px; color: var(--ink-3); margin-top: 5px; line-height: 1.3; }   /* #75：回调至 5 */
+.mode-link {
+  display: block;
+  width: 100%;
+  margin-top: 0;   /* #75：紧凑化 */
+  padding: 3px;
+  font-size: 12px;   /* #75：13→12 */
+  color: var(--accent-deep);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 10px;
+}
+.mode-link:hover { color: var(--accent); }
+.mode-link:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 1px; }
+.mode-link:active { opacity: 0.7; }
+
+/* #54：全屏沉浸式计时页（运动 App 风格） */
+.timer-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 60;   /* 高于 sheet(30) 与 dialog(40→70) */
+  background: linear-gradient(180deg, var(--timer-bg-1) 0%, var(--timer-bg-2) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* #64：面板→全屏入场过渡（统一 easeOutCubic，消除瞬切跳变） */
+  animation: timerEnter 0.3s cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+@keyframes timerEnter {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .timer-screen { animation: none; }
+}
+.timer-screen.hidden { display: none; }
+.timer-screen-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: calc(56px + var(--safe-top)) 24px calc(32px + var(--safe-bottom));
+}
+.timer-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #FFF;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.timer-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #FFF;
+  animation: timerPulse 1.6s ease-in-out infinite;
+}
+@keyframes timerPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.75); }
+}
+.timer-big {
+  font-size: 96px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: #FFF;
+  margin-top: 24px;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+}
+.timer-started { color: rgba(255, 255, 255, 0.78); font-size: 14px; margin-top: 16px; letter-spacing: 0.02em; }
+.timer-screen-spacer { flex: 1; }
+.timer-finish-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 340px;
+  padding: 18px 0;
+  border: none;
+  border-radius: 999px;
+  background: #FFF;
+  color: var(--accent-deep);
+  font-family: var(--font);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
+  transition: transform 0.15s ease, opacity 0.2s ease;
+}
+.timer-finish-btn:active { transform: scale(0.97); }
+.timer-finish-btn:focus-visible { outline: 3px solid rgba(255, 255, 255, 0.6); outline-offset: 3px; }
+.timer-quit-btn {
+  margin-top: 14px;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: rgba(255, 255, 255, 0.75);
+  font-family: var(--font);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+.timer-quit-btn:active { opacity: 0.7; }
+
+/* #62/#63：全屏汇总视图（回退 v5：蓝渐变白色体系，同容器切换零割裂） */
+.summary-title { color: rgba(255, 255, 255, 0.7); font-size: 13px; font-weight: 600; letter-spacing: 0.12em; margin-top: 28px; }   /* #65：vh 间距固定化——键盘弹出压缩视口会改 vh 值导致布局跳动 */
+.summary-duration {
+  font-size: clamp(34px, 10vw, 44px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: #FFF;
+  font-variant-numeric: tabular-nums;
+  margin-top: 6px;          /* 眉题贴紧数字（标签→主体） */
+  white-space: nowrap;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+}
+.summary-meta { font-size: 13px; color: rgba(255, 255, 255, 0.6); margin-top: 16px; margin-bottom: 32px; letter-spacing: 0.02em; }   /* #65：vh 固定化，见 summary-title */
+.summary-section { width: 100%; max-width: 320px; }
+.summary-section + .summary-section { margin-top: 26px; }
+.summary-label { font-size: 13px; font-weight: 700; color: rgba(255, 255, 255, 0.85); letter-spacing: 0.02em; margin-bottom: 10px; }
+.summary-section .chips { gap: 12px; }
+.summary-section .chip {
+  background: rgba(255, 255, 255, 0.16);
+  color: #FFF;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: none;
+}
+.summary-section .chip.active {
+  background: #FFF;
+  color: #0040A8;
+  border-color: transparent;
+  box-shadow: none;
+}
+.summary-section .chip-add {
+  background: none;
+  border: 1px dashed rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.75);
+  box-shadow: none;
+}
+.summary-actions { width: 100%; max-width: 320px; margin-top: 32px; }   /* #65：vh 固定化，见 summary-title */
+.summary-sub { display: flex; justify-content: center; gap: 26px; margin-top: 16px; }
+.summary-resume, .summary-abandon {
+  padding: 8px 4px;
+  border: none;
+  background: none;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.75);   /* 两个次级文字颜色统一 */
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.summary-resume:active, .summary-abandon:active { opacity: 0.6; }
+.summary-resume:focus-visible, .summary-abandon:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 2px; }
+
+.picker-row { display: flex; gap: 10px; margin-top: 6px; }   /* #75：回调至 6（与计时态均衡） */
+.picker-row input {
+  flex: 1;
+  min-width: 0;   /* textZoom 兜底：允许收缩，让位给保存按钮 */
+  font-family: var(--font);
+  font-size: 14px;
+  padding: 9px 12px;   /* #75：回调至 9 */
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--ink);
+}
+.picker-row .btn-ghost { flex-shrink: 0; }   /* 保存按钮永不压缩 */
+.picker-row input:focus { outline: 2px solid var(--accent-deep); outline-offset: 0; border-color: transparent; }
+
+/* AI 设置卡独立输入框（#27） */
+.card > input[type="text"] {
+  width: 100%;
+  font-family: var(--font);
+  font-size: 14px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--ink);
+}
+.card > input[type="text"]:focus { border-color: var(--accent); }
+
+/* #30：控件之后紧跟的 label 统一 16px 上间距（首个 label 不受影响） */
+.card > .chips + .field-label,
+.card > input + .field-label,
+.card > .picker-row + .field-label { margin-top: 16px; }
+
+/* 滑块 */
+.slider-row { display: flex; align-items: center; gap: 14px; }
+.slider-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+  height: 4px;
+  cursor: pointer;
+}
+.dur-label {
+  flex: 0 0 64px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-deep);
+}
+
+/* 标签组 */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  position: relative;   /* #47：× 删除按钮定位基准 */
+  border: 1px solid var(--line);
+  background: var(--card);   /* 默认旧版白底（液态玻璃态由 html.liquid-glass 覆盖层接管） */
+  border-radius: 999px;
+  padding: 9px 15px;
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  min-height: 38px;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;   /* #47：长按不触发系统复制/选择菜单 */
+}
+
+/* #47（方案 A）：自定义项右上角 × 删除按钮（仅自定义项附加） */
+.chip-x {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  color: #FFF;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+.chip-x:active { transform: scale(0.8); background: var(--accent-deep); }
+@media (hover: hover) {
+.chip:hover { border-color: var(--ink-3); color: var(--ink); }
+}
+.chip:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 1px; }
+.chip.active {
+  background: var(--accent-soft);   /* 默认旧版（液态玻璃态由 html.liquid-glass 覆盖层接管） */
+  border-color: transparent;
+  color: var(--accent-deep);
+  font-weight: 600;
+}
+
+/* 自定义添加 chip（#24）：虚线浅色，弱化不抢主选项 */
+.chip-add {
+  border-style: dashed;
+  border-color: var(--ink-3);
+  color: var(--ink-3);
+  font-weight: 500;
+}
+@media (hover: hover) {
+.chip-add:hover { border-color: var(--accent); color: var(--accent); }
+}
+
+/* 开关 */
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 18px 0 6px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--ink);
+}
+.switch {
+  position: relative;
+  width: 46px; height: 27px;
+  border-radius: 999px;
+  background: var(--bg-elev);
+  transition: background 0.25s ease;
+  flex: 0 0 46px;
+}
+.switch .knob {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 21px; height: 21px;
+  border-radius: 50%;
+  background: #FFF;
+  box-shadow: var(--shadow-1);
+  transition: transform 0.25s var(--ease-spring);
+}
+.switch.on { background: var(--accent); }
+.switch.on .knob { transform: translateX(19px); }
+
+textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  padding: 12px 14px;
+  font-size: 14px;
+  font-family: var(--font);
+  color: var(--ink);
+  resize: none;
+  line-height: 1.7;
+  letter-spacing: 0.02em;
+}
+textarea:focus { outline: 2px solid var(--accent-deep); outline-offset: 0; border-color: transparent; }
+
+.sheet-actions { display: flex; gap: 10px; margin-top: 20px; }   /* #75：回调至 20 */
+.sheet-actions .btn-primary, .sheet-actions .btn-ghost { flex: 1; }
+
+/* ============ 弹窗 ============ */
+
+.dialog {
+  width: 300px;
+  background: var(--card);   /* 默认旧版白底（液态玻璃态由 html.liquid-glass 覆盖层接管） */
+  border-radius: var(--radius-lg);
+  padding: 26px 22px 18px;
+  text-align: center;
+  box-shadow: var(--shadow-4);
+  animation: fadeUp 0.28s ease both;
+}
+.dialog-title { font-size: 16px; font-weight: 800; margin-bottom: 10px; letter-spacing: 0.01em; }
+.dialog-text { font-size: 13px; color: var(--ink-2); line-height: 1.8; letter-spacing: 0.02em; margin-top: 6px; }   /* #65：单行预览与输入框间距 */
+#addPreview { min-height: 1.8em; }   /* #65：预留预览行高度——dialog 高度恒定，预览出现时不再触发 flex 居中跳动 */
+.dialog-hint { font-size: 11px; color: var(--ink-2); margin-top: 6px; letter-spacing: 0.04em; }   /* #47：字数提示（已并入预览行） */
+.dialog-actions { display: flex; gap: 10px; margin-top: 22px; }
+.dialog-actions .btn-ghost, .dialog-actions .btn-danger { flex: 1; }
+
+/* 弹层输入框（#24 添加自定义 + #93 加密口令/导入——text/password/textarea 统一） */
+.dialog input[type="text"],
+.dialog input[type="password"] {
+  width: 100%;
+  margin-top: 4px;
+  font-family: var(--font);
+  font-size: 14px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--ink);
+  text-align: center;
+}
+.dialog textarea {
+  width: 100%;
+  margin-top: 4px;
+  font-family: var(--font);
+  font-size: 13px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--ink);
+  resize: none;
+  line-height: 1.5;
+}
+.dialog input[type="text"]:focus,
+.dialog input[type="password"]:focus,
+.dialog textarea:focus { outline: none; border-color: var(--accent); }
+
+/* ============ Toast ============ */
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  background: rgba(28, 28, 30, 0.92);
+  color: #FFF;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 999px;
+  padding: 12px 24px;
+  box-shadow: var(--shadow-4);
+  z-index: 50;
+  /* #103：允许长文案换行（导出路径等），限制宽度防超屏 */
+  white-space: normal;
+  max-width: 86%;
+  text-align: center;
+  line-height: 1.5;
+  animation: toastIn 0.3s var(--ease-spring) both;
+}
+.toast.hidden { display: none; }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translate(-50%, 14px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.hidden { display: none !important; }
+

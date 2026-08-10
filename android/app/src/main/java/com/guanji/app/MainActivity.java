@@ -31,6 +31,7 @@ public class MainActivity extends BridgeActivity {
     public void load() {
         registerPlugin(WidgetStatsPlugin.class);   // #32-#36：小组件统计同步
         registerPlugin(TimerLiveUpdatePlugin.class);   // #51：计时实况通知
+        registerPlugin(SaveToDownloadsPlugin.class);   // #102：导出保存到公共 Downloads
         super.load();
     }
 

@@ -117,6 +117,8 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- #102：导出保存到公共 Downloads（Android 10+ MediaStore 无需权限；9 及以下需要，maxSdk 限定） -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <!-- #51：计时通知（Android 13+ 运行时权限） -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- #51：实况通知提升（Android 16+ 非运行时权限，低版本系统自动忽略） -->

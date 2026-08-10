@@ -1,0 +1,70 @@
+/* 观己 App · responsive（P1 搬移式拆分，2026-08-09——规则原样搬移，零逻辑改动） */
+/* ============ 动效降级（Apple 三项信号） ============ */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .tabbar, .sheet, .calendar-sheet, .dialog, .card, .report-card, .ask-answer { background: var(--card); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* ============ 真机适配（触摸屏 + 窄视口时铺满全屏） ============ */
+
+/* 用 pointer: coarse 区分触摸设备与桌面鼠标，不依赖高度数值（WebView 中
+   媒体查询高度取 clientHeight，与 innerHeight 可能不同，数值条件不可靠） */
+@media (max-width: 420px) and (pointer: coarse) {
+  body {
+    background: var(--bg);
+    min-height: 100vh;
+  }
+  .stage {
+    padding: 0;
+    height: 100%;   /* #65：给 .phone height:100% 提供确定参照（否则回退 auto 撑高内容） */
+  }
+
+  /* 画布铺满视口，去掉手机壳样式 */
+  .phone {
+    width: 100vw;
+    height: 100%;   /* #65：100vh 会随键盘 adjustResize 压缩→整页重排；100% 跟随 body（键盘弹出时被 JS 冻结为固定高度） */
+    max-width: 100vw;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+  }
+
+  /* #65：toast 跟随可见区底部——冻结画布（851px）下原 absolute bottom 会被键盘遮住 */
+  .toast { position: fixed; }
+
+  /* 隐藏模拟状态栏，避免与真实状态栏重叠 */
+  .statusbar { display: none; }
+
+  /* 悬浮 tab 栏上移，避开系统手势条（安全区域） */
+  .tabbar {
+    left: 12px;
+    right: 12px;
+    bottom: calc(18px + var(--safe-bottom));
+  }
+  /* #74：悬浮记录卡片同样避让手势条 */
+  .sheet {
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + var(--safe-bottom));
+  }
+  /* 屏幕底部留白适配悬浮栏 + 手势条 */
+  .screen { padding-bottom: calc(112px + var(--safe-bottom)); }
+}
+
+/* #70：桌面矮视口（笔记本窗口高度不足）时手机高度跟随视口收缩——
+   原固定 844px + body flex 居中会把顶部（模拟状态栏）裁出屏幕（实测 800 高视口状态栏 y=-21）；
+   .phone 为 flex column，.screen flex:1 吸收高度差，状态栏 46px 恒完整可见。
+   仅 fine 指针生效——真机（coarse）已由上方真机媒体查询处理，互不干扰 */
+@media (max-height: 920px) and (pointer: fine) {
+  .stage { padding: 14px 0; }
+  .phone { height: calc(100vh - 28px); min-height: 640px; }
+}
+

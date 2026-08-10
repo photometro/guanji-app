@@ -1,0 +1,1 @@
+(async () => { const h=document.querySelector('#chartViewSeg .seg[data-view=heat]'); if(h) h.click(); await new Promise(r=>setTimeout(r,400)); return JSON.stringify({shot:'heat'}); })();
