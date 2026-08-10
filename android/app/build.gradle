@@ -1,5 +1,5 @@
 apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'   // 小组件/插件 Kotlin 源码（WidgetStatsPlugin 等）
+apply plugin: 'kotlin-android'   // 小组�?插件 Kotlin 源码（WidgetStatsPlugin 等）
 
 android {
     namespace = "com.guanji.app"
@@ -8,8 +8,8 @@ android {
         applicationId "com.guanji.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-versionCode 27
-versionName "3.6"
+versionCode 28
+versionName "3.6.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

@@ -96,6 +96,7 @@ function buildDemoRecords() {
 
       list.push({
         id: newRecordId('demo'),
+        dateKey: fmtDateKey(dateWithOffset(parseInt(off))),   // v3.6.1：演示数据也写绝对日期
         offset: parseInt(off),
         time: String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'),
         duration: Math.floor(seeded(idx + 7) * 25 + 5) * 5,
@@ -159,6 +160,7 @@ function countUp(el, to, dur = 500) {
 let chartDays = 14;   // 面积图范围：近 14 / 30 天
 
 function renderHome() {
+  checkDayRollover();   // v3.6.1：App 驻留跨天时归一化记录日期
   const today = new Date();
   $('todayLabel').textContent =
     `${today.getMonth() + 1}月${today.getDate()}日 · ${WEEKDAYS[today.getDay()]}`;
@@ -766,6 +768,48 @@ function dayDiff(a, b) {
   return Math.round((da - db) / 864e5);
 }
 
+/* ============ v3.6.1 hotfix：记录绝对日期（修复跨天日期漂移） ============
+   根因：offset 是「相对保存当天」的偏移，跨天后基准漂移，旧记录被归到错误日期。
+   修复：记录同时存绝对日期 dateKey（yyyy-mm-dd）；每次启动/数据变更/跨天后
+   用 dateKey 重算 offset（相对当前今天）；旧记录（无 dateKey）用 id 内嵌的
+   base36 毫秒时间戳精确恢复绝对日期。 */
+
+function fmtDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function normalizeOffsets() {
+  const today = new Date();
+  let changed = false;
+  records.forEach((r) => {
+    let d = null;
+    if (r.dateKey) {
+      const p = String(r.dateKey).split('-');
+      if (p.length === 3) d = new Date(+p[0], +p[1] - 1, +p[2]);
+    } else if (r.id) {
+      // 旧记录：id 形如 rec_<base36毫秒时间戳>_<随机>——可精确还原记录时刻的日期
+      const ts = parseInt(String(r.id).split('_')[1], 36);
+      if (!isNaN(ts)) d = new Date(ts);
+    }
+    if (d && !isNaN(d.getTime())) {
+      const off = dayDiff(d, today);
+      if (r.offset !== off) { r.offset = off; changed = true; }
+      if (!r.dateKey) { r.dateKey = fmtDateKey(d); changed = true; }
+    }
+  });
+  if (changed) Storage.saveRecords(records);
+}
+
+/* 跨天检测：App 驻留跨过午夜时，重新归一化所有记录的 offset */
+const LAST_DATE_KEY = 'guanji_last_date_key';
+function checkDayRollover() {
+  const key = fmtDateKey(new Date());
+  if (localStorage.getItem(LAST_DATE_KEY) !== key) {
+    localStorage.setItem(LAST_DATE_KEY, key);
+    normalizeOffsets();
+  }
+}
+
 function updateTimeDisplay() {
   // #26：空/非法日期时间一律回退当前时间，永不显示 NaN
   let d = null;
@@ -784,6 +828,7 @@ function updateTimeDisplay() {
 }
 
 function saveRecord() {
+  normalizeOffsets();   // v3.6.1：跨天驻留时先归一化旧记录，再读表单
   const moods = [...$('moodChips').querySelectorAll('.chip.active')].map((c) => c.textContent);
   const triggers = [...$('triggerChips').querySelectorAll('.chip.active')].map((c) => c.textContent);
   // 时长以 durLabel 为数据源（滑块 max=60，超长记录预填后靠 label 保真，避免 clamp 丢数据）
@@ -812,21 +857,21 @@ function saveRecord() {
     time = fmtTime(date);
   }
 
-  // #38：编辑模式原地更新（保持 id），否则新增
+  // #38：编辑模式原地更新（保持 id），否则新增（v3.6.1：同时写入绝对日期 dateKey）
   const isEdit = editingId !== null;
   if (isEdit) {
     const idx = records.findIndex((r) => r.id === editingId);
     if (idx < 0) { closeSheet(); toast('记录不存在'); return; }
     records[idx] = {
       ...records[idx],   // 保留 id 等原字段
-      offset, time,
+      dateKey: fmtDateKey(date), offset, time,
       duration: duration || null,
       moods, triggers, media, note,
     };
   } else {
     records.push({
       id: newRecordId('rec'),
-      offset, time,
+      dateKey: fmtDateKey(date), offset, time,
       duration: duration || null,
       moods, triggers, media, note,
     });
@@ -2505,6 +2550,8 @@ if (window.visualViewport) {
 /* ---------- 启动 ---------- */
 
 records = Storage.loadRecords();
+normalizeOffsets();   // v3.6.1：启动即恢复旧记录绝对日期（id 时间戳）并重算 offset
+localStorage.setItem(LAST_DATE_KEY, fmtDateKey(new Date()));   // 初始化跨天检测基准
 // 密钥回显由 initAIUI 按 active 提供商负责（#43 per-provider），这里保持配置同步
 syncActiveConfig();
 initTheme();                       // 深色模式初始化（head 内联脚本已做初值，这里同步 UI）
