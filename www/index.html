@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>观己 · UI 原型</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23007AFF'/%3E%3Cpath d='M32 18c-6 0-10 4.2-10 9.8 0 6.5 7.5 11.8 9.4 13.1a1.2 1.2 0 0 0 1.2 0c1.9-1.3 9.4-6.6 9.4-13.1C42 22.2 38 18 32 18Zm0 13.3a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z' fill='%23FFFFFF'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/theme.css?v=94">
-<link rel="stylesheet" href="css/base.css?v=94">
-<link rel="stylesheet" href="css/components.css?v=94">
-<link rel="stylesheet" href="css/tabbar.css?v=94">
-<link rel="stylesheet" href="css/sheets.css?v=94">
-<link rel="stylesheet" href="css/screens.css?v=94">
-<link rel="stylesheet" href="css/responsive.css?v=94">
-<link rel="stylesheet" href="css/glass.css?v=94">
+<link rel="stylesheet" href="css/theme.css?v=97">
+<link rel="stylesheet" href="css/base.css?v=97">
+<link rel="stylesheet" href="css/components.css?v=97">
+<link rel="stylesheet" href="css/tabbar.css?v=97">
+<link rel="stylesheet" href="css/sheets.css?v=97">
+<link rel="stylesheet" href="css/screens.css?v=97">
+<link rel="stylesheet" href="css/responsive.css?v=97">
+<link rel="stylesheet" href="css/glass.css?v=97">
 <script src="vendor/anime.min.js"></script>   <!-- #72：anime v3.2（弹簧动画），缺失时 app.js 自动回退 CSS -->
 <script>
   /* 防闪烁：在渲染前根据 localStorage + 系统设置确定主题 + 玻璃效果开关（#72，默认 on） */
@@ -22,7 +22,7 @@
       var dark = t === 'dark' || (t === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
       document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
       var lg = localStorage.getItem('guanji_liquid_glass');
-      if (lg !== 'off') document.documentElement.classList.add('liquid-glass');
+      if (lg === 'on') document.documentElement.classList.add('liquid-glass');   // #116：新用户默认关（经典样式），仅显式开启才玻璃
     } catch (e) {
       document.documentElement.setAttribute('data-theme', 'light');
       document.documentElement.classList.add('liquid-glass');
@@ -127,7 +127,7 @@
         <div id="recentList"></div>
       </div>
 
-      <p class="disclaimer" style="text-align:center">数据只保存在这台设备上</p>
+      <p class="disclaimer" style="text-align:center">数据默认仅存本地；WebDAV 备份由你自选——上传的是密文</p>
     </main>
 
     <!-- 屏幕：AI 分析 -->
@@ -301,16 +301,42 @@
         <p class="disclaimer" style="margin-top:12px">开启加密后，数据从写入那一刻起就是密文——离开设备的只有密文，只有你的口令能解开。忘记口令将无法恢复数据，建议先把口令存入密码管理器。</p>
       </div>
 
+      <!-- #115：WebDAV 备份卡（加密模式专属：密文上传用户自选服务器，不经过观己任何服务器） -->
+      <div class="card">
+        <p class="card-title" style="margin-bottom:6px">WebDAV 备份</p>
+        <p class="disclaimer" id="wdStatus" style="margin-bottom:10px">正在检测…</p>
+        <!-- 配置表单（未配置时显示） -->
+        <div class="hidden" id="wdForm" style="margin-top:4px">
+          <input type="url" id="wdUrl" placeholder="服务器地址（https://…/dav/）" autocomplete="off" style="width:100%;margin-bottom:8px">
+          <input type="text" id="wdUser" placeholder="账号" autocomplete="off" style="width:100%;margin-bottom:8px">
+          <input type="password" id="wdPass" placeholder="应用密码（不是登录密码）" autocomplete="off" style="width:100%">
+          <p class="disclaimer" style="margin-top:10px">密码只保存在本机安全存储中。备份上传的是密文——即使服务器被攻破，没有你的口令也无法读取。建议使用服务的「应用专用密码」。</p>
+        </div>
+        <button class="btn-primary hidden" id="wdSaveBtn" style="width:100%">保存配置</button>
+        <!-- 已配置操作区 -->
+        <div class="hidden" id="wdActions">
+          <button class="row-btn" id="wdTestBtn"><span>测试连接</span><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="row-btn" id="wdBackupBtn"><span>立即备份</span><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="row-btn" id="wdRestoreBtn"><span>从服务器恢复</span><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="row-btn" id="wdManageBtn"><span>服务器备份管理</span><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <label class="switch-row" style="margin-top:4px">
+            <span style="font-size:14px">切后台自动备份</span>
+            <span class="switch" id="wdAutoSwitch"><span class="knob"></span></span>
+          </label>
+          <button class="row-btn danger" id="wdResetBtn"><span>清除配置</span><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </div>
+
       <!-- #68：隐私说明并入关于卡（数据相关操作后展示，强调本地存储） -->
       <div class="card about-card">
         <div class="logo-mark">
           <svg width="26" height="26" viewBox="0 0 46 46"><path d="M23 12c-6 0-10 4.2-10 9.8 0 6.5 7.5 11.8 9.4 13.1a1.2 1.2 0 0 0 1.2 0c1.9-1.3 9.4-6.6 9.4-13.1C33 16.2 29 12 23 12Zm0 13.3a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" fill="#FFFFFF"/></svg>
         </div>
         <p class="about-name">观己</p>
-        <p class="about-ver">v3.9 · 数据仅存本地</p>
+        <p class="about-ver">v3.10 · 数据默认仅存本地</p>
         <!-- #69：隐私条目直接跟随品牌区（无分割线/无标题，苹果页脚风格） -->
         <ul class="privacy-list about-privacy">
-          <li><span class="dot"></span>所有记录只保存在这台设备上，不上传云端</li>
+          <li><span class="dot"></span>记录默认只保存在这台设备上；WebDAV 备份由你自选，上传的是密文（仅你的口令可解）</li>
           <li><span class="dot"></span>AI 分析时，仅上传聚合后的统计特征（每周次数、时段分布等），不会上传单条记录</li>
         </ul>
       </div>
@@ -423,11 +449,15 @@
       </div>
     </section>
 
-    <!-- 确认弹层 -->
+    <!-- 确认弹层（清除数据——#115：可连带删除服务器备份） -->
     <div class="backdrop hidden" id="dialogBackdrop">
       <div class="dialog">
         <p class="dialog-title">清除全部数据？</p>
-        <p class="dialog-text">所有记录将永久删除，且无法找回。数据只在本机，清除后无法恢复。</p>
+        <p class="dialog-text" id="dialogText">所有记录将永久删除，且无法找回。数据只在本机，清除后无法恢复。</p>
+        <label class="switch-row hidden" id="wdClearServerRow" style="margin-top:8px">
+          <span style="font-size:14px">同时删除服务器备份</span>
+          <span class="switch" id="wdClearServerSwitch"><span class="knob"></span></span>
+        </label>
         <div class="dialog-actions">
           <button class="btn-ghost" id="dialogCancel">取消</button>
           <button class="btn-danger" id="dialogConfirm">清除</button>
@@ -478,6 +508,39 @@
         <div id="bkpManageList" style="margin-top:6px"></div>
         <div class="dialog-actions">
           <button class="btn-ghost" id="bkpManageClose">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- #115：WebDAV 恢复弹层（服务器备份列表 + 三模式 + 口令） -->
+    <div class="backdrop dialog-layer hidden" id="wdRestoreBackdrop">
+      <div class="dialog">
+        <p class="dialog-title">从服务器恢复</p>
+        <p class="dialog-text" id="wdRestoreInfo"></p>
+        <div id="wdRestoreList" style="margin-top:6px"></div>
+        <p class="dialog-hint" style="margin-top:10px">导入方式：</p>
+        <div class="chips" id="wdModeChips" style="margin-top:6px">
+          <button class="chip active" data-wd-mode="merge">合并</button>
+          <button class="chip" data-wd-mode="new">新增</button>
+          <button class="chip" data-wd-mode="overwrite">覆盖</button>
+        </div>
+        <input type="password" id="wdRestorePass" placeholder="创建该备份时设置的口令" autocomplete="off" style="margin-top:8px">
+        <p class="dialog-hint" id="wdRestoreModeHint" style="margin-top:6px">合并：按 id 去重并入当前记录（推荐）。覆盖前会自动把当前数据备份到本机下载目录。</p>
+        <div class="dialog-actions">
+          <button class="btn-ghost" id="wdRestoreCancel">取消</button>
+          <button class="btn-primary" id="wdRestoreConfirm">恢复</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- #115：WebDAV 服务器备份管理弹层 -->
+    <div class="backdrop dialog-layer hidden" id="wdManageBackdrop">
+      <div class="dialog">
+        <p class="dialog-title">服务器备份管理</p>
+        <p class="dialog-text" id="wdManageHint">服务器 guanji/ 目录中的备份。删除后不可恢复。</p>
+        <div id="wdManageList" style="margin-top:6px"></div>
+        <div class="dialog-actions">
+          <button class="btn-ghost" id="wdManageClose">关闭</button>
         </div>
       </div>
     </div>
@@ -563,16 +626,17 @@
   </defs>
 </svg>
 
-<script src="js/secure.js?v=94"></script>
-<script src="js/storage.js?v=94"></script>
-<script src="js/records.js?v=94"></script>
-<script src="js/stats.js?v=94"></script>
-<script src="js/ai.js?v=94"></script>
-<script src="js/ui-home.js?v=94"></script>
-<script src="js/ui-timer.js?v=94"></script>
-<script src="js/ui-sheet.js?v=94"></script>
-<script src="js/ui-calendar.js?v=94"></script>
-<script src="js/liquid-glass.js?v=94"></script>
-<script src="js/app.js?v=94"></script>
+<script src="js/secure.js?v=97"></script>
+<script src="js/storage.js?v=97"></script>
+<script src="js/records.js?v=97"></script>
+<script src="js/stats.js?v=97"></script>
+<script src="js/ai.js?v=97"></script>
+<script src="js/ui-home.js?v=97"></script>
+<script src="js/ui-timer.js?v=97"></script>
+<script src="js/ui-sheet.js?v=97"></script>
+<script src="js/ui-calendar.js?v=97"></script>
+<script src="js/liquid-glass.js?v=97"></script>
+<script src="js/webdav.js?v=97"></script>
+<script src="js/app.js?v=97"></script>
 </body>
 </html>

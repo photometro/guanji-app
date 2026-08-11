@@ -39,7 +39,8 @@ $('themeChips').addEventListener('click', (e) => {
   renderHome();   // 重绘图表（环色/面积图随主题）
 });
 
-/* #72：液态玻璃实验开关（我的 → 外观，localStorage 持久化，默认开） */
+/* #72：玻璃效果实验开关（我的 → 外观，localStorage 持久化）
+   #116：新用户默认关（经典样式）——仅显式开启才玻璃；老用户设置保留 */
 const LG_KEY = 'guanji_liquid_glass';
 /* #113：磨砂强度（blur 0-10px，默认 3，深浅共用；持久化 guanji_glass_blur） */
 const LG_BLUR_KEY = 'guanji_glass_blur';
@@ -56,7 +57,7 @@ function applyGlassBlur(v) {
 }
 
 function initLiquidGlass() {
-  const on = (localStorage.getItem(LG_KEY) || 'on') !== 'off';
+  const on = (localStorage.getItem(LG_KEY) || 'off') !== 'off';   // #116：默认关——新用户经典样式，老用户 on 保留
   document.documentElement.classList.toggle('liquid-glass', on);
   $('liquidGlassSwitch').classList.toggle('on', on);
   // #113：读取磨砂强度设置（无值走默认 3）

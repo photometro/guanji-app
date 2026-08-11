@@ -13,11 +13,12 @@
   .tabbar, .sheet, .calendar-sheet, .dialog, .card, .report-card, .ask-answer { background: var(--card); backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 
-/* ============ 真机适配（触摸屏 + 窄视口时铺满全屏） ============ */
+/* ============ 真机适配（触摸屏铺满全屏） ============ */
 
-/* 用 pointer: coarse 区分触摸设备与桌面鼠标，不依赖高度数值（WebView 中
-   媒体查询高度取 clientHeight，与 innerHeight 可能不同，数值条件不可靠） */
-@media (max-width: 420px) and (pointer: coarse) {
+/* #114：触摸设备恒铺满——不再依赖 max-width（安卓「显示大小」调小会把视口等效撑宽
+   >420px，旧条件失效回退原型模式；pointer: coarse 是触摸设备的稳定信号，与视口宽度解耦；
+   桌面浏览器（fine）原型模式完全不受影响） */
+@media (pointer: coarse) {
   body {
     background: var(--bg);
     min-height: 100vh;

@@ -32,6 +32,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(WidgetStatsPlugin.class);   // #32-#36：小组件统计同步
         registerPlugin(TimerLiveUpdatePlugin.class);   // #51：计时实况通知
         registerPlugin(SaveToDownloadsPlugin.class);   // #102：导出保存到公共 Downloads
+        registerPlugin(GuanjiDavPlugin.class);   // #115：WebDAV 原生通道（绕 WebView CORS）
         super.load();
     }
 

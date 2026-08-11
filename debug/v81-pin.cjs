@@ -1,1 +1,0 @@
-(async () => { document.getElementById('lg-disp').setAttribute('scale', 20); return JSON.stringify({ pinned: true }); })();

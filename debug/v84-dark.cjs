@@ -1,1 +1,0 @@
-(async () => { document.documentElement.setAttribute('data-theme','dark'); return JSON.stringify({dark:true}); })();

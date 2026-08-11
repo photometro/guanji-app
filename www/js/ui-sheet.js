@@ -675,13 +675,34 @@ $('exportBtn').addEventListener('click', async () => {
 });
 
 // 我的页：清除 / 恢复
+// #115：清除可连带删除服务器备份（仅 WebDAV 已配置 + 加密态显示该选项）
 $('clearBtn').addEventListener('click', () => {
+  const hasWd = !!wdLoadCfg && !!wdLoadCfg() && secureMode() === 'encrypted';
+  $('wdClearServerRow').classList.toggle('hidden', !hasWd);
+  $('wdClearServerSwitch').classList.remove('on');
+  $('dialogText').textContent = hasWd
+    ? '本机记录将永久删除，且无法找回。服务器上的备份不受影响——如需彻底清除，请同时打开下方选项。'
+    : '所有记录将永久删除，且无法找回。数据只在本机，清除后无法恢复。';
   $('dialogBackdrop').classList.remove('hidden');
 });
+$('wdClearServerSwitch').addEventListener('click', () => $('wdClearServerSwitch').classList.toggle('on'));
 $('dialogCancel').addEventListener('click', () => {
   $('dialogBackdrop').classList.add('hidden');
 });
-$('dialogConfirm').addEventListener('click', () => {
+$('dialogConfirm').addEventListener('click', async () => {
+  // #115：先删服务器备份（成功/失败都继续本机清除，失败提示）
+  if (!$('wdClearServerSwitch').classList.contains('hidden') && $('wdClearServerSwitch').classList.contains('on')) {
+    try {
+      const files = await wdList();
+      for (const f of files) { try { await wdDelete(f.name); } catch (e) {} }
+      const stat = wdLoadStat();
+      stat.lastStatus = 'never'; delete stat.fingerprint; stat.lastBackup = '';
+      wdSaveStat(stat);
+      if (typeof wdRender === 'function') wdRender();
+    } catch (e) {
+      toast('服务器备份删除失败：' + ((e && e.message) || ''));
+    }
+  }
   records = [];
   Storage.saveRecords(records);
   afterRecordsChanged();

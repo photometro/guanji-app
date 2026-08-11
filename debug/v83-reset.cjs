@@ -1,1 +1,0 @@
-(async () => { await secureDisable(); return JSON.stringify({mode:localStorage.getItem('guanji_sec_mode')}); })();

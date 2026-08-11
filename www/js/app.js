@@ -208,6 +208,7 @@ if (window.Capacitor && Capacitor.Plugins.App) {
 }
 
 initSecureUI();   // #93：数据加密卡 UI（开启/修改口令/关闭/密文导出导入）
+initWebDAVUI();   // #115：WebDAV 备份卡 UI（配置/备份/恢复/管理/切后台自动备份）
 })();
 
 

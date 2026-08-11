@@ -1,1 +1,0 @@
-(async () => { document.querySelector('.tab[data-screen=me]')?.click(); await new Promise(r=>setTimeout(r,400)); return JSON.stringify({shot:'me'}); })();

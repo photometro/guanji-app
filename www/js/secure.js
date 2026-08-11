@@ -301,6 +301,7 @@ function secureRenderStatus() {
   $('secureEnableBtn').classList.toggle('hidden', enc);
   $('secureDisableBtn').classList.toggle('hidden', !enc);
   $('secureActions').classList.toggle('hidden', !enc);
+  if (typeof wdRender === 'function') wdRender();   // #115：WebDAV 卡状态跟随加密模式
 }
 
 function secureOpenDialog(title, hint) {
@@ -331,7 +332,8 @@ async function secureRunAction() {
       toast('加密已开启，数据已转为密文');
     } else if (secDialogAction === 'change') {
       await secureChangePassphrase(null, p1);
-      toast('口令已更新');
+      // #115：口令衰减明示——历史备份（含服务器）仍需创建时的口令
+      toast('口令已更新——历史备份（含服务器）仍需创建时的口令，如需统一可删除旧备份重新备份');
     } else if (secDialogAction === 'disable') {
       await secureDisable();
       toast('加密已关闭，数据已转为明文');

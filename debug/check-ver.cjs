@@ -1,1 +1,0 @@
-(async () => { const out={}; out.ver=document.querySelector('.about-ver')?.textContent||null; out.cssVer=document.querySelector('link[rel=stylesheet]')?.href.split('v=')[1]||null; out.hasSecureUI=!!document.getElementById('secureEnableBtn'); out.total=typeof records!=='undefined'?records.length:'n/a'; return JSON.stringify(out); })();
