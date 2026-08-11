@@ -246,7 +246,7 @@ function wdRender() {
   $('wdSaveBtn').classList.toggle('hidden', !!cfg);
   $('wdActions').classList.toggle('hidden', !cfg);
   if (!cfg) {
-    st.textContent = '配置你的 WebDAV 服务器（如坚果云、群晖、Nextcloud）。备份到你自己指定的服务器，不经过观己任何服务器。';
+    st.textContent = '配置你的 WebDAV 服务器（如坚果云、群晖、Nextcloud）。备份只发往你配置的服务器——观己不提供任何云服务。';
     return;
   }
   if (stat.lastStatus === 'error') {
