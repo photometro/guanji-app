@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>观己 · 数据管理 v2 原型（#117）· 自包含版</title>
+<style>
+/* ===== 观己主题（浅色，取自 theme.css 核心变量） ===== */
+:root {
+  --bg: #F2F2F7; --bg-elev: #FFFFFF; --card: #FFFFFF;
+  --ink: #000000; --ink-2: #6E6E73; --ink-3: #C7C7CC;
+  --line: #E5E5EA; --accent: #007AFF; --accent-deep: #0062CC; --accent-soft: #E8F1FF;
+  --sage: #34C759; --font: -apple-system, BlinkMacSystemFont, "SF Pro SC", "PingFang SC", "Segoe UI", sans-serif;
+  --shadow-2: 0 4px 14px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { background: #D9D9DE; font-family: var(--font); }
+.stage { display: flex; justify-content: center; padding: 24px 0; min-height: 100vh; }
+.phone {
+  width: 390px; height: 844px; background: var(--bg);
+  border-radius: 44px; border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2); overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: column;
+}
+.statusbar { height: 46px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: var(--ink); flex-shrink: 0; }
+.screen { flex: 1; padding: 14px 16px 40px; }
+
+/* ===== 卡片 / 列表 ===== */
+.card {
+  background: var(--card); border-radius: 16px; padding: 6px 14px 8px;
+  box-shadow: var(--shadow-2);
+}
+.card-title { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; }
+.row-btn {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  background: none; border: none; border-bottom: 1px solid var(--line);
+  padding: 15px 2px; font-size: 14px; font-family: var(--font);
+  letter-spacing: 0.02em; color: var(--ink); cursor: pointer;
+}
+.row-btn:last-child { border-bottom: none; }
+.row-btn .sub { font-size: 11px; color: var(--ink-3); font-weight: 400; }
+.row-btn .chev { margin-left: auto; display: flex; align-items: center; color: var(--ink-3); flex-shrink: 0; }
+.row-btn.disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-primary {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: #FFF; border: none; border-radius: 999px;
+  padding: 14px 26px; font-size: 15px; font-weight: 600; font-family: var(--font);
+  letter-spacing: 0.02em; cursor: pointer; box-shadow: var(--shadow-2);
+}
+.btn-ghost {
+  background: var(--bg-elev); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 999px; padding: 13px 26px; font-size: 15px; font-family: var(--font); cursor: pointer;
+}
+.chip {
+  background: var(--bg-elev); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 999px; padding: 8px 16px; font-size: 13px; font-family: var(--font); cursor: pointer;
+}
+.chip.active { background: var(--accent); border-color: var(--accent); color: #FFF; }
+.switch-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 2px; gap: 12px; }
+.switch-row .switch { width: 51px; height: 31px; border-radius: 16px; background: #E9E9EB; position: relative; transition: background 0.2s; flex-shrink: 0; }
+.switch-row .switch.on { background: var(--sage); }
+.switch-row .switch .knob { position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #FFF; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: left 0.2s; }
+.switch-row .switch.on .knob { left: 22px; }
+.switch-row .switch.disabled { opacity: 0.4; }
+.disclaimer { font-size: 11px; color: var(--ink-3); line-height: 1.6; padding: 2px 4px; letter-spacing: 0.02em; }
+
+/* ===== 原型专用：分组小标题 / 三态切换 / 危险组 / 状态行 ===== */
+.proto-toggle { display: flex; gap: 8px; margin-bottom: 14px; }
+.proto-toggle .chip { flex: 1; justify-content: center; }
+.section-head {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink-3); margin: 18px 4px 6px;
+}
+.danger-head { color: var(--accent-deep); }
+.state-line { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); padding: 2px 4px 10px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot.gray { background: var(--ink-3); }
+.dot.green { background: var(--sage); }
+.hidden { display: none !important; }
+
+/* ===== 恢复弹窗 ===== */
+.backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 99; }
+.dialog {
+  width: 320px; max-width: 86%; background: var(--card); border-radius: 16px; padding: 18px 16px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+}
+.dialog-title { font-size: 17px; font-weight: 700; text-align: center; }
+.dialog-text { font-size: 12px; color: var(--ink-2); line-height: 1.6; text-align: center; margin-top: 6px; }
+.dialog-actions { display: flex; gap: 10px; margin-top: 14px; }
+.dialog-actions button { flex: 1; }
+.mode-row { display: flex; align-items: flex-start; gap: 10px; padding: 12px 2px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.mode-row:last-child { border-bottom: none; }
+.mode-row input { accent-color: var(--accent); margin-top: 3px; }
+.mode-row .mt { font-size: 14px; color: var(--ink); font-weight: 500; }
+.mode-row .ms { font-size: 11px; color: var(--ink-3); line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="stage"><div class="phone">
+  <div class="statusbar"><span>9:41</span></div>
+
+  <div class="screen">
+
+    <!-- 三态切换（原型演示用） -->
+    <div class="proto-toggle" id="stateChips">
+      <button class="chip active" data-state="plain">明文</button>
+      <button class="chip" data-state="enc">加密</button>
+      <button class="chip" data-state="enc+wd">加密+服务器</button>
+    </div>
+
+    <!-- ============ 🔒 数据保护 ============ -->
+    <p class="section-head">数据保护</p>
+    <div class="card" style="padding-top:14px">
+      <div class="state-line" id="secStateLine"><span class="dot gray"></span><span id="secStateText">未加密 · 记录以明文保存在本机</span></div>
+      <button class="btn-primary" id="encBtn" style="width:100%">开启加密</button>
+      <button class="btn-primary hidden" id="decBtn" style="width:100%">关闭加密</button>
+      <button class="row-btn hidden" id="chgPassBtn"><span>修改口令</span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+    </div>
+
+    <!-- ============ 📦 备份与恢复 ============ -->
+    <p class="section-head">备份与恢复</p>
+    <div class="card" style="padding-top:6px">
+      <button class="row-btn" id="bkpNowBtn"><span>立即备份<span class="sub" id="bkpSub">生成加密备份文件</span></span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <button class="row-btn" id="restoreBtn2"><span>恢复数据<span class="sub">从本机文件或服务器恢复</span></span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <button class="row-btn" id="filesBtn"><span>备份文件<span class="sub">本机 / 服务器</span></span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <button class="row-btn" id="wdCfgBtn"><span>服务器备份<span class="sub" id="wdSub">未配置</span></span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <label class="switch-row" style="margin-top:4px">
+        <span style="font-size:14px">离开 App 时自动备份<span class="sub" style="margin-left:6px">仅服务器备份</span></span>
+        <span class="switch" id="autoSwitch"><span class="knob"></span></span>
+      </label>
+    </div>
+
+    <!-- ============ ⚠️ 危险操作 ============ -->
+    <p class="section-head danger-head">危险操作</p>
+    <div class="card" style="padding-top:6px">
+      <button class="row-btn" style="color:var(--accent-deep)" id="clearBtn2"><span>清除全部数据</span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <button class="row-btn" style="color:var(--accent-deep)" id="demoBtn"><span>恢复演示数据</span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+    </div>
+
+    <p class="disclaimer" style="text-align:center;margin-top:16px">数据默认仅存本地；离开设备的数据都是密文</p>
+  </div>
+
+  <!-- 恢复数据弹窗示意（通俗三档） -->
+  <div class="backdrop hidden" id="restoreSheet">
+    <div class="dialog">
+      <p class="dialog-title">恢复数据</p>
+      <p class="dialog-text">选择备份来源与方式。重复的记录不会重复导入。</p>
+      <div style="margin-top:10px">
+        <label class="mode-row"><input type="radio" name="mode" checked><span><span class="mt">合到一起（推荐）</span><br><span class="ms">备份与当前记录合并，保留两边所有内容</span></span></label>
+        <label class="mode-row"><input type="radio" name="mode"><span><span class="mt">只要备份里的</span><br><span class="ms">用备份完全替换当前记录（替换前会自动把当前数据存到本机）</span></span></label>
+        <label class="mode-row"><input type="radio" name="mode"><span><span class="mt">备份里的加进来</span><br><span class="ms">备份记录全部加入，当前记录保持不变</span></span></label>
+      </div>
+      <div class="dialog-actions">
+        <button class="btn-ghost" id="cancelSheet">取消</button>
+        <button class="btn-primary">下一步</button>
+      </div>
+    </div>
+  </div>
+
+</div></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  function setState(s) {
+    const enc = s !== 'plain';
+    const wd = s === 'enc+wd';
+    document.querySelectorAll('#stateChips .chip').forEach((c) => c.classList.toggle('active', c.dataset.state === s));
+    $('encBtn').classList.toggle('hidden', enc);
+    $('decBtn').classList.toggle('hidden', !enc);
+    $('chgPassBtn').classList.toggle('hidden', !enc);
+    $('secStateLine').querySelector('.dot').className = 'dot ' + (enc ? 'green' : 'gray');
+    $('secStateText').textContent = enc ? '已加密 · 离开设备的数据都是密文' : '未加密 · 记录以明文保存在本机';
+    $('bkpNowBtn').classList.toggle('disabled', !enc);
+    $('bkpSub').textContent = enc ? '生成加密备份文件' : '开启加密后可用';
+    $('wdSub').textContent = wd ? '已配置 · 上次备份今天 09:14' : '未配置';
+    $('autoSwitch').classList.toggle('disabled', !wd);
+  }
+  $('stateChips').addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip');
+    if (chip) setState(chip.dataset.state);
+  });
+  $('restoreBtn2').addEventListener('click', () => $('restoreSheet').classList.remove('hidden'));
+  $('cancelSheet').addEventListener('click', () => $('restoreSheet').classList.add('hidden'));
+  setState('plain');
+</script>
+</body>
+</html>

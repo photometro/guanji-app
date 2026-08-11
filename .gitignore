@@ -25,19 +25,5 @@ build-log.txt
 screenshots/
 
 # 真机调试临时产物（不入库：截图 / uiautomator 转储 / 采样输出 / 临时脚本；调试脚本本身入库）
-debug/ui*.xml
-debug/*.png
-debug/*.json
-debug/tmp-*.js
-debug/*.cjs   # 调试脚本不入库（2026-08-11 用户决策）
-
-# 系统文件
-.DS_Store
-Thumbs.db
-
-# 密钥/凭据（防止误提交）
-*.key
-*.pem
-.env
-.env.*
-debug/*.csv
+debug/
+# 注意：gitignore 不支持行内注释——规则行内不能带 # 后缀（原 debug/*.cjs 行内注释导致规则失效，已收敛为整目录）

@@ -472,7 +472,7 @@ document.querySelectorAll('#askChips .chip').forEach((chip) => {
 
 /* 从当前输入读取配置（保存前测试用） */
 function readAIConfigFromInputs() {
-  const provider = document.querySelector('#providerChips .chip.active').dataset.provider;
+  const provider = document.querySelector('#providerSeg .seg.active').dataset.provider;
   return {
     provider,
     baseUrl: $('aiBaseUrlInput').value.trim(),
@@ -493,23 +493,32 @@ function switchProvider(provider) {
   $('apiKeyInput').value = p.apiKey || '';
 }
 
+/* #124：AI 提供商 seg 滑块同步（chips → seg，与加密同款） */
+function setProviderSeg(provider) {
+  const seg = $('providerSeg');
+  if (!seg) return;
+  seg.querySelectorAll('.seg').forEach((c) => c.classList.toggle('active', c.dataset.provider === provider));
+  if (typeof moveSegSlide === 'function') {
+    const active = seg.querySelector('.seg.active') || seg.querySelector('.seg');
+    moveSegSlide(seg, $('providerSegSlide'), active);
+  }
+}
+
 // 回显配置（按 active 提供商）
 (function initAIUI() {
-  document.querySelectorAll('#providerChips .chip').forEach((c) => {
-    c.classList.toggle('active', c.dataset.provider === aiStore.active);
-  });
+  setProviderSeg(aiStore.active);
   const p = aiStore.providers[aiStore.active];
   $('aiBaseUrlInput').value = p.baseUrl || '';
   $('aiModelInput').value = p.model || '';
   $('apiKeyInput').value = p.apiKey || '';
 })();
 
-// 提供商切换 → 回显该提供商配置（#43）
-$('providerChips').addEventListener('click', (e) => {
-  const chip = e.target.closest('.chip');
-  if (!chip) return;
-  document.querySelectorAll('#providerChips .chip').forEach((c) => c.classList.toggle('active', c === chip));
-  switchProvider(chip.dataset.provider);
+// 提供商切换 → 回显该提供商配置（#43/#124：seg 滑块）
+$('providerSeg').addEventListener('click', (e) => {
+  const btn = e.target.closest('.seg');
+  if (!btn) return;
+  setProviderSeg(btn.dataset.provider);
+  switchProvider(btn.dataset.provider);
 });
 
 // 保存配置（含密钥）
@@ -674,6 +683,20 @@ $('exportBtn').addEventListener('click', async () => {
   }
 });
 
+// #117：恢复数据统一入口（来源选择：本机文件 / 服务器备份）
+$('restoreDataBtn').addEventListener('click', () => {
+  $('restoreSourceBackdrop').classList.remove('hidden');
+});
+$('restoreLocalBtn').addEventListener('click', () => {
+  $('restoreSourceBackdrop').classList.add('hidden');
+  $('secureImportBtn').click();   // 触发原导入弹窗（#111 自适逻辑）
+});
+$('restoreServerBtn').addEventListener('click', () => {
+  $('restoreSourceBackdrop').classList.add('hidden');
+  $('wdRestoreBtn').click();      // 触发原服务器恢复弹窗（#115 三模式）
+});
+$('restoreSourceCancel').addEventListener('click', () => $('restoreSourceBackdrop').classList.add('hidden'));
+
 // 我的页：清除 / 恢复
 // #115：清除可连带删除服务器备份（仅 WebDAV 已配置 + 加密态显示该选项）
 $('clearBtn').addEventListener('click', () => {
@@ -801,13 +824,25 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && timerState.running) renderTimerTick();
 });
 
+/* #124：记录方式 seg 滑块同步（chips → seg） */
+function setRecordModeSeg(mode) {
+  const seg = $('recordModeSeg');
+  if (!seg) return;
+  seg.querySelectorAll('.seg').forEach((c) => c.classList.toggle('active', c.dataset.recordMode === mode));
+  if (typeof moveSegSlide === 'function') {
+    const active = seg.querySelector('.seg.active') || seg.querySelector('.seg');
+    moveSegSlide(seg, $('recordModeSegSlide'), active);
+  }
+}
+
 /* 设置页「记录方式」偏好 UI */
 function initRecordModeUI() {
-  const chips = [...$('recordModeChips').querySelectorAll('.chip')];
-  chips.forEach((c) => c.classList.toggle('active', c.dataset.recordMode === loadRecordMode()));
-  chips.forEach((c) => c.addEventListener('click', () => {
+  const seg = $('recordModeSeg');
+  if (!seg) return;
+  setRecordModeSeg(loadRecordMode());
+  seg.querySelectorAll('.seg').forEach((c) => c.addEventListener('click', () => {
     saveRecordMode(c.dataset.recordMode);
-    chips.forEach((x) => x.classList.toggle('active', x === c));
+    setRecordModeSeg(c.dataset.recordMode);
   }));
 }
 

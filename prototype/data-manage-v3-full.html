@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>观己 · 我的页整体原型（#117 完整上下文）</title>
+<style>
+:root {
+  --bg: #F2F2F7; --bg-elev: #FFFFFF; --card: #FFFFFF;
+  --ink: #000000; --ink-2: #6E6E73; --ink-3: #C7C7CC;
+  --line: #E5E5EA; --accent: #007AFF; --accent-deep: #0062CC;
+  --sage: #34C759; --font: -apple-system, BlinkMacSystemFont, "SF Pro SC", "PingFang SC", "Segoe UI", sans-serif;
+  --shadow-2: 0 4px 14px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #D9D9DE; font-family: var(--font); }
+.stage { display: flex; justify-content: center; padding: 24px 0; min-height: 100vh; }
+.phone {
+  width: 390px; height: 844px; background: var(--bg);
+  border-radius: 44px; border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2); overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: column;
+}
+.statusbar { height: 46px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+.screen { flex: 1; padding: 4px 16px 40px; }
+.page-head { display: flex; align-items: baseline; gap: 10px; padding: 8px 4px 12px; }
+.page-head h1 { font-size: 28px; font-weight: 800; letter-spacing: 0.01em; }
+.page-head span { font-size: 13px; color: var(--ink-3); }
+
+/* ===== 卡片（全页统一语言） ===== */
+.card { background: var(--card); border-radius: 16px; padding: 6px 14px 8px; box-shadow: var(--shadow-2); margin-bottom: 14px; }
+.card-title { font-size: 15px; font-weight: 700; letter-spacing: 0.01em; padding: 10px 2px 2px; }
+.card-sub { font-size: 11px; color: var(--ink-3); font-weight: 500; margin-left: 6px; }
+.row-btn {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  background: none; border: none; border-bottom: 1px solid var(--line);
+  padding: 14px 2px; font-size: 14px; font-family: var(--font);
+  color: var(--ink); cursor: pointer; text-align: left;
+}
+.row-btn:last-child { border-bottom: none; }
+.row-btn .sub { font-size: 11px; color: var(--ink-3); font-weight: 400; }
+.row-btn .chev { margin-left: auto; color: var(--ink-3); flex-shrink: 0; display: flex; }
+.row-btn.disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-primary {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: #FFF; border: none; border-radius: 999px;
+  padding: 14px 26px; font-size: 15px; font-weight: 600; font-family: var(--font);
+  cursor: pointer; box-shadow: var(--shadow-2);
+}
+.chip {
+  background: var(--bg-elev); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 999px; padding: 8px 16px; font-size: 13px; font-family: var(--font); cursor: pointer;
+}
+.chip.active { background: var(--accent); border-color: var(--accent); color: #FFF; }
+.chips { display: flex; gap: 8px; padding: 8px 2px 10px; flex-wrap: wrap; }
+.switch-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 2px; gap: 12px; }
+.switch-row .switch { width: 51px; height: 31px; border-radius: 16px; background: #E9E9EB; position: relative; transition: background 0.2s; flex-shrink: 0; }
+.switch-row .switch.on { background: var(--sage); }
+.switch-row .switch .knob { position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #FFF; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: left 0.2s; }
+.switch-row .switch.on .knob { left: 22px; }
+.switch-row .switch.disabled { opacity: 0.4; }
+.switch-row span { font-size: 14px; }
+.state-line { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); padding: 2px 4px 10px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot.gray { background: var(--ink-3); }
+.dot.green { background: var(--sage); }
+.disclaimer { font-size: 11px; color: var(--ink-3); line-height: 1.6; padding: 2px 4px; letter-spacing: 0.02em; }
+.about { text-align: center; padding: 20px 4px 8px; }
+.about .name { font-size: 16px; font-weight: 700; }
+.about .ver { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
+.about .privacy { font-size: 11px; color: var(--ink-2); margin-top: 8px; line-height: 1.7; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="stage"><div class="phone">
+  <div class="statusbar"><span>9:41</span></div>
+  <div class="screen">
+
+    <!-- 页头 -->
+    <div class="page-head"><h1>我的</h1><span>设置</span></div>
+
+    <!-- ===== 外观 ===== -->
+    <div class="card">
+      <p class="card-title">外观</p>
+      <div class="chips">
+        <button class="chip">跟随系统</button><button class="chip">浅色</button><button class="chip">深色</button>
+      </div>
+    </div>
+
+    <!-- ===== 玻璃效果 ===== -->
+    <div class="card">
+      <p class="card-title">玻璃效果<span class="card-sub">实验性</span></p>
+      <label class="switch-row"><span>玻璃效果</span><span class="switch"><span class="knob"></span></span></label>
+      <label class="switch-row" style="padding-top:0"><span>磨砂强度 <span style="font-size:11px;color:var(--ink-3)">3 px</span></span><span style="font-size:13px;color:var(--ink-2)">默认</span></label>
+    </div>
+
+    <!-- ===== 记录方式 ===== -->
+    <div class="card">
+      <p class="card-title">记录方式</p>
+      <div class="chips"><button class="chip active">计时记录</button><button class="chip">快速记录</button></div>
+    </div>
+
+    <!-- ===== 记录提醒 ===== -->
+    <div class="card">
+      <p class="card-title">记录提醒</p>
+      <label class="switch-row"><span>每日温和提醒</span><span class="switch on"><span class="knob"></span></span></label>
+    </div>
+
+    <!-- ===== 正向反馈 ===== -->
+    <div class="card">
+      <p class="card-title">正向反馈</p>
+      <label class="switch-row"><span>连续记录里程碑肯定</span><span class="switch"><span class="knob"></span></span></label>
+    </div>
+
+    <!-- ===== 实况通知 ===== -->
+    <div class="card">
+      <p class="card-title">实况通知</p>
+      <button class="row-btn"><span>测试实况通知</span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+    </div>
+
+    <!-- ===== AI 设置 ===== -->
+    <div class="card">
+      <p class="card-title">AI 设置</p>
+      <div class="chips">
+        <button class="chip active">DeepSeek</button><button class="chip">OpenAI</button><button class="chip">自定义</button>
+      </div>
+      <button class="row-btn"><span>API 密钥与连接测试</span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+    </div>
+
+    <!-- ===== 数据区（#117 新方案，卡标题与全页统一） ===== -->
+    <div class="card">
+      <p class="card-title">数据保护</p>
+      <div class="state-line"><span class="dot gray"></span><span>未加密 · 记录以明文保存在本机</span></div>
+      <button class="btn-primary" style="width:100%">开启加密</button>
+    </div>
+
+    <div class="card">
+      <p class="card-title">备份与恢复</p>
+      <button class="row-btn disabled"><span>立即备份<span class="sub">开启加密后可用</span></span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <button class="row-btn"><span>恢复数据<span class="sub">从本机文件或服务器恢复</span></span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <button class="row-btn"><span>备份文件<span class="sub">本机 / 服务器</span></span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <button class="row-btn"><span>服务器备份<span class="sub">未配置</span></span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <label class="switch-row" style="margin-top:2px"><span>离开 App 时自动备份<span style="font-size:11px;color:var(--ink-3);margin-left:4px">仅服务器</span></span><span class="switch disabled"><span class="knob"></span></span></label>
+    </div>
+
+    <div class="card">
+      <p class="card-title" style="color:var(--accent-deep)">危险操作</p>
+      <button class="row-btn" style="color:var(--accent-deep)"><span>清除全部数据</span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <button class="row-btn" style="color:var(--accent-deep)"><span>恢复演示数据</span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+    </div>
+
+    <!-- ===== 关于 ===== -->
+    <div class="card about" style="padding:22px 18px">
+      <p class="name">观己</p>
+      <p class="ver">v3.10 · 数据默认仅存本地</p>
+      <p class="privacy">所有记录只保存在这台设备上，不上传云端<br>AI 分析时，仅上传聚合统计特征，不涉及单条记录</p>
+    </div>
+
+  </div>
+</div></div>
+</body>
+</html>

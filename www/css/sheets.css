@@ -485,9 +485,10 @@ textarea:focus { outline: 2px solid var(--accent-deep); outline-offset: 0; borde
 .dialog-actions { display: flex; gap: 10px; margin-top: 22px; }
 .dialog-actions .btn-ghost, .dialog-actions .btn-danger { flex: 1; }
 
-/* 弹层输入框（#24 添加自定义 + #93 加密口令/导入——text/password/textarea 统一） */
+/* 弹层输入框（#24 添加自定义 + #93 加密口令/导入——text/password/url/textarea 统一；#123：url 并入，修服务器地址框无样式） */
 .dialog input[type="text"],
-.dialog input[type="password"] {
+.dialog input[type="password"],
+.dialog input[type="url"] {
   width: 100%;
   margin-top: 4px;
   font-family: var(--font);
@@ -514,6 +515,7 @@ textarea:focus { outline: 2px solid var(--accent-deep); outline-offset: 0; borde
 }
 .dialog input[type="text"]:focus,
 .dialog input[type="password"]:focus,
+.dialog input[type="url"]:focus,
 .dialog textarea:focus { outline: none; border-color: var(--accent); }
 
 /* ============ Toast ============ */

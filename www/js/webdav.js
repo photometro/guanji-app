@@ -235,29 +235,42 @@ function wdRender() {
   const cfg = wdLoadCfg();
   const stat = wdLoadStat();
   const st = $('wdStatus');
-  if (!enc) {
-    st.textContent = '开启加密后可用——备份上传的是密文，只有你的口令能解开。';
-    $('wdForm').classList.add('hidden');
-    $('wdSaveBtn').classList.add('hidden');
-    $('wdActions').classList.add('hidden');
-    return;
+  // #117：入口行副标题（未配置/已配置+状态）——服务器备份行
+  const cfgSub = $('wdCfgSub');
+  if (cfgSub) {
+    cfgSub.textContent = !enc ? '开启加密后可用'
+      : !cfg ? '未配置'
+      : stat.lastStatus === 'error' ? '上次备份失败'
+      : stat.lastBackup ? '已配置 · 上次备份 ' + ((new Date(stat.lastBackup)).getMonth() + 1) + '月' + (new Date(stat.lastBackup)).getDate() + '日'
+      : '已配置';
   }
-  $('wdForm').classList.toggle('hidden', !!cfg);
-  $('wdSaveBtn').classList.toggle('hidden', !!cfg);
-  $('wdActions').classList.toggle('hidden', !cfg);
-  if (!cfg) {
-    st.textContent = '配置你的 WebDAV 服务器（如坚果云、群晖、Nextcloud）。备份只发往你配置的服务器——观己不提供任何云服务。';
-    return;
+  // #119：自动备份入口行副标题（状态跟随——未配置引导/已开启/已关闭）
+  // 注意：必须在 if(st) 提前 return 之前更新，否则明文/未配置态不生效
+  const autoSub = $('wdAutoSub');
+  if (autoSub) {
+    autoSub.textContent = !enc ? '开启加密后可用'
+      : !cfg ? '未配置服务器'
+      : wdAutoEnabled() ? '已开启'
+      : '已关闭';
   }
-  if (stat.lastStatus === 'error') {
-    st.textContent = '上次备份失败：' + (stat.lastError || '未知错误') + '（' + ((stat.lastErrorTime || '').slice(0, 10)) + '）';
-    st.classList.add('on');   // 复用绿色高亮样式？不——失败应警示。用原生样式
-  } else if (stat.lastBackup) {
-    const d = new Date(stat.lastBackup);
-    const pad = (n) => String(n).padStart(2, '0');
-    st.textContent = '上次备份：' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ' ✓';
-  } else {
-    st.textContent = '已配置，尚未备份。';
+  if (st) {
+    if (!enc) {
+      st.textContent = '开启加密后可用——备份上传的是密文，只有你的口令能解开。';
+      return;
+    }
+    if (!cfg) {
+      st.textContent = '配置你的 WebDAV 服务器（如坚果云、群晖、Nextcloud）。备份只发往你配置的服务器——观己不提供任何云服务。';
+      return;
+    }
+    if (stat.lastStatus === 'error') {
+      st.textContent = '上次备份失败：' + (stat.lastError || '未知错误') + '（' + ((stat.lastErrorTime || '').slice(0, 10)) + '）';
+    } else if (stat.lastBackup) {
+      const d = new Date(stat.lastBackup);
+      const pad = (n) => String(n).padStart(2, '0');
+      st.textContent = '上次备份：' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ' ✓';
+    } else {
+      st.textContent = '已配置，尚未备份。';
+    }
   }
   $('wdAutoSwitch').classList.toggle('on', wdAutoEnabled());
 }
@@ -286,11 +299,13 @@ async function initWebDAVUI() {
       return;
     }
     wdRender();
+    $('wdCfgBackdrop').classList.add('hidden');
+    $('wdManageBackdrop').classList.remove('hidden');
+    loadWdManage();
     // 首次配置后询问自动备份（数据离开设备需明确授权）
     if (localStorage.getItem(WD.AUTO_KEY) === null) {
       localStorage.setItem(WD.AUTO_KEY, 'off');
-      // 简单确认：用 toast 提示可手动开启（不打断流程）
-      toast('已保存配置。可在「切后台自动备份」处开启自动备份');
+      toast('已保存配置。可在「离开 App 时自动备份」处开启自动备份');
     } else {
       toast('配置已保存 ✓');
     }
@@ -398,7 +413,20 @@ async function initWebDAVUI() {
     }
   });
 
-  // 服务器备份管理（行内二次确认删除，同 #110 风格）
+  // #117：服务器备份入口——未配置→配置弹窗；已配置→服务器管理弹窗
+  $('wdCfgBtn').addEventListener('click', () => {
+    if (secureMode() !== 'encrypted') { toast('开启加密后可用——服务器备份是加密通道'); return; }
+    if (wdLoadCfg()) {
+      $('wdManageBackdrop').classList.remove('hidden');
+      loadWdManage();
+    } else {
+      $('wdStatus').textContent = '配置你的 WebDAV 服务器（如坚果云、群晖、Nextcloud）。备份只发往你配置的服务器——观己不提供任何云服务。';
+      $('wdCfgBackdrop').classList.remove('hidden');
+    }
+  });
+  $('wdCfgCancel').addEventListener('click', () => $('wdCfgBackdrop').classList.add('hidden'));
+
+  // 服务器管理弹窗（#117：测试连接/立即上传/列表删除/清除配置）
   let wdManageTimer = null;
   async function loadWdManage() {
     const listEl = $('wdManageList');
@@ -437,28 +465,40 @@ async function initWebDAVUI() {
       listEl.innerHTML = '<p class="dialog-hint">读取失败：' + ((e && e.message) || '') + '</p>';
     }
   }
-  $('wdManageBtn').addEventListener('click', () => {
-    $('wdManageBackdrop').classList.remove('hidden');
-    loadWdManage();
-  });
+  // #117：服务器管理弹窗由 wdCfgBtn（已配置）打开；关闭按钮
   $('wdManageClose').addEventListener('click', () => $('wdManageBackdrop').classList.add('hidden'));
+
+  // #119：离开 App 时自动备份入口（row-btn）——未配置引导配置，已配置开弹窗（开关收进弹窗）
+  $('wdAutoBtn').addEventListener('click', () => {
+    if (secureMode() !== 'encrypted') { toast('开启加密后可用——自动备份上传的是密文'); return; }
+    if (!wdLoadCfg()) {
+      $('wdStatus').textContent = '配置你的 WebDAV 服务器（如坚果云、群晖、Nextcloud）。备份只发往你配置的服务器——观己不提供任何云服务。';
+      $('wdCfgBackdrop').classList.remove('hidden');
+      return;
+    }
+    $('wdAutoSwitch').classList.toggle('on', wdAutoEnabled());   // 打开弹窗时同步开关状态
+    $('wdAutoBackdrop').classList.remove('hidden');
+  });
+  $('wdAutoClose').addEventListener('click', () => $('wdAutoBackdrop').classList.add('hidden'));
 
   // 切后台自动备份开关（默认关——数据离开设备需明确授权）
   $('wdAutoSwitch').addEventListener('click', () => {
     const on = $('wdAutoSwitch').classList.toggle('on');
     localStorage.setItem(WD.AUTO_KEY, on ? 'on' : 'off');
-    toast(on ? '切后台自动备份已开启' : '已关闭自动备份');
+    toast(on ? '离开 App 时自动备份已开启' : '已关闭自动备份');
+    wdRender();   // #119：入口行副标题同步
   });
 
-  // 清除配置
+  // 清除配置（#117：清除后回到配置弹窗态）
   $('wdResetBtn').addEventListener('click', () => {
     localStorage.removeItem(WD.CFG_KEY);
     localStorage.removeItem(WD.STAT_KEY);
     localStorage.removeItem(WD.AUTO_KEY);
     wdSavePass('');
     $('wdPass').value = '';
-    toast('WebDAV 配置已清除');
+    toast('服务器配置已清除');
     wdRender();
+    $('wdManageBackdrop').classList.add('hidden');
   });
 
   // 切后台自动备份（pause：WebView 存活窗口内尽力上传；失败状态下次可见）

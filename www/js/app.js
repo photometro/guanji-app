@@ -42,6 +42,7 @@ document.querySelectorAll('.tab').forEach((tab) => {
       $('screen-' + name).classList.toggle('hidden', name !== tab.dataset.screen);
     });
     if (tab.dataset.screen === 'analysis') maybeAutoGenerate();
+    if (tab.dataset.screen === 'me' && typeof refreshMeSegs === 'function') refreshMeSegs();   // #121/#124：我的页全部 seg 滑块重定位（页面从隐藏变为可见）
     moveTabSlide(tab, $('tabSlide'));
     liquidTabPulse();
   });

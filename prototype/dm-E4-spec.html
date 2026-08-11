@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方案 E4 · 数据卡（严格按 DESIGN-v3.10 规范）</title>
+<style>
+/* ===== Token（取自 DESIGN-v3.10 / theme.css 精确值） ===== */
+:root {
+  --bg: #F2F2F7; --bg-elev: #E5E5EA; --card: #FFFFFF;
+  --ink: #000000; --ink-2: #8E8E93; --ink-3: #C7C7CC;
+  --accent: #007AFF; --accent-deep: #0062CC; --accent-soft: #E8F1FF;
+  --sage: #34C759; --sage-soft: #E9F7EC;
+  --line: #E5E5EA;
+  --shadow-2: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-4: 0 12px 40px rgba(0,0,0,0.16);
+  --radius-lg: 16px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+}
+:root[data-theme="dark"] {
+  --bg: #121212; --bg-elev: #2C2C2E; --card: #1E1E1E;
+  --ink: #FFFFFF; --ink-2: #B0B0B4; --ink-3: #6E6E73;
+  --accent: #0A84FF; --accent-deep: #409CFF; --accent-soft: rgba(10,132,255,0.16);
+  --sage: #32D74B; --sage-soft: rgba(50,215,75,0.16);
+  --line: #3A3A3C;
+  --shadow-2: 0 12px 32px rgba(0,0,0,0.5);
+  --shadow-4: 0 20px 50px rgba(0,0,0,0.6);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #D9D9DE; font-family: var(--font); }
+.stage { display: flex; justify-content: center; padding: 24px 0; min-height: 100vh; }
+.phone {
+  width: 390px; height: 844px; background: var(--bg);
+  border-radius: 44px; border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2); overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: column;
+  color: var(--ink); transition: background 0.3s, color 0.3s;
+}
+.statusbar { height: 46px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+.screen { flex: 1; padding: 4px 16px 40px; }
+.page-head { display: flex; align-items: baseline; gap: 10px; padding: 8px 4px 12px; }
+.page-head h1 { font-size: 28px; font-weight: 800; letter-spacing: 0.01em; }
+.page-head span { font-size: 13px; color: var(--ink-3); }
+
+/* ===== 组件（DESIGN-v3.10 第 4 章） ===== */
+.card { background: var(--card); border-radius: var(--radius-lg); padding: 6px 14px 10px; box-shadow: var(--shadow-2); margin-bottom: 14px; }
+.card-title { font-size: 15px; font-weight: 700; padding: 10px 2px 2px; letter-spacing: 0.01em; }
+.state-line { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); padding: 6px 4px 12px; letter-spacing: 0.02em; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot.gray { background: var(--ink-3); } .dot.green { background: var(--sage); }
+.btn-primary {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: #FFF; border: none; border-radius: 999px;
+  padding: 13px; font-size: 15px; font-weight: 600; font-family: var(--font);
+  letter-spacing: 0.02em; cursor: pointer; box-shadow: var(--shadow-2);
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+.btn-primary:active { transform: scale(0.97); box-shadow: none; }
+.row-btn {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  background: none; border: none; border-bottom: 0.5px solid var(--line);
+  padding: 14px 2px; font-size: 14px; font-family: var(--font);
+  letter-spacing: 0.02em; color: var(--ink); cursor: pointer; text-align: left;
+}
+.row-btn:last-child { border-bottom: none; }
+.row-btn:active { opacity: 0.6; }
+.row-btn .sub { font-size: 11px; color: var(--ink-3); font-weight: 400; }
+.row-btn .chev { margin-left: auto; color: var(--ink-3); flex-shrink: 0; display: flex; }
+.row-btn.disabled { opacity: 0.45; cursor: not-allowed; }
+.row-btn.danger { color: var(--accent-deep); }
+.switch-row { display: flex; align-items: center; justify-content: space-between; padding: 13px 2px; gap: 12px; border-bottom: 0.5px solid var(--line); }
+.switch-row:last-child { border-bottom: none; }
+.switch-row span { font-size: 14px; letter-spacing: 0.02em; }
+.switch { width: 51px; height: 31px; border-radius: 16px; background: #E9E9EB; position: relative; transition: background 0.2s; flex-shrink: 0; }
+:root[data-theme="dark"] .switch { background: #39393D; }
+.switch.on { background: var(--sage); }
+.switch .knob { position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #FFF; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: left 0.2s; }
+.switch.on .knob { left: 22px; }
+.switch.disabled { opacity: 0.4; }
+.chips { display: flex; gap: 8px; padding: 8px 2px 10px; flex-wrap: wrap; }
+.chip { background: var(--bg-elev); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; font-size: 13px; font-family: var(--font); cursor: pointer; transition: all 0.2s; }
+.chip.active { background: var(--accent); border-color: var(--accent); color: #FFF; }
+.disclaimer { font-size: 11px; color: var(--ink-3); line-height: 1.6; padding: 2px 4px; letter-spacing: 0.02em; }
+.about { text-align: center; padding: 22px 18px; }
+.about .name { font-size: 15px; font-weight: 700; }
+.about .ver { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
+.about .privacy { font-size: 11px; color: var(--ink-2); margin-top: 8px; line-height: 1.7; }
+
+/* 预览入口（原型工具） */
+.preview-bar { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 4px 14px; font-size: 11px; color: var(--ink-3); flex-wrap: wrap; }
+.preview-bar a { color: var(--accent); text-decoration: none; cursor: pointer; }
+.preview-bar a.active { font-weight: 600; color: var(--accent-deep); }
+.preview-bar .sep { color: var(--ink-3); opacity: 0.5; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="stage"><div class="phone">
+  <div class="statusbar"><span>9:41</span></div>
+  <div class="screen">
+    <div class="page-head"><h1>我的</h1><span>设置</span></div>
+
+    <!-- ① 数据保护（≤4 元素） -->
+    <div class="card">
+      <p class="card-title">数据保护</p>
+      <div class="state-line"><span class="dot gray"></span><span id="pSecText">未加密 · 记录以明文保存在本机</span></div>
+      <button class="btn-primary" id="pEncBtn" style="width:100%">开启加密</button>
+      <button class="btn-primary hidden" id="pDecBtn" style="width:100%">关闭加密</button>
+      <button class="row-btn hidden" id="pChgBtn"><span>修改口令</span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+    </div>
+
+    <!-- ② 备份与恢复（≤5 元素） -->
+    <div class="card">
+      <p class="card-title">备份与恢复</p>
+      <button class="row-btn" id="pBkpBtn"><span>立即备份<span class="sub" id="pBkpSub">开启加密后可用</span></span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <button class="row-btn"><span>恢复数据<span class="sub">从本机文件或服务器恢复</span></span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <button class="row-btn"><span>备份文件<span class="sub">本机 / 服务器</span></span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <button class="row-btn"><span>服务器备份<span class="sub" id="pWdSub">未配置</span></span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <label class="switch-row"><span>离开 App 时自动备份<span class="sub" style="margin-left:4px">仅服务器</span></span><span class="switch disabled" id="pAutoSw"><span class="knob"></span></span></label>
+    </div>
+
+    <!-- ③ 危险操作（独立卡，红字） -->
+    <div class="card">
+      <p class="card-title" style="color:var(--accent-deep)">危险操作</p>
+      <button class="row-btn danger"><span>清除全部数据</span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <button class="row-btn danger"><span>恢复演示数据</span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+    </div>
+
+    <!-- ④ 记录 -->
+    <div class="card">
+      <p class="card-title">记录</p>
+      <div class="chips"><button class="chip active">计时记录</button><button class="chip">快速记录</button></div>
+      <label class="switch-row"><span>每日温和提醒</span><span class="switch on"><span class="knob"></span></span></label>
+      <label class="switch-row" style="padding-top:0"><span>连续记录里程碑肯定</span><span class="switch"><span class="knob"></span></span></label>
+    </div>
+
+    <!-- ⑤ AI -->
+    <div class="card">
+      <p class="card-title">AI 设置</p>
+      <div class="chips"><button class="chip active">DeepSeek</button><button class="chip">OpenAI</button><button class="chip">自定义</button></div>
+    </div>
+
+    <!-- ⑥ 实况通知 -->
+    <div class="card">
+      <p class="card-title">实况通知</p>
+      <button class="row-btn"><span>测试实况通知</span><span class="chev"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+    </div>
+
+    <!-- ⑦ 外观与显示 -->
+    <div class="card">
+      <p class="card-title">外观与显示</p>
+      <label class="switch-row"><span>玻璃效果<span style="font-size:11px;color:var(--ink-3);margin-left:4px">实验性</span></span><span class="switch" id="glassSw"><span class="knob"></span></span></label>
+      <div class="chips"><button class="chip active">跟随系统</button><button class="chip">浅色</button><button class="chip">深色</button></div>
+    </div>
+
+    <div class="card about">
+      <p class="name">观己</p>
+      <p class="ver">v3.10 · 数据默认仅存本地</p>
+      <p class="privacy">所有记录只保存在这台设备上，不上传云端<br>AI 分析时，仅上传聚合统计特征，不涉及单条记录</p>
+    </div>
+
+    <!-- 预览入口（原型工具，正式设计不含） -->
+    <div class="preview-bar" id="previewBar">
+      <span>状态：</span>
+      <a data-state="plain" class="active">明文</a><span class="sep">|</span>
+      <a data-state="enc">加密</a><span class="sep">|</span>
+      <a data-state="enc+wd">加密+服务器</a>
+      <span class="sep">·</span>
+      <span>主题：</span>
+      <a data-theme="light" class="active">浅色</a><span class="sep">|</span>
+      <a data-theme="dark">深色</a>
+      <span class="sep">·</span>
+      <a id="glassLink">玻璃效果</a>
+    </div>
+
+  </div>
+</div></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let glassOn = false;
+  function setState(s) {
+    const enc = s !== 'plain'; const wd = s === 'enc+wd';
+    document.querySelectorAll('#previewBar [data-state]').forEach((a) => a.classList.toggle('active', a.dataset.state === s));
+    $('pEncBtn').classList.toggle('hidden', enc);
+    $('pDecBtn').classList.toggle('hidden', !enc);
+    $('pChgBtn').classList.toggle('hidden', !enc);
+    document.querySelector('#pSecText').previousElementSibling.className = 'dot ' + (enc ? 'green' : 'gray');
+    $('pSecText').textContent = enc ? '已加密 · 离开设备的数据都是密文' : '未加密 · 记录以明文保存在本机';
+    $('pBkpBtn').classList.toggle('disabled', !enc);
+    $('pBkpSub').textContent = enc ? '生成加密备份文件' : '开启加密后可用';
+    $('pWdSub').textContent = wd ? '已配置 · 上次备份 09:14' : '未配置';
+    $('pAutoSw').classList.toggle('disabled', !wd);
+  }
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    document.querySelectorAll('#previewBar [data-theme]').forEach((a) => a.classList.toggle('active', a.dataset.theme === t));
+  }
+  function setGlass(on) {
+    glassOn = on;
+    $('glassSw').classList.toggle('on', on);
+    $('glassLink').classList.toggle('active', on);
+    if (on) {
+      document.querySelectorAll('.card').forEach((c) => {
+        c.style.background = 'rgba(255,255,255,0.6)';
+        c.style.boxShadow = '0 0 0 0.5px rgba(0,0,0,0.06), inset 0 0 0 0.5px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.9), 0 1px 3px rgba(0,0,0,0.06)';
+      });
+      document.querySelector('.phone').style.background = 'radial-gradient(120% 80% at 85% -10%, rgba(0,122,255,0.06), transparent 60%), radial-gradient(100% 70% at 0% 100%, rgba(0,122,255,0.05), transparent 55%), var(--bg)';
+    } else {
+      document.querySelectorAll('.card').forEach((c) => { c.style.background = ''; c.style.boxShadow = ''; });
+      document.querySelector('.phone').style.background = '';
+    }
+  }
+  document.getElementById('previewBar').addEventListener('click', (e) => {
+    const a = e.target.closest('a');
+    if (!a) return;
+    e.preventDefault();
+    if (a.dataset.state) setState(a.dataset.state);
+    else if (a.dataset.theme) setTheme(a.dataset.theme);
+    else if (a.id === 'glassLink') setGlass(!glassOn);
+  });
+  $('glassSw').addEventListener('click', () => setGlass(!glassOn));
+  setState('plain');
+  setTheme('light');
+</script>
+</body>
+</html>

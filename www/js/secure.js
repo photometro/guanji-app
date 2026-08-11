@@ -298,10 +298,32 @@ function secureRenderStatus() {
   st.innerHTML = enc
     ? '<span class="sec-dot on"></span>已加密 · 数据从写入那一刻起就是密文；离开设备的只有密文，只有口令能解开。'
     : '<span class="sec-dot"></span>未开启加密——数据以明文保存在本机。推荐开启加密：即使设备或备份丢失，数据也无法被读取。';
-  $('secureEnableBtn').classList.toggle('hidden', enc);
-  $('secureDisableBtn').classList.toggle('hidden', !enc);
+  // #121：加密模式 seg 滑块（未加密/已加密）——替代 #106 的开启/关闭大按钮
+  const seg = $('secureModeSeg');
+  if (seg) {
+    seg.querySelectorAll('.seg').forEach((s) => s.classList.toggle('active', (s.dataset.secMode === 'encrypted') === enc));
+    if (typeof moveSegSlide === 'function') {
+      const active = seg.querySelector('.seg.active') || seg.querySelector('.seg');
+      moveSegSlide(seg, $('secureModeSlide'), active);
+    }
+  }
   $('secureActions').classList.toggle('hidden', !enc);
   if (typeof wdRender === 'function') wdRender();   // #115：WebDAV 卡状态跟随加密模式
+  // #117：导出数据副标题按模式自适应（明文 CSV / 加密备份文件）
+  const sub = $('exportSub');
+  if (sub) sub.textContent = enc ? '加密备份文件' : 'CSV 文件';
+}
+
+/* #121/#124：切到「我的」页时重定位全部 seg 滑块（页面从 display:none 变为可见，rect 才能测量）
+   覆盖：加密模式 / 外观 / 记录方式 / AI 提供商 四处单选 seg */
+function refreshMeSegs() {
+  if (typeof moveSegSlide !== 'function') return;
+  [['secureModeSeg', 'secureModeSlide'], ['themeSeg', 'themeSegSlide'], ['recordModeSeg', 'recordModeSegSlide'], ['providerSeg', 'providerSegSlide']].forEach(([rowId, slideId]) => {
+    const row = $(rowId), slide = $(slideId);
+    if (!row || !slide) return;
+    const active = row.querySelector('.seg.active') || row.querySelector('.seg');
+    moveSegSlide(row, slide, active);
+  });
 }
 
 function secureOpenDialog(title, hint) {
@@ -311,8 +333,12 @@ function secureOpenDialog(title, hint) {
   $('secPass1').value = '';
   $('secPass2').value = '';
   $('secPassHint').textContent = '';
+  // #120：关闭加密免口令——隐藏口令输入，仅确认（本机免解锁：设备内本就是信任边界）
+  const noPass = secDialogAction === 'disable';
+  $('secPass1').classList.toggle('hidden', noPass);
+  $('secPass2').classList.toggle('hidden', noPass);
   $('secBackdrop').classList.remove('hidden');
-  $('secPass1').focus();
+  if (!noPass) $('secPass1').focus();
 }
 
 function secureCloseDialog() {
@@ -320,9 +346,22 @@ function secureCloseDialog() {
 }
 
 async function secureRunAction() {
+  const hint = $('secPassHint');
+  // #120：关闭加密免口令——仅确认即执行（不经口令校验）
+  if (secDialogAction === 'disable') {
+    try {
+      await secureDisable();
+      toast('加密已关闭，数据已转为明文');
+      secureCloseDialog();
+      secureRenderStatus();
+      renderHome();
+    } catch (e) {
+      hint.textContent = e && e.message ? e.message : '操作失败，请重试';
+    }
+    return;
+  }
   const p1 = $('secPass1').value;
   const p2 = $('secPass2').value;
-  const hint = $('secPassHint');
   if (p1.length < 8) { hint.textContent = '口令至少 8 位'; return; }
   if (/^\d+$/.test(p1)) { hint.textContent = '不建议用纯数字口令'; return; }
   if (p1 !== p2) { hint.textContent = '两次输入不一致'; return; }
@@ -334,9 +373,6 @@ async function secureRunAction() {
       await secureChangePassphrase(null, p1);
       // #115：口令衰减明示——历史备份（含服务器）仍需创建时的口令
       toast('口令已更新——历史备份（含服务器）仍需创建时的口令，如需统一可删除旧备份重新备份');
-    } else if (secDialogAction === 'disable') {
-      await secureDisable();
-      toast('加密已关闭，数据已转为明文');
     }
     secureCloseDialog();
     secureRenderStatus();
@@ -347,21 +383,28 @@ async function secureRunAction() {
 }
 
 function initSecureUI() {
-  if (!$('secureEnableBtn')) return;   // 元素缺失（旧页面）时静默
+  if (!$('secureModeSeg')) return;   // 元素缺失（旧页面）时静默
   secureRenderStatus();
 
-  $('secureEnableBtn').addEventListener('click', () => {
-    secDialogAction = 'enable';
-    secureOpenDialog('开启加密', '设置一个口令作为唯一钥匙。忘记口令将无法恢复数据，建议存入密码管理器。');
+  // #121：加密模式 seg 滑块（未加密/已加密）——点击切换，开启弹口令创建、关闭免口令仅确认（#120）
+  $('secureModeSeg').addEventListener('click', (e) => {
+    const btn = e.target.closest('.seg');
+    if (!btn) return;
+    const mode = btn.dataset.secMode;   // 'plain' | 'encrypted'
+    if (mode === secureMode()) return;  // 已是该模式，无操作
+    if (mode === 'encrypted') {
+      // 开启加密：设置口令作为唯一钥匙（创建动作，非验证）
+      secDialogAction = 'enable';
+      secureOpenDialog('开启加密', '设置一个口令作为唯一钥匙。忘记口令将无法恢复数据，建议存入密码管理器。');
+    } else {
+      // #120：关闭加密免口令——仅确认（本机免解锁：设备内本就是信任边界）
+      secDialogAction = 'disable';
+      secureOpenDialog('关闭加密', '数据将转为明文保存在本机——设备被他人使用或数据泄露时可读性将降低保护。确认关闭？');
+    }
   });
   $('secureChangeBtn').addEventListener('click', () => {
     secDialogAction = 'change';
     secureOpenDialog('修改口令', '输入新口令（本机已可信解锁，无需验证旧口令）。数据不会重新加密，秒级完成。');
-  });
-  // #106：关闭加密升级为顶部大按钮（与「开启加密」同位置同色对称）
-  $('secureDisableBtn').addEventListener('click', () => {
-    secDialogAction = 'disable';
-    secureOpenDialog('关闭加密', '数据将转为明文保存在本机——设备被他人使用或数据泄露时可读性将降低保护。确认关闭？');
   });
   $('secCancel').addEventListener('click', secureCloseDialog);
   $('secConfirm').addEventListener('click', secureRunAction);

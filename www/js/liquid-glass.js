@@ -20,21 +20,30 @@ function applyTheme(mode) {
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
 }
 
+/* #124：外观单选 seg 滑块同步（chips → seg，与加密同款） */
+function setThemeSeg(mode) {
+  const seg = $('themeSeg');
+  if (!seg) return;
+  seg.querySelectorAll('.seg').forEach((c) => c.classList.toggle('active', c.dataset.themeMode === mode));
+  if (typeof moveSegSlide === 'function') {
+    const active = seg.querySelector('.seg.active') || seg.querySelector('.seg');
+    moveSegSlide(seg, $('themeSegSlide'), active);
+  }
+}
+
 function initTheme() {
   const mode = localStorage.getItem(THEME_KEY) || 'system';
   applyTheme(mode);
-  document.querySelectorAll('#themeChips .chip').forEach((c) => {
-    c.classList.toggle('active', c.dataset.themeMode === mode);
-  });
+  setThemeSeg(mode);
 }
 
-// 设置页外观切换
-$('themeChips').addEventListener('click', (e) => {
-  const chip = e.target.closest('.chip');
-  if (!chip) return;
-  const mode = chip.dataset.themeMode;
+// 设置页外观切换（#124：seg 滑块）
+$('themeSeg').addEventListener('click', (e) => {
+  const btn = e.target.closest('.seg');
+  if (!btn) return;
+  const mode = btn.dataset.themeMode;
   localStorage.setItem(THEME_KEY, mode);
-  document.querySelectorAll('#themeChips .chip').forEach((c) => c.classList.toggle('active', c.dataset.themeMode === mode));
+  setThemeSeg(mode);
   applyTheme(mode);
   renderHome();   // 重绘图表（环色/面积图随主题）
 });
