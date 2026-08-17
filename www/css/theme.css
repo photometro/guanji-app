@@ -70,6 +70,13 @@
   --lg-edge-2: 0.55;   /* ::after 渐变边框环 中 */
   --lg-edge-3: 0.28;   /* ::after 渐变边框环 底 */
   --lg-hi: 0.90;       /* 卡片 inset 上缘高光 */
+  /* #83：蓝色玻璃按钮——蓝色来自表面，悬浮感来自中性阴影 */
+  --lg-btn-reflect: 0.16;
+  --lg-btn-edge: 0.42;
+  --lg-btn-hi: 0.42;
+  --lg-btn-bottom: rgba(0, 53, 128, 0.18);
+  --lg-btn-shadow-far: 0 12px 30px rgba(28, 42, 68, 0.07);
+  --lg-btn-shadow-near: 0 3px 10px rgba(28, 42, 68, 0.05);
   /* #88：热力图色阶（蓝系，随 App 整体风格） */
   --heat-0: rgba(116, 128, 150, 0.12);
   --heat-1: rgba(0, 122, 255, 0.22);
@@ -136,6 +143,13 @@
   --lg-edge-2: 0.15;
   --lg-edge-3: 0.08;
   --lg-hi: 0.20;
+  /* #83：深色下收住白色反光，以黑色深度替代浅色的中性悬浮影 */
+  --lg-btn-reflect: 0.12;
+  --lg-btn-edge: 0.32;
+  --lg-btn-hi: 0.30;
+  --lg-btn-bottom: rgba(0, 0, 0, 0.28);
+  --lg-btn-shadow-far: 0 12px 30px rgba(0, 0, 0, 0.34);
+  --lg-btn-shadow-near: 0 3px 10px rgba(0, 0, 0, 0.18);
   /* #88：热力图深色色阶（更亮蓝保证深底可读） */
   --heat-0: rgba(255, 255, 255, 0.07);
   --heat-1: rgba(10, 132, 255, 0.30);
@@ -162,4 +176,3 @@ body {
   min-height: 100vh;
   color: var(--ink);
 }
-

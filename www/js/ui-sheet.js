@@ -349,29 +349,57 @@ $('delConfirm').addEventListener('click', () => {
   const key = delGroup === 'mood' ? CUSTOM_MOODS_KEY : CUSTOM_TRIGGERS_KEY;
   saveCustomList(key, loadCustomList(key).filter((t) => t !== delTarget));
   closeDeleteDialog();
-  if (delGroup === 'mood') { renderMoodChips(); renderMoodChips(null, $('summaryMoodChips')); }
-  else { renderTriggerChips(); renderTriggerChips(null, $('summaryTriggerChips')); }
+  if (delGroup === 'mood') { renderMoodChips(); refreshSummaryChips('mood'); }
+  else { renderTriggerChips(); refreshSummaryChips('trigger'); }
   toast('已删除：' + delTarget);
 });
 $('delBackdrop').addEventListener('click', (e) => { if (e.target === $('delBackdrop')) closeDeleteDialog(); });
 
+function selectedChipTexts(box) {
+  return new Set([...box.querySelectorAll('.chip.active')].map((chip) => chip.dataset.text || chip.textContent));
+}
+
+function normaliseChipSelection(selectText) {
+  if (selectText instanceof Set) return selectText;
+  if (Array.isArray(selectText)) return new Set(selectText);
+  return new Set(selectText ? [selectText] : []);
+}
+
+function isTimerSummaryVisible() {
+  const screen = $('timerScreen');
+  const summary = $('timerSummaryView');
+  return !!(screen && summary && !screen.classList.contains('hidden') && !summary.classList.contains('hidden'));
+}
+
+/* #127：汇总页使用独立 chips 容器；重绘时保留原多选，并可选中新加项。 */
+function refreshSummaryChips(group, addedText) {
+  if (!isTimerSummaryVisible()) return;
+  const box = group === 'mood' ? $('summaryMoodChips') : $('summaryTriggerChips');
+  const selected = selectedChipTexts(box);
+  if (addedText) selected.add(addedText);
+  if (group === 'mood') renderMoodChips(selected, box);
+  else renderTriggerChips(selected, box);
+}
+
 function renderMoodChips(selectText, box = $('moodChips')) {
+  const selected = normaliseChipSelection(selectText);
   box.innerHTML = '';
   [...MOODS, ...loadCustomList(CUSTOM_MOODS_KEY)].forEach((t) => {
     const b = makeChip(t);
     if (!MOODS.includes(t)) { b.dataset.custom = '1'; attachChipDelete(b); }   // #47：自定义项可删除
-    if (t === selectText) b.classList.add('active');
+    if (selected.has(t)) b.classList.add('active');
     box.appendChild(b);
   });
   box.appendChild(makeAddChip('mood'));
 }
 
 function renderTriggerChips(selectText, box = $('triggerChips')) {
+  const selected = normaliseChipSelection(selectText);
   box.innerHTML = '';
   [...TRIGGERS, ...loadCustomList(CUSTOM_TRIGGERS_KEY)].forEach((t) => {
     const b = makeChip(t);
     if (!TRIGGERS.includes(t)) { b.dataset.custom = '1'; attachChipDelete(b); }   // #47：自定义项可删除
-    if (t === selectText) b.classList.add('active');
+    if (selected.has(t)) b.classList.add('active');
     box.appendChild(b);
   });
   box.appendChild(makeAddChip('trigger'));
@@ -435,6 +463,7 @@ function confirmAddCustom() {
   saveCustomList(key, list);
   closeAddDialog();
   if (addTarget === 'mood') renderMoodChips(text); else renderTriggerChips(text);
+  refreshSummaryChips(addTarget, text);
   toast('已添加：' + text);
 }
 
@@ -917,4 +946,3 @@ window.__guanjiTimerCancel = () => {
   }, 400);
   toast('上次的计时仍在继续');
 })();
-

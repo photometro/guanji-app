@@ -120,6 +120,8 @@ function hideTimerScreen() {
     // 弹出 pushState 的历史项（监听已移除，不触发取消）
     if (history.state && history.state.timerScreen) history.back();
   }
+  // #126：关闭父层时同步复位汇总子视图，避免下次打开时残留「父层已隐藏、汇总子视图仍显示」的失配状态。
+  hideTimerSummary();
   $('timerScreen').classList.add('hidden');
 }
 

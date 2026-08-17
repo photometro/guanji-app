@@ -262,6 +262,25 @@
 .row-btn:active { opacity: 0.7; }
 .row-btn.danger { color: var(--accent-deep); }
 
+/* #129：卡片负责一级分组；仅连续的导航操作使用行间 hairline。 */
+.settings-card-title { margin-bottom: 14px; }
+.settings-list-title { margin-bottom: 6px; }
+.settings-control-gap { margin-top: 14px; }
+.settings-control-gap-sm { margin-top: 10px; }
+.settings-description { margin-top: 12px; }
+.settings-description-tight { margin-top: 4px; }
+.settings-action-list { width: 100%; }
+.settings-single-action .row-btn { border-bottom: none; }
+.settings-control-action {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.settings-control-action .row-btn {
+  border-bottom: none;
+  padding: 10px 2px 4px;
+}
+
 /* #105/#106：加密状态小圆点（灰=未加密 / 绿=已加密）+ 已加密文字绿色高亮 */
 .sec-dot {
   display: inline-block;
@@ -273,10 +292,8 @@
 }
 .sec-dot.on { background: var(--sage); }   /* 绿：已加密 */
 #secureStatus.on { color: var(--sage); }
-/* #121：加密模式 seg 滑块（替代 #106 的开启/关闭大按钮；原 #105 按钮间距规则随按钮移除） */
-#secureModeSeg { margin-bottom: 12px; }
-/* #107：加密态「修改口令」是 secureActions 内唯一 row-btn（last-child 会移除分割线），显式保留 */
-#secureActions .row-btn { border-bottom: 1px solid var(--line); }
+/* #121：加密模式 seg 滑块（替代 #106 的开启/关闭大按钮；#129 由下方动作分组划出边界） */
+#secureModeSeg { margin-bottom: 0; }
 
 /* #117/#122：行副标题（11px 次级灰，跟随行主文字；#122 间距 2px→8px 防粘连） */
 .row-btn .row-sub { font-size: 11px; color: var(--ink-3); font-weight: 400; margin-left: 8px; }
@@ -507,4 +524,3 @@
   margin-bottom: 12px;
   display: flex; align-items: center; gap: 8px;
 }
-

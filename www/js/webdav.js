@@ -8,7 +8,7 @@ const WD = {
   CFG_KEY: 'guanji_webdav_cfg',      // { url, username, dir }（dir 如 'guanji'；密码独立存安全存储）
   PASS_KEY: 'guanji_webdav_pass',    // Keystore（@aparajita 同款 internal API）；浏览器降级 localStorage
   STAT_KEY: 'guanji_webdav_stat',    // { lastBackup, lastStatus:'ok'|'error'|'never', lastError, lastErrorTime, fingerprint }
-  AUTO_KEY: 'guanji_webdav_auto',    // 'on' | 'off'（切后台自动备份，默认 off——数据离开设备需明确授权）
+  AUTO_KEY: 'guanji_webdav_auto',    // 'on' | 'off'（打开 App 时自动备份，默认 off——上传需明确授权）
   DEVICE_KEY: 'guanji_device_id',    // 设备短标识（文件名防多设备撞车）
   DIR: 'guanji',                     // 服务器子目录（自动建）
   TIMEOUT: 20000,
@@ -209,7 +209,10 @@ async function wdBackupNow() {
   return { filename: fname, count: pkg.recordCount };
 }
 
-/* 切后台自动备份：加密态 + 已启用 + 指纹变化 + 有数据 → 上传；失败写入 stat（必可见） */
+let wdAutoBackupPending = false;
+let wdAutoBackupTimer = null;
+
+/* #128：前台自动备份。加密态 + 已启用 + 指纹变化 + 有数据 → 上传；失败写入 stat。 */
 async function wdAutoBackup() {
   if (!wdAutoEnabled()) return;
   if (secureMode() !== 'encrypted') return;
@@ -217,6 +220,8 @@ async function wdAutoBackup() {
   const fp = wdFingerprint();
   const stat = wdLoadStat();
   if (stat.fingerprint === fp) return;   // 自上次备份无变化
+  if (wdAutoBackupPending) return;       // 冷启动与前台事件重叠时只上传一次
+  wdAutoBackupPending = true;
   try {
     await wdBackupNow();
   } catch (e) {
@@ -225,7 +230,19 @@ async function wdAutoBackup() {
     s.lastError = ((e && e.message) || '自动备份失败').slice(0, 80);
     s.lastErrorTime = new Date().toISOString();
     wdSaveStat(s);
+  } finally {
+    wdAutoBackupPending = false;
+    if (typeof wdRender === 'function') wdRender();
   }
+}
+
+/* WebView 恢复后的短暂等待，避免网络与原生桥尚未就绪时静默失败。 */
+function wdScheduleAutoBackup() {
+  if (wdAutoBackupTimer) clearTimeout(wdAutoBackupTimer);
+  wdAutoBackupTimer = setTimeout(() => {
+    wdAutoBackupTimer = null;
+    wdAutoBackup().catch(() => {});
+  }, 800);
 }
 
 /* ---------- WebDAV 卡 UI（#115） ---------- */
@@ -305,7 +322,7 @@ async function initWebDAVUI() {
     // 首次配置后询问自动备份（数据离开设备需明确授权）
     if (localStorage.getItem(WD.AUTO_KEY) === null) {
       localStorage.setItem(WD.AUTO_KEY, 'off');
-      toast('已保存配置。可在「离开 App 时自动备份」处开启自动备份');
+      toast('已保存配置。可在「打开 App 时自动备份」处开启自动备份');
     } else {
       toast('配置已保存 ✓');
     }
@@ -468,7 +485,7 @@ async function initWebDAVUI() {
   // #117：服务器管理弹窗由 wdCfgBtn（已配置）打开；关闭按钮
   $('wdManageClose').addEventListener('click', () => $('wdManageBackdrop').classList.add('hidden'));
 
-  // #119：离开 App 时自动备份入口（row-btn）——未配置引导配置，已配置开弹窗（开关收进弹窗）
+  // #128：打开 App 时自动备份入口（row-btn）——未配置引导配置，已配置开弹窗（开关收进弹窗）
   $('wdAutoBtn').addEventListener('click', () => {
     if (secureMode() !== 'encrypted') { toast('开启加密后可用——自动备份上传的是密文'); return; }
     if (!wdLoadCfg()) {
@@ -481,11 +498,11 @@ async function initWebDAVUI() {
   });
   $('wdAutoClose').addEventListener('click', () => $('wdAutoBackdrop').classList.add('hidden'));
 
-  // 切后台自动备份开关（默认关——数据离开设备需明确授权）
+  // 打开 App 时自动备份开关（默认关——上传需明确授权）
   $('wdAutoSwitch').addEventListener('click', () => {
     const on = $('wdAutoSwitch').classList.toggle('on');
     localStorage.setItem(WD.AUTO_KEY, on ? 'on' : 'off');
-    toast(on ? '离开 App 时自动备份已开启' : '已关闭自动备份');
+    toast(on ? '打开 App 时自动备份已开启' : '已关闭自动备份');
     wdRender();   // #119：入口行副标题同步
   });
 
@@ -501,10 +518,13 @@ async function initWebDAVUI() {
     $('wdManageBackdrop').classList.add('hidden');
   });
 
-  // 切后台自动备份（pause：WebView 存活窗口内尽力上传；失败状态下次可见）
+  // #128：冷启动与回到前台均在稳定的前台窗口备份；不再在后台切换时请求网络。
+  wdScheduleAutoBackup();
   if (window.Capacitor && Capacitor.Plugins.App) {
     try {
-      Capacitor.Plugins.App.addListener('pause', () => { wdAutoBackup().catch(() => {}); });
-    } catch (e) { /* 旧版本无 pause 事件则跳过 */ }
+      Capacitor.Plugins.App.addListener('appStateChange', (state) => {
+        if (state && state.isActive) wdScheduleAutoBackup();
+      });
+    } catch (e) { /* 旧版本无 appStateChange 事件时仍保留冷启动自动备份 */ }
   }
 }

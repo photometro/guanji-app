@@ -90,19 +90,24 @@ html.liquid-glass .ask-answer {
     0 10px 30px rgba(28, 42, 68, 0.07), 0 2px 8px rgba(28, 42, 68, 0.04);
 }
 
-/* 按钮：保留原实色 + 玻璃边缘（亮边 / 上缘高光 / 色相光晕） */
+/* #83：蓝色玻璃按钮——表面反光与蓝色渐变表现材质；外层仅保留中性悬浮影。 */
 html.liquid-glass .btn-primary,
 html.liquid-glass .record-btn {
-  background: var(--accent);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, var(--lg-btn-reflect)) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
   backdrop-filter: blur(0px) saturate(var(--lg-saturate));
   -webkit-backdrop-filter: blur(0px) saturate(var(--lg-saturate));
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, var(--lg-btn-edge));
   box-shadow:
-    0 0 0 0.5px rgba(0, 0, 0, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -1px 1px rgba(255, 255, 255, 0.15),
-    0 3px 14px rgba(0, 122, 255, 0.3);
+    0 0 0 0.5px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, var(--lg-btn-hi)),
+    inset 0 -1px 1px var(--lg-btn-bottom),
+    var(--lg-btn-shadow-far),
+    var(--lg-btn-shadow-near);
 }
+html.liquid-glass .btn-primary:active,
+html.liquid-glass .record-btn:active { box-shadow: none; }
 html.liquid-glass .btn-ghost {
   background: var(--bg-elev);
   backdrop-filter: blur(0px) saturate(var(--lg-saturate));
@@ -225,4 +230,3 @@ html.liquid-glass .overview-num {
   html.liquid-glass .dialog, html.liquid-glass .card, html.liquid-glass .report-card,
   html.liquid-glass .ask-answer { background: var(--card); backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
-

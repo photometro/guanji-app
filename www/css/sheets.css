@@ -187,6 +187,8 @@ body.keyboard-up .backdrop.dialog-layer {
   height: 100%;
   padding: calc(56px + var(--safe-top)) 24px calc(32px + var(--safe-bottom));
 }
+/* #126：双视图切换的隐藏态不参与触摸命中，防止状态过渡或 OEM WebView 合成延迟留下透明点击层。 */
+.timer-screen-inner.hidden { pointer-events: none; }
 .timer-live-badge {
   display: inline-flex;
   align-items: center;
@@ -548,4 +550,3 @@ textarea:focus { outline: 2px solid var(--accent-deep); outline-offset: 0; borde
 }
 
 .hidden { display: none !important; }
-
