@@ -58,12 +58,16 @@ function updateTimeDisplay() {
 
 function saveRecord() {
   normalizeOffsets();   // v3.6.1：跨天驻留时先归一化旧记录，再读表单
-  const moods = [...$('moodChips').querySelectorAll('.chip.active')].map((c) => c.textContent);
-  const triggers = [...$('triggerChips').querySelectorAll('.chip.active')].map((c) => c.textContent);
+  // #132/#137/#138：普通详情页保存完整的“发生前状况”多选数组，并保留首项 observation 别名兼容旧逻辑。
+  const observations = typeof readObservationSelections === 'function'
+    ? normalizeObservationValues(readObservationSelections($('observationChips')))
+    : [];
+  const observation = observations[0] || '';
   // 时长以 durLabel 为数据源（滑块 max=60，超长记录预填后靠 label 保真，避免 clamp 丢数据）
   const durMatch = /^(\d+)/.exec($('durLabel').textContent);
   const duration = durMatch ? parseInt(durMatch[1], 10) : 0;
-  const media = $('mediaSwitch').classList.contains('on');
+  // v3.19/#136 + #132：成人内容影响由统一观察标签推导 media，避免重复入口。
+  const media = observations.some(isAdultContentObservation);
   const note = $('noteInput').value.trim();
 
   const base = new Date();
@@ -95,14 +99,19 @@ function saveRecord() {
       ...records[idx],   // 保留 id 等原字段
       dateKey: fmtDateKey(date), offset, time,
       duration: duration || null,
-      moods, triggers, media, note,
+      // 旧 moods/triggers 原样保留，统一字段作为新语义来源。
+      observations,
+      observation: observation || null,
+      media, note,
     };
   } else {
     records.push({
       id: newRecordId('rec'),
       dateKey: fmtDateKey(date), offset, time,
       duration: duration || null,
-      moods, triggers, media, note,
+      observations,
+      observation: observation || null,
+      moods: [], triggers: [], media, note,
     });
   }
   Storage.saveRecords(records);
@@ -120,11 +129,15 @@ function saveRecord() {
 
 /* 一键快速记录（桌面小组件触发）：自动保存「就现在」默认记录 */
 function quickRecord() {
+  const now = new Date();
   records.push({
     id: newRecordId('quick'),
+    dateKey: fmtDateKey(now),
     offset: 0,
-    time: fmtTime(new Date()),
+    time: fmtTime(now),
     duration: null,
+    observations: [],
+    observation: null,
     moods: [], triggers: [], media: false, note: '',
   });
   Storage.saveRecords(records);
@@ -165,7 +178,7 @@ function syncWidgetStats() {
   } catch (e) { /* 非原生/插件不可用时忽略 */ }
 }
 
-/* 记录变化 → 同步小组件（保存/删除/快速记录/清除/恢复后）+ 报告自动重生成（#38） */
+/* #147：记录变化 → 同步小组件 + 刷新洞察事实；洞察页可见时按旧版逻辑防抖自动更新 AI。 */
 function afterRecordsChanged() {
   syncWidgetStats();
   scheduleReportRefresh();

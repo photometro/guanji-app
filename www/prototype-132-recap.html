@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>PROTOTYPE #132 · 30 秒复盘</title>
+  <link rel="icon" href="data:,">
+  <!--
+    THROWAWAY PROTOTYPE — 不属于生产代码。
+    问题：#132「30 秒复盘」应该怎样嵌入观己现有记录流程？
+    三个结构方案通过 ?variant=A|B|C 切换。
+    运行：python -m http.server 8123 --directory www
+  -->
+  <style>
+    :root {
+      --bg: #f2f2f7;
+      --bg-elev: #e9e9ef;
+      --card: #fff;
+      --ink: #050505;
+      --ink-2: #77777f;
+      --ink-3: #b8b8c0;
+      --accent: #087bff;
+      --accent-deep: #0065d8;
+      --accent-soft: #e9f2ff;
+      --line: rgba(20, 20, 25, .09);
+      --sage: #2cad64;
+      --shadow: 0 26px 70px rgba(0, 0, 0, .24), 0 5px 18px rgba(0, 0, 0, .10);
+      --ease-spring: cubic-bezier(.22, 1.05, .36, 1);
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; font-family: var(--font); color: var(--ink); }
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(60% 70% at 18% 15%, rgba(0, 122, 255, .12), transparent 70%),
+        radial-gradient(55% 55% at 86% 78%, rgba(92, 82, 214, .10), transparent 72%),
+        #dfe3eb;
+      overflow: hidden;
+    }
+    button, input, textarea { font: inherit; }
+    button { -webkit-tap-highlight-color: transparent; }
+
+    .phone {
+      position: relative;
+      width: min(430px, 100vw);
+      height: min(920px, 100vh);
+      overflow: hidden;
+      background: var(--bg);
+      box-shadow: 0 36px 90px rgba(34, 40, 54, .24);
+    }
+
+    .home {
+      position: absolute;
+      inset: 0;
+      padding: 34px 26px 24px;
+      background:
+        radial-gradient(85% 55% at 110% -10%, rgba(0, 122, 255, .08), transparent 66%),
+        var(--bg);
+    }
+    .status { display: flex; justify-content: space-between; font-size: 14px; font-weight: 750; margin-bottom: 38px; }
+    .status-icons { letter-spacing: 2px; }
+    .date { color: var(--ink-2); font-size: 13px; font-weight: 650; letter-spacing: .03em; }
+    .greeting { margin: 8px 0 24px; font-size: 31px; line-height: 1.18; letter-spacing: -.04em; }
+    .hero { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .hero-number { font-size: 62px; font-weight: 800; letter-spacing: -.06em; color: var(--accent-deep); }
+    .hero-number small { font-size: 18px; color: var(--ink-2); margin-left: 8px; }
+    .home-record { border: 0; padding: 15px 25px; border-radius: 22px; background: linear-gradient(135deg, #1488ff, #0067d9); color: #fff; font-weight: 750; font-size: 18px; box-shadow: 0 12px 25px rgba(0, 98, 204, .22); }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); padding-top: 20px; }
+    .stat { text-align: center; border-right: 1px solid var(--line); }
+    .stat:last-child { border-right: 0; }
+    .stat b { display: block; font-size: 28px; margin-bottom: 3px; }
+    .stat span { color: var(--ink-2); font-size: 12px; }
+    .trend { height: 250px; border-radius: 28px; background: rgba(255,255,255,.78); margin-top: 24px; padding: 22px; }
+    .trend-head { display: flex; align-items: center; justify-content: space-between; }
+    .trend h3 { margin: 0; font-size: 19px; }
+    .fake-chart { position: relative; height: 130px; margin-top: 28px; border-bottom: 1px solid var(--line); }
+    .fake-chart::after { content: ""; position: absolute; left: 3%; right: 3%; top: 47%; height: 3px; background: linear-gradient(90deg, transparent 0 5%, #1488ff 5% 20%, #1488ff 20% 31%, #69b4ff 31% 44%, #1488ff 44% 69%, #69b4ff 69% 82%, #1488ff 82% 100%); transform: skewY(-9deg); border-radius: 99px; opacity: .7; }
+
+    .scrim { position: absolute; inset: 0; background: rgba(23, 25, 29, .39); backdrop-filter: blur(1.5px); }
+    .prototype-badge {
+      position: absolute;
+      z-index: 20;
+      top: max(12px, env(safe-area-inset-top));
+      left: 14px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      color: white;
+      background: rgba(0, 0, 0, .65);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .09em;
+      backdrop-filter: blur(10px);
+    }
+
+    .sheet {
+      position: absolute;
+      z-index: 5;
+      left: 12px;
+      right: 12px;
+      bottom: 0;
+      max-height: calc(100% - 78px);
+      overflow: auto;
+      scrollbar-width: none;
+      padding: 13px 22px 104px;
+      border-radius: 34px 34px 0 0;
+      background: rgba(252, 252, 253, .96);
+      box-shadow: var(--shadow);
+      animation: sheetUp .48s var(--ease-spring) both;
+    }
+    .sheet::-webkit-scrollbar { display: none; }
+    .sheet.variant-c { max-height: calc(100% - 176px); }
+    @keyframes sheetUp { from { transform: translateY(12%); opacity: .4; } to { transform: translateY(0); opacity: 1; } }
+    .grab { width: 42px; height: 5px; border-radius: 999px; background: #dedee5; margin: 0 auto 14px; }
+    .sheet-head { display: flex; justify-content: space-between; align-items: start; gap: 14px; margin-bottom: 17px; }
+    .sheet-head.center { display: block; text-align: center; }
+    .sheet-title { margin: 0; font-size: 23px; letter-spacing: -.025em; }
+    .sheet-sub { margin: 6px 0 0; font-size: 12px; color: var(--ink-2); line-height: 1.55; }
+    .soft-pill { flex: 0 0 auto; padding: 7px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-deep); font-weight: 700; font-size: 11px; }
+
+    .existing-block { display: grid; gap: 11px; }
+    .compact-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 36px; }
+    .compact-row .label { font-size: 13px; font-weight: 700; }
+    .compact-row .value { color: var(--ink-2); font-size: 13px; text-align: right; }
+    .tiny-chips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+    .tiny-chip { padding: 6px 9px; border-radius: 10px; background: var(--bg-elev); color: var(--ink-2); font-size: 11px; font-weight: 650; }
+    .tiny-chip.on { background: var(--accent-soft); color: var(--accent-deep); }
+    .divider { height: 1px; background: var(--line); margin: 17px 0 15px; }
+
+    .recap-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 0;
+      background: none;
+      color: var(--ink);
+      padding: 2px 0 11px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .recap-toggle strong { display: block; font-size: 16px; }
+    .recap-toggle span { display: block; color: var(--ink-2); font-size: 11px; margin-top: 4px; }
+    .chevron { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: var(--bg-elev); color: var(--ink-2); transition: transform .25s; }
+    .recap-toggle[aria-expanded="false"] .chevron { transform: rotate(-90deg); }
+    .recap-fields { display: grid; gap: 17px; }
+    .recap-fields.hidden { display: none; }
+    .question-label { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 9px; }
+    .question-label strong { font-size: 13px; }
+    .question-label span { color: var(--ink-3); font-size: 10px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+    .chip {
+      border: 1px solid transparent;
+      background: var(--bg-elev);
+      color: var(--ink-2);
+      border-radius: 13px;
+      padding: 9px 12px;
+      font-size: 12px;
+      font-weight: 650;
+      cursor: pointer;
+      transition: transform .18s var(--ease-spring), background .18s, color .18s;
+    }
+    .chip:hover { color: var(--ink); }
+    .chip:active { transform: scale(.94); }
+    .chip.active { background: var(--accent-soft); color: var(--accent-deep); border-color: rgba(0, 122, 255, .13); }
+    .chip.large { min-width: calc(33.333% - 6px); padding: 13px 10px; font-size: 13px; text-align: center; }
+
+    .actions { display: flex; gap: 9px; margin-top: 20px; }
+    .primary, .secondary {
+      min-height: 48px;
+      border: 0;
+      border-radius: 17px;
+      padding: 0 17px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+    .primary { flex: 1; color: #fff; background: linear-gradient(135deg, #1789ff, #0069df); box-shadow: 0 10px 23px rgba(0, 98, 204, .20); }
+    .secondary { color: var(--ink-2); background: var(--bg-elev); }
+    .text-action { display: block; width: 100%; border: 0; background: none; color: var(--ink-2); padding: 13px 4px 0; font-size: 12px; cursor: pointer; }
+
+    .step-rail { display: flex; align-items: center; gap: 6px; margin-bottom: 15px; }
+    .step-line { height: 4px; flex: 1; background: #dcdce3; border-radius: 999px; overflow: hidden; }
+    .step-line.on { background: var(--accent); }
+    .step-count { margin-left: 6px; color: var(--ink-2); font-size: 11px; font-weight: 700; }
+    .notice {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 18px;
+      padding: 11px 12px;
+      border-radius: 15px;
+      background: rgba(44, 173, 100, .09);
+      color: #177443;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .notice-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--sage); flex: 0 0 auto; }
+
+    .saved-mark { width: 47px; height: 47px; margin: 0 auto 10px; display: grid; place-items: center; border-radius: 50%; background: rgba(44,173,100,.12); color: var(--sage); font-size: 24px; font-weight: 800; }
+    .prompt-card { margin-top: 18px; padding: 16px; border-radius: 22px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(20, 25, 35, .06); }
+    .prompt-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .prompt-top strong { font-size: 11px; color: var(--accent-deep); letter-spacing: .04em; }
+    .prompt-top span { font-size: 10px; color: var(--ink-3); }
+    .prompt-question { font-size: 17px; line-height: 1.45; font-weight: 760; margin: 0 0 14px; letter-spacing: -.01em; }
+    .progress-dots { display: flex; gap: 5px; justify-content: center; margin-top: 13px; }
+    .progress-dots i { width: 5px; height: 5px; border-radius: 50%; background: #d7d7de; }
+    .progress-dots i.on { width: 18px; border-radius: 99px; background: var(--accent); }
+
+    .switcher {
+      position: absolute;
+      z-index: 30;
+      left: 50%;
+      bottom: max(12px, env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      width: min(378px, calc(100% - 24px));
+      display: grid;
+      grid-template-columns: 42px 1fr 42px;
+      align-items: center;
+      gap: 4px;
+      padding: 7px;
+      border-radius: 22px;
+      color: #fff;
+      background: rgba(9, 12, 18, .92);
+      box-shadow: 0 12px 35px rgba(0,0,0,.34);
+      backdrop-filter: blur(18px);
+    }
+    .switcher button { width: 42px; height: 42px; border: 0; border-radius: 15px; background: rgba(255,255,255,.09); color: #fff; font-size: 20px; cursor: pointer; }
+    .variant-info { min-width: 0; text-align: center; }
+    .variant-name { font-size: 12px; font-weight: 780; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .variant-state { margin-top: 3px; color: rgba(255,255,255,.57); font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .toast { position: absolute; z-index: 40; left: 50%; top: 72px; transform: translate(-50%, -12px); opacity: 0; pointer-events: none; padding: 10px 14px; border-radius: 13px; color: #fff; background: rgba(0,0,0,.78); font-size: 12px; font-weight: 700; transition: .25s; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 480px) {
+      body { display: block; background: var(--bg); }
+      .phone { width: 100vw; height: 100vh; box-shadow: none; }
+      .sheet { left: 0; right: 0; border-radius: 31px 31px 0 0; }
+    }
+    @media (max-height: 760px) {
+      .sheet { max-height: calc(100% - 52px); }
+      .existing-block { gap: 7px; }
+      .recap-fields { gap: 12px; }
+      .chip { padding: 7px 10px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="phone" id="phone">
+    <div class="home" aria-hidden="true">
+      <div class="status"><span>10:28</span><span class="status-icons">● ◼︎ ◒</span></div>
+      <div class="date">8月18日 · 周二</div>
+      <h1 class="greeting">上午好，今天感觉如何？</h1>
+      <div class="hero"><div class="hero-number">12<small>次</small></div><button class="home-record">＋ 记录</button></div>
+      <div class="stats"><div class="stat"><b>9</b><span>近 7 天</span></div><div class="stat"><b>−10%</b><span>较上 7 天</span></div><div class="stat"><b>4</b><span>连续天数</span></div></div>
+      <section class="trend"><div class="trend-head"><h3>次数趋势</h3><span class="tiny-chip on">近 14 天</span></div><div class="fake-chart"></div></section>
+    </div>
+    <div class="scrim"></div>
+    <div class="prototype-badge">PROTOTYPE · #132</div>
+    <section class="sheet" id="sheet" aria-live="polite"></section>
+    <div class="toast" id="toast">已保存</div>
+    <nav class="switcher" aria-label="原型方案切换">
+      <button id="prevVariant" aria-label="上一个方案">‹</button>
+      <div class="variant-info"><div class="variant-name" id="variantName"></div><div class="variant-state" id="variantState"></div></div>
+      <button id="nextVariant" aria-label="下一个方案">›</button>
+    </nav>
+  </main>
+
+  <script>
+    const variants = [
+      { key: 'A', name: '内嵌展开' },
+      { key: 'B', name: '独立第 3 步' },
+      { key: 'C', name: '保存后逐题' },
+    ];
+    const states = Object.fromEntries(variants.map(({ key }) => [key, {
+      before: null,
+      after: null,
+      plan: null,
+      recapOpen: true,
+      question: 0,
+    }]));
+    const groups = {
+      before: ['平静', '无聊', '压力', '焦虑', '孤独'],
+      after: ['放松', '平静', '疲惫', '有些后悔'],
+      plan: ['符合', '部分符合', '不符合'],
+    };
+
+    function currentVariant() {
+      const requested = new URLSearchParams(location.search).get('variant')?.toUpperCase();
+      return variants.find((item) => item.key === requested) || variants[0];
+    }
+
+    function setVariant(key) {
+      const url = new URL(location.href);
+      url.searchParams.set('variant', key);
+      history.replaceState({}, '', url);
+      render();
+    }
+
+    function chipGroup(group, state, large = false) {
+      return `<div class="chips">${groups[group].map((value) => `
+        <button class="chip ${large ? 'large' : ''} ${state[group] === value ? 'active' : ''}" data-group="${group}" data-value="${value}">${value}</button>
+      `).join('')}</div>`;
+    }
+
+    function allQuestions(state) {
+      return `
+        <div class="recap-fields">
+          <div><div class="question-label"><strong>发生前，你更接近哪种状态？</strong><span>单选 · 可不填</span></div>${chipGroup('before', state)}</div>
+          <div><div class="question-label"><strong>发生后，现在感觉如何？</strong><span>单选 · 可不填</span></div>${chipGroup('after', state)}</div>
+          <div><div class="question-label"><strong>这次是否符合原本计划？</strong><span>单选 · 可不填</span></div>${chipGroup('plan', state)}</div>
+        </div>`;
+    }
+
+    function variantA(state) {
+      return `
+        <div class="grab"></div>
+        <div class="sheet-head"><div><h2 class="sheet-title">记录</h2><p class="sheet-sub">原有信息保持不变，复盘在底部按需展开</p></div><span class="soft-pill">方案 A</span></div>
+        <div class="existing-block">
+          <div class="compact-row"><span class="label">时间</span><span class="value">8月18日 10:28</span></div>
+          <div class="compact-row"><span class="label">时长</span><span class="value">15 分钟</span></div>
+          <div class="compact-row"><span class="label">情绪</span><span class="tiny-chips"><span class="tiny-chip on">平静</span><span class="tiny-chip">＋ 添加</span></span></div>
+          <div class="compact-row"><span class="label">诱因</span><span class="tiny-chips"><span class="tiny-chip on">无聊</span><span class="tiny-chip">＋ 添加</span></span></div>
+          <div class="compact-row"><span class="label">备注</span><span class="value">未填写</span></div>
+        </div>
+        <div class="divider"></div>
+        <button class="recap-toggle" data-action="toggle-recap" aria-expanded="${state.recapOpen}">
+          <span><strong>快速复盘 <small style="color:var(--ink-3);font-size:11px">可选</small></strong><span>留空也能直接保存 · 约 20 秒</span></span><span class="chevron">⌄</span>
+        </button>
+        ${state.recapOpen ? allQuestions(state) : ''}
+        <div class="actions"><button class="primary" data-action="save">保存记录</button></div>`;
+    }
+
+    function variantB(state) {
+      return `
+        <div class="grab"></div>
+        <div class="step-rail"><span class="step-line on"></span><span class="step-line on"></span><span class="step-line on"></span><span class="step-count">3 / 3</span></div>
+        <div class="sheet-head"><div><h2 class="sheet-title">快速复盘</h2><p class="sheet-sub">再花一点时间观察当下。没有正确答案，也可以直接跳过。</p></div><span class="soft-pill">约 20 秒</span></div>
+        <div class="notice"><span class="notice-dot"></span><span>这些选择只用于你的本地统计与模式观察。</span></div>
+        ${allQuestions(state)}
+        <div class="actions"><button class="secondary" data-action="skip">跳过</button><button class="primary" data-action="save">完成并保存</button></div>`;
+    }
+
+    function variantC(state) {
+      const order = ['before', 'after', 'plan'];
+      const questionText = {
+        before: '发生前，你更接近哪种状态？',
+        after: '记录之后，现在感觉如何？',
+        plan: '这次是否符合原本计划？',
+      };
+      const group = order[state.question];
+      return `
+        <div class="grab"></div>
+        <div class="sheet-head center"><div class="saved-mark">✓</div><h2 class="sheet-title">记录已保存</h2><p class="sheet-sub">复盘完全可选，关闭也不会影响刚刚的记录</p></div>
+        <div class="prompt-card">
+          <div class="prompt-top"><strong>快速复盘</strong><span>${state.question + 1} / 3</span></div>
+          <p class="prompt-question">${questionText[group]}</p>
+          ${chipGroup(group, state, true)}
+          <div class="progress-dots">${order.map((_, index) => `<i class="${index === state.question ? 'on' : ''}"></i>`).join('')}</div>
+        </div>
+        <div class="actions">${state.question > 0 ? '<button class="secondary" data-action="prev-question">上一步</button>' : '<button class="secondary" data-action="skip">稍后再说</button>'}<button class="primary" data-action="next-question">${state.question === 2 ? '完成复盘' : '下一题'}</button></div>`;
+    }
+
+    function render() {
+      const variant = currentVariant();
+      const state = states[variant.key];
+      const sheet = document.getElementById('sheet');
+      sheet.className = `sheet ${variant.key === 'C' ? 'variant-c' : ''}`;
+      sheet.innerHTML = variant.key === 'A' ? variantA(state) : variant.key === 'B' ? variantB(state) : variantC(state);
+      document.getElementById('variantName').textContent = `${variant.key} — ${variant.name}`;
+      document.getElementById('variantState').textContent = `前:${state.before || '—'} · 后:${state.after || '—'} · 计划:${state.plan || '—'}`;
+    }
+
+    function cycle(direction) {
+      const current = currentVariant();
+      const index = variants.findIndex((item) => item.key === current.key);
+      const next = variants[(index + direction + variants.length) % variants.length];
+      setVariant(next.key);
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove('show'), 1500);
+    }
+
+    document.addEventListener('click', (event) => {
+      const variant = currentVariant();
+      const state = states[variant.key];
+      const chip = event.target.closest('[data-group]');
+      if (chip) {
+        state[chip.dataset.group] = state[chip.dataset.group] === chip.dataset.value ? null : chip.dataset.value;
+        render();
+        return;
+      }
+      const action = event.target.closest('[data-action]')?.dataset.action;
+      if (!action) return;
+      if (action === 'toggle-recap') state.recapOpen = !state.recapOpen;
+      if (action === 'skip') showToast(variant.key === 'C' ? '记录已保留，复盘已跳过' : '已跳过复盘并保存');
+      if (action === 'save') showToast('记录与复盘已保存');
+      if (action === 'prev-question') state.question = Math.max(0, state.question - 1);
+      if (action === 'next-question') {
+        if (state.question < 2) state.question += 1;
+        else showToast('复盘完成 ✓');
+      }
+      render();
+    });
+
+    document.getElementById('prevVariant').addEventListener('click', () => cycle(-1));
+    document.getElementById('nextVariant').addEventListener('click', () => cycle(1));
+    window.addEventListener('keydown', (event) => {
+      const tag = document.activeElement?.tagName;
+      if (['INPUT', 'TEXTAREA'].includes(tag) || document.activeElement?.isContentEditable) return;
+      if (event.key === 'ArrowLeft') cycle(-1);
+      if (event.key === 'ArrowRight') cycle(1);
+    });
+    window.addEventListener('popstate', render);
+    render();
+  </script>
+</body>
+</html>
+

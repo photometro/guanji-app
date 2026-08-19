@@ -66,7 +66,7 @@ function renderCalDayDetail() {
       <div class="recent-item">
         <div class="recent-main">
           <p class="recent-time">${r.time}</p>
-          <p class="recent-tags">${[...r.moods, ...r.triggers].join(' · ')}${r.duration ? ` · <b class="dur">${r.duration} 分钟</b>` : ''}${r.media ? ' · 看片' : ''}</p>
+          <p class="recent-tags">${displayRecordTags(r).join(' · ')}${r.duration ? ` · <b class="dur">${r.duration} 分钟</b>` : ''}</p>
         </div>
         <div class="recent-actions">
           <button class="recent-edit" data-id="${r.id}" title="编辑这条记录" aria-label="编辑">

@@ -103,22 +103,21 @@ function openEditRecord(id) {
   openSheet('edit', dateWithOffset(rec.offset));
   $('pickTime').value = rec.time;
 
-  // 预填情绪/诱因（自定义项也在 chips 容器中，按文本匹配激活，支持多选）
-  const matchChip = (box, text) =>
-    [...box.querySelectorAll('.chip:not(.chip-add)')].find((c) => c.textContent === text);
-  rec.moods.forEach((m) => { const c = matchChip($('moodChips'), m); if (c) c.classList.add('active'); });
-  rec.triggers.forEach((t) => { const c = matchChip($('triggerChips'), t); if (c) c.classList.add('active'); });
+  // #132/#137/#138：旧记录与多选记录统一回填为 observation key 数组；原字段仍保留。
+  renderObservationChips(recordObservationValues(rec), $('observationChips'));
   if (rec.duration) {
     // 滑块范围 max=60，超出时顶格显示（时长以 durLabel 为准，避免 clamp 丢数据）
     $('durSlider').value = Math.min(rec.duration, 60);
     $('durLabel').textContent = `${rec.duration} 分钟`;
   }
-  $('mediaSwitch').classList.toggle('on', !!rec.media);
   $('noteInput').value = rec.note || '';
   updateTimeDisplay();
 
   // #46：编辑直达详情（单页编辑）——stepTime 保留可见（时间 seg 可调），详情直接展开，无需「下一步」
   $('stepDetails').classList.remove('hidden');
+  $('recordSheet').classList.add('details-active');
+  $('sheetContentScroll').scrollTop = 0;
+  requestAnimationFrame(updateDetailsScrollState);
   $('nextBtn').classList.add('hidden');
   $('prevBtn').classList.add('hidden');
   $('saveBtn').classList.remove('hidden');
@@ -130,11 +129,11 @@ function openSheet(mode, presetDate) {
   // #48：面板打开时清除触发按钮焦点（触摸聚焦按钮，拖拽退出路径不转移焦点会残留高亮）
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   resetSheetStyle($('recordSheet'));   // #29：清除退场/拖拽残留，sheetUp 重播
-  $('moodChips').querySelectorAll('.chip').forEach((c) => c.classList.remove('active'));
-  $('triggerChips').querySelectorAll('.chip').forEach((c) => c.classList.remove('active'));
+  $('recordSheet').classList.remove('details-active');
+  renderObservationChips([], $('observationChips'));
+  $('sheetContentScroll').scrollTop = 0;
   $('durSlider').value = 0;
   $('durLabel').textContent = '未记录';
-  $('mediaSwitch').classList.remove('on');
   $('noteInput').value = '';
 
   const now = new Date();
@@ -247,6 +246,7 @@ function transitionSheetHeight(from) {
     sheet.style.transition = '';
     sheet.style.overflow = '';
     sheet.removeEventListener('transitionend', onEnd);
+    requestAnimationFrame(updateDetailsScrollState);
   };
   const onEnd = (e) => { if (e.target === sheet && e.propertyName === 'height') cleanup(); };
   sheet.addEventListener('transitionend', onEnd);
@@ -258,6 +258,9 @@ function goToDetails() {
   const from = $('recordSheet').getBoundingClientRect().height;   // #66：切换前高度（过渡起点）
   $('stepTime').classList.add('hidden');
   $('stepDetails').classList.remove('hidden');
+  $('recordSheet').classList.add('details-active');
+  $('sheetContentScroll').scrollTop = 0;
+  requestAnimationFrame(updateDetailsScrollState);
   $('nextBtn').classList.add('hidden');
   $('prevBtn').classList.remove('hidden');
   $('saveBtn').classList.remove('hidden');
@@ -268,6 +271,7 @@ function goToTime() {
   const from = $('recordSheet').getBoundingClientRect().height;   // #66：切换前高度（过渡起点）
   $('stepDetails').classList.add('hidden');
   $('stepTime').classList.remove('hidden');
+  $('recordSheet').classList.remove('details-active');
   $('saveBtn').classList.add('hidden');
   $('prevBtn').classList.add('hidden');
   $('nextBtn').classList.remove('hidden');
@@ -287,7 +291,9 @@ $('nextBtn').addEventListener('click', () => {
 $('prevBtn').addEventListener('click', goToTime);
 $('saveBtn').addEventListener('click', saveRecord);
 
-// 选项 chips（#24：支持自定义添加，chips 尾部有「+ 添加」）
+// #132/#137/#138：统一“发生前状况”多选 chips（支持自定义添加，尾部有「+ 添加」）。
+const CUSTOM_OBSERVATIONS_KEY = 'guanji_custom_observations';
+// 旧自定义列表保留用于兼容旧记录的显示映射，不再作为新记录的两个独立入口。
 const CUSTOM_MOODS_KEY = 'guanji_custom_moods';
 const CUSTOM_TRIGGERS_KEY = 'guanji_custom_triggers';
 
@@ -298,20 +304,20 @@ function saveCustomList(key, list) {
   localStorage.setItem(key, JSON.stringify(list));
 }
 
-function makeChip(text) {
+function makeChip(text, displayText = text, onClick) {
   const b = document.createElement('button');
   b.className = 'chip';
-  b.textContent = text;
+  b.textContent = displayText;
   b.dataset.text = text;   // #47：× 子元素会混入 textContent，用 dataset 存纯净文本
-  b.addEventListener('click', () => b.classList.toggle('active'));
+  b.addEventListener('click', () => onClick ? onClick(b) : b.classList.toggle('active'));
   return b;
 }
 
-function makeAddChip(group) {
+function makeAddChip(group, box) {
   const b = document.createElement('button');
   b.className = 'chip chip-add';
   b.textContent = '+ 添加';
-  b.addEventListener('click', () => openAddDialog(group));
+  b.addEventListener('click', () => openAddDialog(group, box));
   return b;
 }
 
@@ -331,10 +337,11 @@ function attachChipDelete(b) {
 /* 删除确认弹层（#47） */
 let delTarget = null;
 let delGroup = 'mood';
+let delBox = null;
 
 function openDeleteDialog(chip) {
-  // #62：面板与汇总两个 chips 容器（id 含 Mood/Trigger 区分）
-  delGroup = chip.closest('.chips').id.includes('Mood') ? 'mood' : 'trigger';
+  delGroup = 'observation';
+  delBox = chip.closest('.observation-picker');
   delTarget = chip.dataset.text || chip.textContent;   // #47：用 dataset 文本（排除 × 子元素）
   $('delDialogText').textContent = `「${delTarget}」将从选项列表中移除，已保存的记录不受影响。`;
   $('delBackdrop').classList.remove('hidden');
@@ -346,11 +353,17 @@ function closeDeleteDialog() {
 
 $('delCancel').addEventListener('click', closeDeleteDialog);
 $('delConfirm').addEventListener('click', () => {
-  const key = delGroup === 'mood' ? CUSTOM_MOODS_KEY : CUSTOM_TRIGGERS_KEY;
+  const key = CUSTOM_OBSERVATIONS_KEY;
   saveCustomList(key, loadCustomList(key).filter((t) => t !== delTarget));
   closeDeleteDialog();
-  if (delGroup === 'mood') { renderMoodChips(); refreshSummaryChips('mood'); }
-  else { renderTriggerChips(); refreshSummaryChips('trigger'); }
+  const deletedKey = `custom:${delTarget}`;
+  [$('observationChips'), $('summaryObservationChips')].forEach((box) => {
+    if (!box) return;
+    const selected = selectedObservationValues(box);
+    selected.delete(deletedKey);
+    renderObservationChips(selected, box);
+  });
+  delBox = null;
   toast('已删除：' + delTarget);
 });
 $('delBackdrop').addEventListener('click', (e) => { if (e.target === $('delBackdrop')) closeDeleteDialog(); });
@@ -359,10 +372,20 @@ function selectedChipTexts(box) {
   return new Set([...box.querySelectorAll('.chip.active')].map((chip) => chip.dataset.text || chip.textContent));
 }
 
+function selectedObservationValues(box) {
+  if (!box) return new Set();
+  return new Set([...box.querySelectorAll('.chip.active')]
+    .map((chip) => chip.dataset.observation || chip.dataset.text || chip.textContent)
+    .filter(Boolean));
+}
+
 function normaliseChipSelection(selectText) {
-  if (selectText instanceof Set) return selectText;
-  if (Array.isArray(selectText)) return new Set(selectText);
-  return new Set(selectText ? [selectText] : []);
+  const values = selectText instanceof Set ? [...selectText] : selectText;
+  return new Set(normalizeObservationValues(values));
+}
+
+function hasSelectedChip(selected, text) {
+  return selected.has(text) || [...selected].some((value) => displayTrigger(value) === displayTrigger(text));
 }
 
 function isTimerSummaryVisible() {
@@ -371,46 +394,111 @@ function isTimerSummaryVisible() {
   return !!(screen && summary && !screen.classList.contains('hidden') && !summary.classList.contains('hidden'));
 }
 
-/* #127：汇总页使用独立 chips 容器；重绘时保留原多选，并可选中新加项。 */
+/* #127/#132：汇总页使用独立容器，但和普通详情页共用同一套观察标签。 */
 function refreshSummaryChips(group, addedText) {
+  if (group !== 'observation') return;
   if (!isTimerSummaryVisible()) return;
-  const box = group === 'mood' ? $('summaryMoodChips') : $('summaryTriggerChips');
-  const selected = selectedChipTexts(box);
-  if (addedText) selected.add(addedText);
-  if (group === 'mood') renderMoodChips(selected, box);
-  else renderTriggerChips(selected, box);
+  const box = $('summaryObservationChips');
+  const selected = selectedObservationValues(box);
+  if (addedText) selected.add(observationKeyFromValue(addedText));
+  renderObservationChips(selected, box);
 }
 
-function renderMoodChips(selectText, box = $('moodChips')) {
+function observationOptionsForSelection(selected) {
+  const options = OBSERVATION_OPTIONS.map((o) => ({ ...o, custom: false }));
+  loadCustomList(CUSTOM_OBSERVATIONS_KEY).forEach((label) => {
+    if (!options.some((o) => o.label === label)) {
+      options.push({ key: `custom:${label}`, label, custom: true, deletable: true, section: 'more', order: 100 });
+    }
+  });
+  // 旧记录可能存在不在新默认列表中的标签；只在该标签被回填时临时展示，避免数据语义丢失。
+  [...selected].forEach((value) => {
+    const key = observationKeyFromValue(value);
+    const label = observationLabelFromValue(value);
+    if (key && label && !options.some((o) => o.key === key || o.label === label)) {
+      options.push({ key, label, custom: true, legacy: true, section: 'more', order: 110 });
+    }
+  });
+  return options.sort((a, b) => (a.order || 999) - (b.order || 999));
+}
+
+function makeObservationChip(option, box) {
+  const b = makeChip(option.label, option.label, (chip) => {
+    const selected = selectedObservationValues(box);
+    const wasActive = selected.has(option.key);
+    if (option.key === 'none' || option.key === 'unsure') {
+      selected.clear();
+      if (!wasActive) selected.add(option.key);
+    } else {
+      selected.delete('none');
+      selected.delete('unsure');
+      if (wasActive) selected.delete(option.key);
+      else selected.add(option.key);
+    }
+    renderObservationChips(selected, box);
+  });
+  b.dataset.observation = option.key;
+  if (option.custom) b.dataset.custom = '1';
+  if (option.deletable) attachChipDelete(b);
+  return b;
+}
+
+function renderObservationChips(selectText, box = $('observationChips')) {
+  if (!box) return;
   const selected = normaliseChipSelection(selectText);
+  const scroller = box.closest('.sheet-content-scroll, .summary-scroll');
+  const previousScrollTop = scroller ? scroller.scrollTop : 0;
   box.innerHTML = '';
-  [...MOODS, ...loadCustomList(CUSTOM_MOODS_KEY)].forEach((t) => {
-    const b = makeChip(t);
-    if (!MOODS.includes(t)) { b.dataset.custom = '1'; attachChipDelete(b); }   // #47：自定义项可删除
-    if (selected.has(t)) b.classList.add('active');
+  box.classList.add('observation-picker');
+
+  // #143：默认项、自定义项与添加入口全部直接展示，顺序仍由统一选项源决定。
+  observationOptionsForSelection(selected).forEach((option) => {
+    const b = makeObservationChip(option, box);
+    if (hasSelectedChip(selected, option.key) || hasSelectedChip(selected, option.label)) b.classList.add('active');
     box.appendChild(b);
   });
-  box.appendChild(makeAddChip('mood'));
-}
-
-function renderTriggerChips(selectText, box = $('triggerChips')) {
-  const selected = normaliseChipSelection(selectText);
-  box.innerHTML = '';
-  [...TRIGGERS, ...loadCustomList(CUSTOM_TRIGGERS_KEY)].forEach((t) => {
-    const b = makeChip(t);
-    if (!TRIGGERS.includes(t)) { b.dataset.custom = '1'; attachChipDelete(b); }   // #47：自定义项可删除
-    if (selected.has(t)) b.classList.add('active');
-    box.appendChild(b);
+  box.appendChild(makeAddChip('observation', box));
+  if (scroller) requestAnimationFrame(() => {
+    scroller.scrollTop = previousScrollTop;
+    if (box === $('observationChips')) updateDetailsScrollState();
   });
-  box.appendChild(makeAddChip('trigger'));
 }
 
-// 添加自定义项
-let addTarget = 'mood';
+/* #145：内容不足时不把详情滚动区强行撑满；内容超出时仅标记为可滚动。
+   CSS 负责实际的高度约束，这个状态用于在新增/删除标签、键盘和旋转后重新计算。 */
+function updateDetailsScrollState() {
+  const sheet = $('recordSheet');
+  const scroller = $('sheetContentScroll');
+  if (!sheet || !scroller) return;
+  const active = sheet.classList.contains('details-active');
+  const scrollable = active && scroller.scrollHeight > scroller.clientHeight + 1;
+  scroller.classList.toggle('is-scrollable', scrollable);
+  sheet.dataset.contentOverflow = scrollable ? 'true' : 'false';
+}
 
-function openAddDialog(group) {
-  addTarget = group;
-  $('addDialogTitle').textContent = group === 'mood' ? '添加情绪' : '添加诱因';
+window.addEventListener('resize', () => requestAnimationFrame(updateDetailsScrollState));
+
+/* #138：新代码读取完整数组；保留旧函数返回首项，兼容旧验证脚本和外部调用。 */
+function readObservationSelections(box) {
+  return [...selectedObservationValues(box)];
+}
+
+function readObservationSelection(box) {
+  return readObservationSelections(box)[0] || '';
+}
+
+// 兼容旧验证脚本的函数名：生产界面只渲染统一观察标签。
+function renderMoodChips(selectText, box) { renderObservationChips(selectText, box || $('observationChips')); }
+function renderTriggerChips(selectText, box) { renderObservationChips(selectText, box || $('observationChips')); }
+
+// 添加自定义观察标签
+let addTarget = 'observation';
+let addBox = null;
+
+function openAddDialog(group = 'observation', box = $('observationChips')) {
+  addTarget = 'observation';
+  addBox = box;
+  $('addDialogTitle').textContent = '添加发生前状况';
   $('addInput').value = '';
   $('addCount').textContent = '';      // #47：清空字数提示
   $('addPreview').textContent = '';    // #47：清空「将添加」预览（残留修复）
@@ -456,14 +544,19 @@ function confirmAddCustom() {
   const text = $('addInput').value.trim();
   if (!text) { toast('请输入名称'); return; }
   if (text.length > 6) { toast('名称最多 6 个字'); return; }
-  const key = addTarget === 'mood' ? CUSTOM_MOODS_KEY : CUSTOM_TRIGGERS_KEY;
+  const key = CUSTOM_OBSERVATIONS_KEY;
   const list = loadCustomList(key);
   if (list.includes(text)) { toast('已存在这个选项'); closeAddDialog(); return; }
   list.push(text);
   saveCustomList(key, list);
   closeAddDialog();
-  if (addTarget === 'mood') renderMoodChips(text); else renderTriggerChips(text);
-  refreshSummaryChips(addTarget, text);
+  const targetBox = addBox || $('observationChips');
+  const selected = selectedObservationValues(targetBox);
+  selected.delete('none');
+  selected.delete('unsure');
+  selected.add(`custom:${text}`);
+  renderObservationChips(selected, targetBox);
+  addBox = null;
   toast('已添加：' + text);
 }
 
@@ -477,11 +570,6 @@ $('addConfirm').addEventListener('click', confirmAddCustom);
 $('durSlider').addEventListener('input', () => {
   const v = parseInt($('durSlider').value, 10);
   $('durLabel').textContent = v ? v + ' 分钟' : '未记录';
-});
-
-// 看片开关
-$('mediaSwitch').addEventListener('click', () => {
-  $('mediaSwitch').classList.toggle('on');
 });
 
 // AI 分析生成
@@ -540,6 +628,7 @@ function setProviderSeg(provider) {
   $('aiBaseUrlInput').value = p.baseUrl || '';
   $('aiModelInput').value = p.model || '';
   $('apiKeyInput').value = p.apiKey || '';
+  if (typeof renderAIDailyTipSetting === 'function') renderAIDailyTipSetting();
 })();
 
 // 提供商切换 → 回显该提供商配置（#43/#124：seg 滑块）
@@ -557,6 +646,7 @@ $('apiKeySave').addEventListener('click', () => {
   if (!cfg.baseUrl || !cfg.model) { toast('请填写 Base URL 和模型'); return; }
   aiConfig = { ...cfg };
   saveAIConfig(aiConfig);
+  renderAIDailyTipSetting();
   toast('AI 配置已保存（仅存本机）');
 });
 
@@ -596,6 +686,24 @@ $('aiTestBtn').addEventListener('click', async () => {
   } finally {
     clearTimeout(timer);
   }
+});
+
+// #146：AI 每日话语改为显式可选，基础本地话语始终可用
+$('aiDailyTipSwitch').addEventListener('click', () => {
+  if (!aiDailyTipEnabled() && !apiKey) {
+    toast('请先填写并保存 API Key');
+    return;
+  }
+  setAIDailyTipEnabled(!aiDailyTipEnabled());
+  toast(aiDailyTipEnabled() ? 'AI 每日话语已开启' : 'AI 每日话语已关闭');
+});
+$('aiDailyTipAccept').addEventListener('click', () => {
+  setAIDailyTipEnabled(true);
+  toast('已继续使用 AI 每日话语');
+});
+$('aiDailyTipDecline').addEventListener('click', () => {
+  setAIDailyTipEnabled(false);
+  toast('已关闭 AI 每日话语，首页将使用本地话语');
 });
 
 // 我的页：每日记录提醒开关（#13）
@@ -655,7 +763,7 @@ $('exportBtn').addEventListener('click', async () => {
     }
     return;
   }
-  const rows = [['日期', '时间', '时长(分)', '情绪', '诱因', '看片', '备注']];
+  const rows = [['日期', '时间', '时长(分)', '发生前情况', '发生前状况(多选)', '情绪', '诱因', '成人内容影响', '备注']];
   [...records]
     .sort((a, b) => (a.offset - b.offset) || a.time.localeCompare(b.time))
     .forEach((r) => {
@@ -664,8 +772,10 @@ $('exportBtn').addEventListener('click', async () => {
         `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`,
         r.time,
         r.duration || '',
-        r.moods.join('|'),
-        r.triggers.join('|'),
+        recordObservationLabels(r).join('、'),
+        serializeObservationCsv(recordObservationValues(r)),
+        (r.moods || []).join('|'),
+        (r.triggers || []).join('|'),
         r.media ? '是' : '否',
         r.note || '',
       ]);
@@ -946,3 +1056,4 @@ window.__guanjiTimerCancel = () => {
   }, 400);
   toast('上次的计时仍在继续');
 })();
+

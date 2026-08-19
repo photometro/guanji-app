@@ -242,7 +242,29 @@ async function exportEncryptedBackupFile() {
 
 let secDialogAction = null;   // 'enable' | 'change' | 'disable'
 
-/* #111：CSV 解析（观己导出格式：日期,时间,时长(分),情绪,诱因,看片,备注）→ records */
+/* #138：CSV 多选值使用逐项 encodeURIComponent 后以 | 分隔；同时兼容旧单值/旧情绪诱因列。 */
+function serializeObservationCsv(values) {
+  return normalizeObservationValues(values).map((value) => encodeURIComponent(value)).join('|');
+}
+
+function parseObservationCsv(raw, encoded = false) {
+  const text = String(raw || '').trim();
+  if (!text) return [];
+  // 允许未来/外部工具导出的 JSON 数组，便于加密备份之外的数据迁移。
+  if (text[0] === '[') {
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) return normalizeObservationValues(parsed);
+    } catch { /* 继续按分隔值解析 */ }
+  }
+  const parts = text.split(encoded ? '|' : /[、|]/).map((part) => {
+    if (!encoded) return part.trim();
+    try { return decodeURIComponent(part); } catch { return part; }
+  }).filter(Boolean);
+  return normalizeObservationValues(parts);
+}
+
+/* CSV 解析：兼容统一“发生前情况”列、v3.18 的“成人内容影响”列和旧版“看片”列。 */
 function csvToRecords(text) {
   const lines = text.split(/\r?\n/).filter((l) => l.trim() !== '');
   if (lines.length < 2) throw new Error('CSV 没有可导入的数据行');
@@ -255,14 +277,20 @@ function csvToRecords(text) {
     header.forEach((h, idx) => { row[h.trim()] = (cells[idx] || '').trim(); });
     const d = String(row['日期'] || '').split('-').map((n) => String(parseInt(n, 10)).padStart(2, '0'));
     if (d.length !== 3 || d.some((n) => !/^\d{2,4}$/.test(n)) || parseInt(d[0], 10) < 1900) continue;   // 跳过无法识别的行（年份 4 位）
+    const observationRaw = row['发生前状况(多选)'] || row['发生前状况'] || '';
+    const observations = observationRaw
+      ? parseObservationCsv(observationRaw, true)
+      : parseObservationCsv(row['发生前情况'] || row['观察前情况'] || row['观察标签'] || '', false);
     const rec = {
       id: newRecordId('csv'),
       dateKey: d.join('-'),
       time: row['时间'] || '',
       duration: row['时长(分)'] ? parseInt(row['时长(分)'], 10) : null,
+      observations,
+      observation: observations[0] || null,
       moods: row['情绪'] ? String(row['情绪']).split('|').filter(Boolean) : [],
       triggers: row['诱因'] ? String(row['诱因']).split('|').filter(Boolean) : [],
-      media: row['看片'] === '是',
+      media: row['成人内容影响'] === '是' || row['看片'] === '是' || observations.some(isAdultContentObservation),
       note: row['备注'] || '',
     };
     out.push(rec);
@@ -592,3 +620,4 @@ function initSecureUI() {
 
   // 加密模式下 CSV 明文导出禁用（#93 定稿：离开设备的都是密文——检查在 ui-sheet.js exportBtn 内）
 }
+

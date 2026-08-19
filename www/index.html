@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>观己 · UI 原型</title>
+<title>观己 · 个人行为与习惯觉察</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23007AFF'/%3E%3Cpath d='M32 18c-6 0-10 4.2-10 9.8 0 6.5 7.5 11.8 9.4 13.1a1.2 1.2 0 0 0 1.2 0c1.9-1.3 9.4-6.6 9.4-13.1C42 22.2 38 18 32 18Zm0 13.3a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z' fill='%23FFFFFF'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/theme.css?v=107">
-<link rel="stylesheet" href="css/base.css?v=107">
-<link rel="stylesheet" href="css/components.css?v=107">
-<link rel="stylesheet" href="css/tabbar.css?v=107">
-<link rel="stylesheet" href="css/sheets.css?v=107">
-<link rel="stylesheet" href="css/screens.css?v=107">
-<link rel="stylesheet" href="css/responsive.css?v=107">
-<link rel="stylesheet" href="css/glass.css?v=107">
+<link rel="stylesheet" href="css/theme.css?v=124">
+<link rel="stylesheet" href="css/base.css?v=124">
+<link rel="stylesheet" href="css/components.css?v=124">
+<link rel="stylesheet" href="css/tabbar.css?v=124">
+<link rel="stylesheet" href="css/sheets.css?v=124">
+<link rel="stylesheet" href="css/screens.css?v=124">
+<link rel="stylesheet" href="css/responsive.css?v=124">
+<link rel="stylesheet" href="css/glass.css?v=124">
 <script src="vendor/anime.min.js"></script>   <!-- #72：anime v3.2（弹簧动画），缺失时 app.js 自动回退 CSS -->
 <script>
   /* 防闪烁：在渲染前根据 localStorage + 系统设置确定主题 + 玻璃效果开关（#72，默认 on） */
@@ -130,21 +130,38 @@
       <p class="disclaimer" style="text-align:center">数据默认仅存本地；WebDAV 备份由你自选——上传的是密文</p>
     </main>
 
-    <!-- 屏幕：AI 分析 -->
+    <!-- 屏幕：洞察（现有 AI 分析页升级；#133 B/C） -->
     <main class="screen hidden" id="screen-analysis">
-      <header class="screen-header">
+      <header class="screen-header insight-screen-header">
         <div>
-          <p class="eyebrow">AI 洞察</p>
-          <h1 class="screen-title">回顾与建议</h1>
-          <p class="header-sub">基于你的记录，生成温和的观察</p>
+          <p class="eyebrow">洞察</p>
+          <h1 class="screen-title">个人洞察</h1>
+          <p class="header-sub">按主题看看近 7 天的节奏</p>
         </div>
+        <span class="insight-window-badge hidden" id="insightWindowBadge" data-insight-window aria-hidden="true">数据窗口：近 7 天</span>
       </header>
 
-      <div class="card empty-card" id="analysisEmpty">
-        <p class="empty-text">让 AI 看看你这段时间的节奏，<br>找出藏在数据里的模式。</p>
-        <button class="btn-primary" id="genBtn">
+      <!-- #147：六个主题均使用旧版 AI 开启卡片视觉；由 ai.js 按状态填充 -->
+      <section class="insight-cards" id="insightCards" aria-live="polite"></section>
+
+      <!-- #150：整页唯一的 AI 配置/生成入口；自然跟随六张数据卡片，不属于第七张数据卡。 -->
+      <section class="insight-action-bar" id="insightActionBar" aria-live="polite">
+        <div class="insight-action-main">
+          <div class="insight-action-copy">
+            <span class="insight-action-eyebrow">AI 增强观察</span>
+            <p class="insight-action-title">基于近 7 天聚合数据，在每张卡片中补充一段可选的温和观察。</p>
+          </div>
+          <div class="insight-action-content" id="insightActionContent"></div>
+        </div>
+        <p class="disclaimer insight-action-disclaimer hidden" id="insightDisclaimer" aria-live="polite" aria-hidden="true"></p>
+      </section>
+
+      <!-- 保留隐藏兼容节点：记录清除/演示数据和旧入口仍会调用它；用户入口在页面级 AI 操作区。 -->
+      <div class="card empty-card hidden" id="analysisEmpty" aria-hidden="true">
+        <p class="empty-text">基础洞察无需 AI 即可查看。</p>
+        <button class="btn-primary" id="genBtn" type="button">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5v13M1.5 8h13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          生成近 7 天分析
+          开始 AI 增强观察
         </button>
       </div>
 
@@ -156,7 +173,7 @@
         <p class="ask-title">想再聊聊什么？</p>
         <div class="chips" id="askChips">
           <button class="chip" data-q="我的频率算高吗？">我的频率算高吗？</button>
-          <button class="chip" data-q="怎么减少深夜看片？">怎么减少深夜看片？</button>
+          <button class="chip" data-q="深夜容易受成人内容影响，怎么办？">深夜容易受成人内容影响，怎么办？</button>
           <button class="chip" data-q="压力大时怎么办？">压力大时怎么办？</button>
         </div>
         <div id="askAnswer" class="ask-answer hidden"></div>
@@ -242,6 +259,8 @@
 
       <div class="card settings-card">
         <p class="card-title settings-card-title">AI 设置</p>
+        <p class="ai-optional-title">AI 是可选增强功能</p>
+        <p class="disclaimer settings-description">不填写 API Key 也能查看本地洞察；填写后可获得模块内的个性化观察、温和建议和追问。仅发送脱敏后的聚合统计，费用由你使用的服务商决定。</p>
         <p class="field-label">提供商</p>
         <!-- #124：AI 提供商单选 chips → seg 滑块（方案 C） -->
         <div class="seg-row" id="providerSeg" style="margin-bottom:4px">
@@ -261,6 +280,14 @@
         </div>
         <button class="btn-primary" id="aiTestBtn" style="width:100%;margin-top:14px">测试连接</button>
         <p class="disclaimer settings-description" id="aiTestStatus">密钥与配置只保存在这台设备上。AI 分析时仅上传聚合统计特征，不会上传单条记录。</p>
+        <label class="switch-row settings-control-gap" id="aiDailyTipRow">
+          <span>AI 每日话语<span class="row-sub">开启后，首页话语会优先使用 AI 生成的温和提醒</span></span>
+          <span class="switch" id="aiDailyTipSwitch"><span class="knob"></span></span>
+        </label>
+        <div class="ai-migration-prompt hidden" id="aiDailyTipMigration">
+          <p>旧版本曾使用 AI 每日话语。现在它已改为可选功能，要继续使用吗？</p>
+          <div class="ai-migration-actions"><button class="btn-ghost" id="aiDailyTipDecline">暂不启用</button><button class="btn-primary" id="aiDailyTipAccept">继续使用 AI</button></div>
+        </div>
       </div>
 
       <!-- #117：数据保护卡（数据管理重构：数据置 v3.10 顺序，三卡化） -->
@@ -331,7 +358,7 @@
           <svg width="26" height="26" viewBox="0 0 46 46"><path d="M23 12c-6 0-10 4.2-10 9.8 0 6.5 7.5 11.8 9.4 13.1a1.2 1.2 0 0 0 1.2 0c1.9-1.3 9.4-6.6 9.4-13.1C33 16.2 29 12 23 12Zm0 13.3a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" fill="#FFFFFF"/></svg>
         </div>
         <p class="about-name">观己</p>
-        <p class="about-ver">v3.17 · 数据默认仅存本地</p>
+        <p class="about-ver">v3.32 · 数据默认仅存本地</p>
         <!-- #69：隐私条目直接跟随品牌区（无分割线/无标题，苹果页脚风格） -->
         <ul class="privacy-list about-privacy">
           <li><span class="dot"></span>记录默认只保存在这台设备上；WebDAV 备份由你自选，上传的是密文（仅你的口令可解）</li>
@@ -352,7 +379,7 @@
       <button class="tab" data-screen="analysis">
         <span class="tab-pill">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M4 18.5V12M9.5 18.5V5.5M15 18.5V9M20 18.5H2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          分析
+          洞察
         </span>
       </button>
       <button class="tab" data-screen="me">
@@ -369,47 +396,41 @@
       <div class="sheet-grab" id="recordGrab"><div class="sheet-handle"></div></div>
       <p class="sheet-title">记录</p>
 
-      <div id="stepTime">
-        <p class="field-label">时间</p>
-        <div class="seg-row" id="timeSegRow">
-          <span class="seg-slide" id="timeSegSlide"></span>
-          <button class="seg active" id="nowSeg">就现在</button>
-          <button class="seg" id="customSeg">补记</button>
-        </div>
-        <p class="time-display" id="timeDisplay"></p>
-        <div class="picker-row hidden" id="pickerRow">
-          <input type="date" id="pickDate">
-          <input type="time" id="pickTime">
-        </div>
-        <!-- #51：「就现在」计时器态（计时记录模式） -->
-        <div id="timerBox" class="hidden">
-          <p class="timer-display" id="timerDisplay">00:00</p>
-          <p class="timer-hint">切到后台也没关系，通知栏会继续计时</p>
-        </div>
-        <!-- #51：计时模式 ⇄ 经典流程 切换入口 -->
-        <button class="mode-link hidden" id="modeLink"></button>
-      </div>
-
-      <div id="stepDetails" class="hidden">
-        <p class="field-label">时长</p>
-        <div class="slider-row">
-          <input type="range" id="durSlider" min="0" max="60" step="5" value="0">
-          <span class="dur-label" id="durLabel">未记录</span>
+      <div class="sheet-content-scroll" id="sheetContentScroll">
+        <div id="stepTime">
+          <p class="field-label">时间</p>
+          <div class="seg-row" id="timeSegRow">
+            <span class="seg-slide" id="timeSegSlide"></span>
+            <button class="seg active" id="nowSeg">就现在</button>
+            <button class="seg" id="customSeg">补记</button>
+          </div>
+          <p class="time-display" id="timeDisplay"></p>
+          <div class="picker-row hidden" id="pickerRow">
+            <input type="date" id="pickDate">
+            <input type="time" id="pickTime">
+          </div>
+          <!-- #51：「就现在」计时器态（计时记录模式） -->
+          <div id="timerBox" class="hidden">
+            <p class="timer-display" id="timerDisplay">00:00</p>
+            <p class="timer-hint">切到后台也没关系，通知栏会继续计时</p>
+          </div>
+          <!-- #51：计时模式 ⇄ 经典流程 切换入口 -->
+          <button class="mode-link hidden" id="modeLink"></button>
         </div>
 
-        <p class="field-label">情绪（可多选）</p>
-        <div class="chips" id="moodChips"></div>
+        <div id="stepDetails" class="hidden">
+          <p class="field-label">时长</p>
+          <div class="slider-row">
+            <input type="range" id="durSlider" min="0" max="60" step="5" value="0">
+            <span class="dur-label" id="durLabel">未记录</span>
+          </div>
 
-        <p class="field-label">诱因（可多选）</p>
-        <div class="chips" id="triggerChips"></div>
+          <p class="field-label">发生前状况</p>
+          <div class="chips" id="observationChips"></div>
 
-        <label class="switch-row">
-          <span>这次有伴随看片吗</span>
-          <span class="switch" id="mediaSwitch"><span class="knob"></span></span>
-        </label>
-
-        <p class="field-label">备注（可选）</p>
-        <textarea id="noteInput" rows="2" placeholder="想记点什么，就写点什么"></textarea>
+          <p class="field-label">备注（可选）</p>
+          <textarea id="noteInput" rows="2" placeholder="想记点什么，就写点什么"></textarea>
+        </div>
       </div>
 
       <div class="sheet-actions" id="sheetActions">
@@ -642,18 +663,16 @@
         </button>
         <button class="timer-quit-btn" id="timerQuitBtn">取消计时</button>
       </div>
-      <!-- #62/#63：汇总视图（回退 v5：蓝渐变白色体系 + 继续计时按钮；无看片开关） -->
+      <!-- #62/#63/#132/#138：汇总视图（统一“发生前状况”多选标签 + 继续计时按钮） -->
       <div class="timer-screen-inner hidden" id="timerSummaryView">
-        <p class="summary-title">本次计时</p>
-        <p class="summary-duration" id="summaryDuration"></p>
-        <p class="summary-meta" id="summaryMeta"></p>
-        <div class="summary-section">
-          <p class="summary-label">情绪</p>
-          <div class="chips" id="summaryMoodChips"></div>
-        </div>
-        <div class="summary-section">
-          <p class="summary-label">诱因</p>
-          <div class="chips" id="summaryTriggerChips"></div>
+        <div class="summary-scroll">
+          <p class="summary-title">本次计时</p>
+          <p class="summary-duration" id="summaryDuration"></p>
+          <p class="summary-meta" id="summaryMeta"></p>
+          <div class="summary-section">
+            <p class="summary-label">发生前状况</p>
+            <div class="chips" id="summaryObservationChips"></div>
+          </div>
         </div>
         <div class="summary-actions">
           <button class="timer-finish-btn" id="summarySaveBtn">
@@ -681,17 +700,18 @@
   </defs>
 </svg>
 
-<script src="js/secure.js?v=107"></script>
-<script src="js/storage.js?v=107"></script>
-<script src="js/records.js?v=107"></script>
-<script src="js/stats.js?v=107"></script>
-<script src="js/ai.js?v=107"></script>
-<script src="js/ui-home.js?v=107"></script>
-<script src="js/ui-timer.js?v=107"></script>
-<script src="js/ui-sheet.js?v=107"></script>
-<script src="js/ui-calendar.js?v=107"></script>
-<script src="js/liquid-glass.js?v=107"></script>
-<script src="js/webdav.js?v=107"></script>
-<script src="js/app.js?v=107"></script>
+<script src="js/secure.js?v=124"></script>
+<script src="js/storage.js?v=124"></script>
+<script src="js/records.js?v=124"></script>
+<script src="js/stats.js?v=124"></script>
+<script src="js/ai.js?v=124"></script>
+<script src="js/ui-home.js?v=124"></script>
+<script src="js/ui-timer.js?v=124"></script>
+<script src="js/ui-sheet.js?v=124"></script>
+<script src="js/ui-calendar.js?v=124"></script>
+<script src="js/liquid-glass.js?v=124"></script>
+<script src="js/webdav.js?v=124"></script>
+<script src="js/app.js?v=124"></script>
 </body>
 </html>
+

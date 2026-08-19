@@ -48,6 +48,42 @@ body.keyboard-up .backdrop.dialog-layer {
 .sheet::-webkit-scrollbar { display: none; }
 .sheet.hidden { display: none; }
 
+/* #133A/#145：详情页采用“内容不足时自适应 + 超出时内容滚动 + 底部操作固定”。
+   取消全量平铺后的固定 86% 高度，避免短表单（尤其补记）在备注下方留下大块空白。 */
+.sheet.details-active {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  min-height: 0;
+  max-height: calc(100vh - 24px - var(--safe-top) - var(--safe-bottom));
+  max-height: calc(100dvh - 24px - var(--safe-top) - var(--safe-bottom));
+  overflow: hidden;
+}
+.sheet-content-scroll {
+  min-height: 0;
+  overflow-y: visible;
+  scrollbar-width: none;
+}
+.sheet-content-scroll::-webkit-scrollbar { display: none; }
+.sheet.details-active .sheet-content-scroll {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: calc(100vh - 190px - var(--safe-top) - var(--safe-bottom));
+  max-height: calc(100dvh - 190px - var(--safe-top) - var(--safe-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 2px 4px;
+}
+.sheet.details-active .sheet-content-scroll:not(.is-scrollable) {
+  overflow-y: hidden;
+}
+.sheet.details-active .sheet-actions {
+  flex: 0 0 auto;
+  margin-top: 12px;
+  padding-top: 8px;
+}
+
 /* 渐变边框环（#72 玻璃态专用，由 html.liquid-glass 覆盖层启用）——见文件尾部 */
 
 @keyframes sheetUp {
@@ -189,6 +225,18 @@ body.keyboard-up .backdrop.dialog-layer {
 }
 /* #126：双视图切换的隐藏态不参与触摸命中，防止状态过渡或 OEM WebView 合成延迟留下透明点击层。 */
 .timer-screen-inner.hidden { pointer-events: none; }
+#timerSummaryView { min-height: 0; }
+.summary-scroll {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
 .timer-live-badge {
   display: inline-flex;
   align-items: center;
@@ -296,7 +344,14 @@ body.keyboard-up .backdrop.dialog-layer {
   color: rgba(255, 255, 255, 0.75);
   box-shadow: none;
 }
-.summary-actions { width: 100%; max-width: 320px; margin-top: 32px; }   /* #65：vh 固定化，见 summary-title */
+.summary-actions {
+  width: 100%;
+  max-width: 320px;
+  flex: 0 0 auto;
+  margin-top: 16px;
+  padding-top: 12px;
+  padding-bottom: clamp(16px, 5vh, 44px);
+}   /* #139：底部动作区固定，上方汇总内容独立滚动 */
 .summary-sub { display: flex; justify-content: center; gap: 26px; margin-top: 16px; }
 .summary-resume, .summary-abandon {
   padding: 8px 4px;
@@ -364,6 +419,13 @@ body.keyboard-up .backdrop.dialog-layer {
 
 /* 标签组 */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* #143：发生前状况全部直接展示；内容超出时由详情/汇总滚动区承接。 */
+.observation-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .chip {
   position: relative;   /* #47：× 删除按钮定位基准 */
   border: 1px solid var(--line);
@@ -550,3 +612,4 @@ textarea:focus { outline: 2px solid var(--accent-deep); outline-offset: 0; borde
 }
 
 .hidden { display: none !important; }
+

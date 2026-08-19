@@ -41,7 +41,10 @@ document.querySelectorAll('.tab').forEach((tab) => {
     ['home', 'analysis', 'me'].forEach((name) => {
       $('screen-' + name).classList.toggle('hidden', name !== tab.dataset.screen);
     });
-    if (tab.dataset.screen === 'analysis') maybeAutoGenerate();
+    if (tab.dataset.screen === 'analysis') {
+      // #147：进入洞察页时恢复旧版自动检查；满足 Key + 近 7 天 ≥3 条且报告缺失/过期才请求。
+      maybeAutoGenerate();
+    }
     if (tab.dataset.screen === 'me' && typeof refreshMeSegs === 'function') refreshMeSegs();   // #121/#124：我的页全部 seg 滑块重定位（页面从隐藏变为可见）
     moveTabSlide(tab, $('tabSlide'));
     liquidTabPulse();
@@ -50,6 +53,9 @@ document.querySelectorAll('.tab').forEach((tab) => {
 
 // 初始滑块定位（首页）
 moveTabSlide(document.querySelector('.tab.active'), $('tabSlide'));
+
+// #146：个人洞察固定查看近 7 天；首页的 30 天趋势保持不变。
+renderInsightLocal();
 
 // 记录面板
 $('recordBtn').addEventListener('click', () => openSheet('now'));
@@ -168,8 +174,7 @@ window.__guanjiOpenRecord = () => openSheet('now');
 
 initSegSlide('chartSeg', 'chartSegSlide');   // #21：图表卡滑块初始定位
 initSegSlide('chartViewSeg', 'chartViewSlide');   // #88：图表视图滑块初始定位
-renderMoodChips();                           // #24：渲染情绪 chips（含自定义与添加入口）
-renderTriggerChips();                        // #24：渲染诱因 chips
+renderObservationChips();                    // #132/#137/#138：统一发生前状况多选 chips（含自定义与添加入口）
 
 // #29：小横杠拖拽关闭（记录面板 + 日历）
 initSheetDrag('recordGrab', $('recordSheet'), $('sheetBackdrop'), closeSheet);
@@ -211,5 +216,4 @@ if (window.Capacitor && Capacitor.Plugins.App) {
 initSecureUI();   // #93：数据加密卡 UI（开启/修改口令/关闭/密文导出导入）
 initWebDAVUI();   // #115：WebDAV 备份卡 UI（配置/备份/恢复/管理/切后台自动备份）
 })();
-
 

@@ -48,7 +48,7 @@ function showTimerScreen() {
   window.addEventListener('popstate', timerBackHandler);
 }
 
-/* ---------- #62/#63：全屏汇总视图（计时结束同容器切换，运动 App 风格） ---------- */
+/* ---------- #62/#63/#132/#138：全屏汇总视图（计时结束同容器切换，统一观察标签） ---------- */
 
 let summaryDuration = 0;
 let summaryStartTime = null;   // #63：误触结束时可「继续计时」恢复
@@ -60,8 +60,9 @@ function showTimerSummary(duration) {
   $('timerSummaryView').classList.remove('hidden');
   $('summaryDuration').textContent = `已计时 ${duration} 分钟`;
   $('summaryMeta').textContent = summaryStartTime ? `开始于 ${fmtTime(new Date(summaryStartTime))}` : '';
-  renderMoodChips(null, $('summaryMoodChips'));
-  renderTriggerChips(null, $('summaryTriggerChips'));
+  renderObservationChips(null, $('summaryObservationChips'));
+  const summaryScroll = $('summaryObservationChips').closest('.summary-scroll');
+  if (summaryScroll) summaryScroll.scrollTop = 0;
 }
 
 function hideTimerSummary() {
@@ -83,18 +84,22 @@ function resumeTimer() {
   showTimerScreen();
 }
 
-/* 保存汇总（时长自动落库，情绪/诱因可补选；media 由「看了片」诱因推导——#63 删看片开关） */
+/* 保存汇总（时长自动落库，发生前状况可多选；media 由统一观察标签推导） */
 function saveTimedSummary() {
   if (!summaryDuration) return;
-  const moods = [...$('summaryMoodChips').querySelectorAll('.chip.active')].map((c) => c.textContent);
-  const triggers = [...$('summaryTriggerChips').querySelectorAll('.chip.active')].map((c) => c.textContent);
-  const media = triggers.includes('看了片');   // 看片语义由诱因承担（与面板开关二选一，汇总页删开关）
+  const observations = normalizeObservationValues(readObservationSelections($('summaryObservationChips')));
+  const observation = observations[0] || '';
+  const media = observations.some(isAdultContentObservation);
+  const now = new Date();
   records.push({
     id: newRecordId('rec'),
+    dateKey: fmtDateKey(now),
     offset: 0,
-    time: fmtTime(new Date()),
+    time: fmtTime(now),
     duration: summaryDuration,
-    moods, triggers, media, note: '',
+    observations,
+    observation: observation || null,
+    moods: [], triggers: [], media, note: '',
   });
   Storage.saveRecords(records);
   afterRecordsChanged();
@@ -184,3 +189,4 @@ function cancelTimer() {
 }
 
 /* 步骤一布局：计时器态（timer 模式 / 计时中）vs 经典流程（quick 模式） */
+

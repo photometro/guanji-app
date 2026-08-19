@@ -316,7 +316,7 @@ function renderRecentRecords() {
     <div class="recent-item">
       <div class="recent-main">
         <p class="recent-time">${fmtDateShort(r.offset)} ${r.time}</p>
-        <p class="recent-tags">${[...r.moods, ...r.triggers].join(' · ')}${r.duration ? ` · ${r.duration} 分钟` : ''}${r.media ? ' · 看片' : ''}</p>
+        <p class="recent-tags">${displayRecordTags(r).join(' · ')}${r.duration ? ` · ${r.duration} 分钟` : ''}</p>
       </div>
       <div class="recent-actions">
         <button class="recent-edit" data-id="${r.id}" title="编辑这条记录" aria-label="编辑">
