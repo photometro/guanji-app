@@ -123,6 +123,7 @@ body.keyboard-up .backdrop.dialog-layer {
 /* 分段选择 */
 .seg-row {
   position: relative;
+  isolation: isolate;
   display: flex;
   background: var(--bg-elev);
   border-radius: 999px;
@@ -132,6 +133,8 @@ body.keyboard-up .backdrop.dialog-layer {
 /* 滑块层（#21/#22）：跟随选中 seg 滑动，与底部 tab 滑块同款弹性 */
 .seg-slide {
   position: absolute;
+  z-index: 0;
+  pointer-events: none;
   top: 4px;
   bottom: 4px;
   border-radius: 999px;

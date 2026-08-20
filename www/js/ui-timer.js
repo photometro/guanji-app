@@ -9,6 +9,15 @@ function saveRecordMode(m) {
   try { localStorage.setItem('guanji_record_mode', m); } catch (e) {}
 }
 
+/* #172：计时通知是独立于 App 内计时状态的本地偏好。默认开启，兼容旧用户当前行为。 */
+const TIMER_NOTIFICATION_KEY = 'guanji_timer_notification_enabled';
+function timerNotificationEnabled() {
+  try { return localStorage.getItem(TIMER_NOTIFICATION_KEY) !== '0'; } catch (e) { return true; }
+}
+function saveTimerNotificationEnabled(enabled) {
+  try { localStorage.setItem(TIMER_NOTIFICATION_KEY, enabled ? '1' : '0'); } catch (e) {}
+}
+
 const TIMER_STORE_KEY = 'guanji_timer_v1';
 let timerState = { startTime: null, running: false, intervalId: null };
 
@@ -138,14 +147,16 @@ function cancelFromTimerScreen() {
   toast('已取消本次计时');
 }
 
-/* 原生实况通知（非原生环境静默跳过，模式同 syncWidgetStats） */
+/* 原生实况通知（非原生环境静默跳过，模式同 syncWidgetStats）。#172：可由设置页关闭。 */
 function notifyStartTimer(startTimeMs) {
+  if (!timerNotificationEnabled()) return;
   try {
     const P = window.Capacitor && window.Capacitor.Plugins;
     if (P && P.TimerLiveUpdate) P.TimerLiveUpdate.startTimer({ startTimeMs });
   } catch (e) { /* 非原生/插件不可用 */ }
 }
-function notifyStopTimer() {
+function notifyStopTimer(force = false) {
+  if (!force && !timerNotificationEnabled()) return;
   try {
     const P = window.Capacitor && window.Capacitor.Plugins;
     if (P && P.TimerLiveUpdate) P.TimerLiveUpdate.stopTimer();

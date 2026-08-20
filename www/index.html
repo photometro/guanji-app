@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>观己 · 个人行为与习惯觉察</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23007AFF'/%3E%3Cpath d='M32 18c-6 0-10 4.2-10 9.8 0 6.5 7.5 11.8 9.4 13.1a1.2 1.2 0 0 0 1.2 0c1.9-1.3 9.4-6.6 9.4-13.1C42 22.2 38 18 32 18Zm0 13.3a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z' fill='%23FFFFFF'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/theme.css?v=124">
-<link rel="stylesheet" href="css/base.css?v=124">
-<link rel="stylesheet" href="css/components.css?v=124">
-<link rel="stylesheet" href="css/tabbar.css?v=124">
-<link rel="stylesheet" href="css/sheets.css?v=124">
-<link rel="stylesheet" href="css/screens.css?v=124">
-<link rel="stylesheet" href="css/responsive.css?v=124">
-<link rel="stylesheet" href="css/glass.css?v=124">
+<link rel="stylesheet" href="css/theme.css?v=133">
+<link rel="stylesheet" href="css/base.css?v=133">
+<link rel="stylesheet" href="css/components.css?v=133">
+<link rel="stylesheet" href="css/tabbar.css?v=133">
+<link rel="stylesheet" href="css/sheets.css?v=133">
+<link rel="stylesheet" href="css/screens.css?v=133">
+<link rel="stylesheet" href="css/responsive.css?v=133">
+<link rel="stylesheet" href="css/glass.css?v=133">
 <script src="vendor/anime.min.js"></script>   <!-- #72：anime v3.2（弹簧动画），缺失时 app.js 自动回退 CSS -->
 <script>
   /* 防闪烁：在渲染前根据 localStorage + 系统设置确定主题 + 玻璃效果开关（#72，默认 on） */
@@ -213,19 +213,18 @@
         <p class="disclaimer settings-description">实验性视觉材质：无磨砂通透玻璃 + 玻璃边缘，随内容滚动的流动性。可随时切回经典样式。</p>
       </div>
 
-      <div class="card settings-card">
-        <p class="card-title settings-card-title">记录方式</p>
+      <div class="card settings-card settings-group-card" id="recordSettingsCard">
+        <p class="card-title settings-card-title">记录设置</p>
+        <p class="settings-subtitle">记录方式</p>
         <!-- #124：记录方式单选 chips → seg 滑块（方案 C） -->
         <div class="seg-row" id="recordModeSeg">
           <span class="seg-slide" id="recordModeSegSlide"></span>
           <button class="seg active" data-record-mode="timer">计时记录</button>
           <button class="seg" data-record-mode="quick">快速记录</button>
         </div>
-        <p class="disclaimer settings-description">计时记录：点「开始记录」计时，结束时自动填入精准时长。快速记录：直接填写时长，不计时。</p>
-      </div>
+        <p class="disclaimer settings-description settings-description-compact">计时自动填入时长 · 快速记录直接填写</p>
 
-      <div class="card settings-card">
-        <p class="card-title settings-card-title">记录提醒</p>
+        <p class="settings-subtitle">提醒与通知</p>
         <label class="switch-row">
           <span>每日温和提醒</span>
           <span class="switch" id="reminderSwitch"><span class="knob"></span></span>
@@ -233,34 +232,47 @@
         <div class="picker-row hidden" id="reminderTimeRow">
           <input type="time" id="reminderTime" value="21:00">
         </div>
-        <p class="disclaimer settings-description">到点提醒你记录一下，只发本机通知，不上传任何数据。不想被打扰随时可关。</p>
+        <p class="disclaimer settings-description settings-description-compact">到点提醒你记录一下，只发本机通知。</p>
+        <label class="switch-row" id="timerNotificationRow">
+          <span>计时通知<span class="row-sub">计时中在锁屏和通知栏显示，可随时关闭</span></span>
+          <span class="switch on" id="timerNotificationSwitch" role="switch" tabindex="0" aria-checked="true"><span class="knob"></span></span>
+        </label>
+        <div class="live-test-block" id="liveTestBlock">
+          <div class="live-test-heading">
+            <div>
+              <p class="live-test-title">测试通知</p>
+              <p class="live-test-caption" id="liveTestHint">支持的设备会显示为实况通知，其他设备使用普通通知。</p>
+            </div>
+            <span class="live-test-state" id="liveTestBadge" data-state="idle">未测试</span>
+          </div>
+          <button class="btn-ghost live-test-btn" id="liveTestBtn" type="button" aria-controls="liveTestStatus">测试通知</button>
+          <div class="live-test-result hidden" id="liveTestStatus" aria-live="polite"></div>
+        </div>
       </div>
 
-      <div class="card settings-card">
-        <p class="card-title settings-card-title">正向反馈</p>
+      <div class="card settings-card settings-group-card" id="feedbackSettingsCard">
+        <p class="card-title settings-card-title">反馈设置</p>
+        <p class="settings-subtitle">反馈偏好</p>
         <label class="switch-row">
-          <span>连续记录里程碑肯定</span>
+          <span>连续记录里程碑肯定<span class="row-sub">达到 7 / 30 天时，首页出现一句温和的肯定</span></span>
           <span class="switch" id="positiveSwitch"><span class="knob"></span></span>
         </label>
-        <p class="disclaimer settings-description">连续记录达到 7 / 30 天时，首页出现一句温和的肯定。</p>
-      </div>
 
-      <div class="card settings-card">
-        <p class="card-title settings-card-title">实况通知</p>
-        <div class="settings-single-action">
-          <button class="row-btn" id="liveTestBtn">
-            <span>测试实况通知</span>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
+        <label class="switch-row" id="aiDailyTipRow">
+          <span>每日话语<span class="row-sub">AI 优先 · 未配置时使用本地话语</span></span>
+          <span class="switch" id="aiDailyTipSwitch"><span class="knob"></span></span>
+        </label>
+        <div class="ai-migration-prompt hidden" id="aiDailyTipMigration">
+          <p>旧版本曾使用 AI 每日话语。现在会优先使用 AI，未配置时使用本地话语。</p>
+          <div class="ai-migration-actions"><button class="btn-ghost" id="aiDailyTipDecline">使用本地话语</button><button class="btn-primary" id="aiDailyTipAccept">继续使用 AI</button></div>
         </div>
-        <p class="disclaimer settings-description" id="liveTestStatus">测试你的手机是否支持实况通知（Android 16+ 锁屏胶囊）。计时进行中时，通知栏会持续显示秒数。</p>
-        <p class="disclaimer settings-description-tight">提示：息屏时分钟数持续刷新，需允许观己后台运行——系统设置 → 应用 → 观己 → 耗电管理 → 允许后台运行。</p>
       </div>
 
-      <div class="card settings-card">
-        <p class="card-title settings-card-title">AI 设置</p>
-        <p class="ai-optional-title">AI 是可选增强功能</p>
-        <p class="disclaimer settings-description">不填写 API Key 也能查看本地洞察；填写后可获得模块内的个性化观察、温和建议和追问。仅发送脱敏后的聚合统计，费用由你使用的服务商决定。</p>
+      <div class="card settings-card" id="aiSettingsCard">
+        <div class="settings-card-heading">
+          <p class="card-title settings-card-title">AI 设置 <span class="settings-state" id="aiConfigStatus">未配置</span></p>
+        </div>
+        <p class="ai-optional-summary">AI 可选增强 · 不影响本地洞察</p>
         <p class="field-label">提供商</p>
         <!-- #124：AI 提供商单选 chips → seg 滑块（方案 C） -->
         <div class="seg-row" id="providerSeg" style="margin-bottom:4px">
@@ -269,32 +281,40 @@
           <button class="seg" data-provider="openai">OpenAI</button>
           <button class="seg" data-provider="custom">自定义</button>
         </div>
-        <p class="field-label">Base URL</p>
-        <input type="text" id="aiBaseUrlInput" placeholder="https://api.deepseek.com" autocomplete="off" spellcheck="false">
-        <p class="field-label">模型</p>
-        <input type="text" id="aiModelInput" placeholder="deepseek-chat" autocomplete="off" spellcheck="false">
-        <p class="field-label">API 密钥</p>
-        <div class="picker-row">
-          <input type="password" id="apiKeyInput" placeholder="sk-…" autocomplete="off">
-          <button class="btn-ghost" id="apiKeySave" style="padding:11px 20px;border-radius:12px">保存</button>
+        <div id="aiBaseUrlField" class="ai-base-url-field">
+          <p class="field-label">Base URL</p>
+          <input class="settings-text-input" type="text" id="aiBaseUrlInput" placeholder="https://api.deepseek.com" autocomplete="off" spellcheck="false">
+        </div>
+        <div id="aiModelField" class="ai-model-field">
+          <p class="field-label">模型</p>
+          <input class="settings-text-input" type="text" id="aiModelInput" placeholder="deepseek-v4-flash" autocomplete="off" spellcheck="false">
+        </div>
+        <p class="ai-model-migration-hint hidden" id="aiModelMigrationHint"></p>
+        <div id="apiKeyEditField" class="ai-api-key-edit-field">
+          <p class="field-label">API 密钥</p>
+          <div class="picker-row" id="apiKeyEditRow">
+            <input type="password" id="apiKeyInput" placeholder="sk-…" autocomplete="off">
+            <button class="btn-ghost" id="apiKeySave" style="padding:11px 20px;border-radius:12px">保存</button>
+          </div>
+        </div>
+        <div class="ai-key-saved-row hidden" id="apiKeySavedRow">
+          <span id="aiConfigSummary" class="ai-config-summary" aria-live="polite"></span>
+          <button class="btn-ghost" id="apiKeyChange">编辑</button>
         </div>
         <button class="btn-primary" id="aiTestBtn" style="width:100%;margin-top:14px">测试连接</button>
-        <p class="disclaimer settings-description" id="aiTestStatus">密钥与配置只保存在这台设备上。AI 分析时仅上传聚合统计特征，不会上传单条记录。</p>
-        <label class="switch-row settings-control-gap" id="aiDailyTipRow">
-          <span>AI 每日话语<span class="row-sub">开启后，首页话语会优先使用 AI 生成的温和提醒</span></span>
-          <span class="switch" id="aiDailyTipSwitch"><span class="knob"></span></span>
-        </label>
-        <div class="ai-migration-prompt hidden" id="aiDailyTipMigration">
-          <p>旧版本曾使用 AI 每日话语。现在它已改为可选功能，要继续使用吗？</p>
-          <div class="ai-migration-actions"><button class="btn-ghost" id="aiDailyTipDecline">暂不启用</button><button class="btn-primary" id="aiDailyTipAccept">继续使用 AI</button></div>
-        </div>
+        <p class="disclaimer settings-description settings-description-compact" id="aiTestStatus">尚未测试连接</p>
+        <button class="row-btn ai-data-scope-btn" id="aiDataScopeBtn">
+          <span>数据范围<span class="row-sub">仅发送脱敏聚合统计</span></span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
       </div>
 
-      <!-- #117：数据保护卡（数据管理重构：数据置 v3.10 顺序，三卡化） -->
-      <div class="card settings-card">
-        <p class="card-title settings-card-title">数据保护</p>
-        <!-- 加密区块（#121：加密模式 seg 滑动切换——未加密/已加密，样式同曲线/热力图；#120：切换免口令验证，仅确认） -->
-        <p class="disclaimer" id="secureStatus" style="margin-bottom:10px">正在检测…</p>
+      <!-- #117：数据管理合并卡（加密、本地数据、备份与恢复） -->
+      <div class="card settings-card" id="dataPrivacyCard">
+        <p class="card-title settings-card-title">数据与隐私</p>
+        <p class="settings-subtitle">本地数据</p>
+        <!-- 加密区块（#121：加密模式 seg 滑动切换——未加密/已加密） -->
+        <p class="disclaimer settings-description-compact" id="secureStatus" style="margin-bottom:10px">正在检测…</p>
         <div class="seg-row" id="secureModeSeg">
           <span class="seg-slide" id="secureModeSlide"></span>
           <button class="seg active" data-sec-mode="plain">未加密</button>
@@ -306,34 +326,30 @@
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
-      </div>
-
-      <!-- #117：备份与恢复卡（导出/恢复/备份文件/服务器备份统一入口 + 自动备份开关） -->
-      <div class="card settings-card">
-        <p class="card-title settings-card-title settings-list-title">备份与恢复</p>
+        <p class="settings-subtitle">备份</p>
         <div class="settings-action-list">
-        <button class="row-btn" id="exportBtn">
-          <span>导出数据<span class="row-sub" id="exportSub">CSV 文件</span></span>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <button class="row-btn" id="restoreDataBtn">
-          <span>恢复数据<span class="row-sub">从本机文件或服务器恢复</span></span>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <button class="row-btn" id="bkpManageBtn">
-          <span>备份文件<span class="row-sub">本机 / 服务器</span></span>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <!-- #115 WebDAV：服务器备份入口（未配置→配置弹窗；已配置→服务器管理弹窗） -->
-        <button class="row-btn" id="wdCfgBtn">
-          <span>服务器备份<span class="row-sub" id="wdCfgSub">未配置</span></span>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <!-- #128：打开 App 时自动备份入口（row-btn，与卡内其余行交互一致——开关收进弹窗） -->
-        <button class="row-btn" id="wdAutoBtn">
-          <span>打开 App 时自动备份<span class="row-sub" id="wdAutoSub">仅服务器</span></span>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
+          <button class="row-btn" id="exportBtn">
+            <span>导出数据<span class="row-sub" id="exportSub">CSV 文件</span></span>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="row-btn" id="restoreDataBtn">
+            <span>恢复数据<span class="row-sub">从本机文件或服务器恢复</span></span>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="row-btn" id="bkpManageBtn">
+            <span>备份文件<span class="row-sub">本机 / 服务器</span></span>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <!-- #115 WebDAV：服务器备份入口（未配置→配置弹窗；已配置→服务器管理弹窗） -->
+          <button class="row-btn" id="wdCfgBtn">
+            <span>服务器备份<span class="row-sub" id="wdCfgSub">未配置</span></span>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <!-- #128：打开 App 时自动备份入口 -->
+          <button class="row-btn" id="wdAutoBtn">
+            <span>打开 App 时自动备份<span class="row-sub" id="wdAutoSub">仅服务器</span></span>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
         </div>
       </div>
 
@@ -358,7 +374,7 @@
           <svg width="26" height="26" viewBox="0 0 46 46"><path d="M23 12c-6 0-10 4.2-10 9.8 0 6.5 7.5 11.8 9.4 13.1a1.2 1.2 0 0 0 1.2 0c1.9-1.3 9.4-6.6 9.4-13.1C33 16.2 29 12 23 12Zm0 13.3a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" fill="#FFFFFF"/></svg>
         </div>
         <p class="about-name">观己</p>
-        <p class="about-ver">v3.32 · 数据默认仅存本地</p>
+          <p class="about-ver">v3.40 · 数据默认仅存本地</p>
         <!-- #69：隐私条目直接跟随品牌区（无分割线/无标题，苹果页脚风格） -->
         <ul class="privacy-list about-privacy">
           <li><span class="dot"></span>记录默认只保存在这台设备上；WebDAV 备份由你自选，上传的是密文（仅你的口令可解）</li>
@@ -480,6 +496,22 @@
         <div class="dialog-actions">
           <button class="btn-ghost" id="dialogCancel">取消</button>
           <button class="btn-danger" id="dialogConfirm">清除</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- #163：AI 数据范围详情（卡片内只保留一行摘要） -->
+    <div class="backdrop dialog-layer hidden" id="aiDataScopeBackdrop">
+      <div class="dialog">
+        <p class="dialog-title">AI 数据范围</p>
+        <p class="dialog-text">配置 AI 后，观己只发送必要的脱敏聚合统计，用于生成个人洞察。</p>
+        <ul class="privacy-list ai-scope-list">
+          <li><span class="dot"></span>发送次数、时间段、标签比例和趋势变化等统计信息</li>
+          <li><span class="dot"></span>不发送单条记录、备注、附件或自定义标签原文</li>
+          <li><span class="dot"></span>AI 服务由你选择，费用和服务条款由服务商决定</li>
+        </ul>
+        <div class="dialog-actions">
+          <button class="btn-ghost" id="aiDataScopeClose">知道了</button>
         </div>
       </div>
     </div>
@@ -700,18 +732,18 @@
   </defs>
 </svg>
 
-<script src="js/secure.js?v=124"></script>
-<script src="js/storage.js?v=124"></script>
-<script src="js/records.js?v=124"></script>
-<script src="js/stats.js?v=124"></script>
-<script src="js/ai.js?v=124"></script>
-<script src="js/ui-home.js?v=124"></script>
-<script src="js/ui-timer.js?v=124"></script>
-<script src="js/ui-sheet.js?v=124"></script>
-<script src="js/ui-calendar.js?v=124"></script>
-<script src="js/liquid-glass.js?v=124"></script>
-<script src="js/webdav.js?v=124"></script>
-<script src="js/app.js?v=124"></script>
+<script src="js/secure.js?v=134"></script>
+<script src="js/storage.js?v=134"></script>
+<script src="js/records.js?v=134"></script>
+<script src="js/stats.js?v=134"></script>
+<script src="js/ai.js?v=134"></script>
+<script src="js/ui-home.js?v=134"></script>
+<script src="js/ui-timer.js?v=134"></script>
+<script src="js/ui-sheet.js?v=134"></script>
+<script src="js/ui-calendar.js?v=134"></script>
+<script src="js/liquid-glass.js?v=134"></script>
+<script src="js/webdav.js?v=134"></script>
+<script src="js/app.js?v=134"></script>
 </body>
 </html>
 

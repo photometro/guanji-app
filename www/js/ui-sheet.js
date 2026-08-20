@@ -598,6 +598,24 @@ function readAIConfigFromInputs() {
   };
 }
 
+function syncAIInputPlaceholders(provider) {
+  const defaults = AI_PROVIDERS[provider] || AI_PROVIDERS.custom;
+  const baseInput = $('aiBaseUrlInput');
+  const modelInput = $('aiModelInput');
+  if (baseInput) baseInput.placeholder = defaults.baseUrl || 'https://api.example.com/v1';
+  if (modelInput) modelInput.placeholder = defaults.model || '模型名称';
+}
+
+function renderAIModelMigrationHint(provider, model, showHint = true) {
+  const hint = $('aiModelMigrationHint');
+  if (!hint) return;
+  const legacy = showHint && provider === 'deepseek' && (model === 'deepseek-chat' || model === 'deepseek-reasoner');
+  hint.classList.toggle('hidden', !legacy);
+  hint.textContent = legacy
+    ? `当前模型 ${model} 已进入迁移期，建议改用 deepseek-v4-flash。点击“更换”后可修改。`
+    : '';
+}
+
 /* #43：切换提供商 → 回显该提供商的完整配置（Base URL/模型/密钥），记忆 active */
 function switchProvider(provider) {
   if (!AI_PROVIDERS[provider]) return;
@@ -608,6 +626,9 @@ function switchProvider(provider) {
   $('aiBaseUrlInput').value = p.baseUrl || '';
   $('aiModelInput').value = p.model || '';
   $('apiKeyInput').value = p.apiKey || '';
+  syncAIInputPlaceholders(provider);
+  aiKeyEditing = false;
+  renderAISettingsUI();
 }
 
 /* #124：AI 提供商 seg 滑块同步（chips → seg，与加密同款） */
@@ -621,6 +642,52 @@ function setProviderSeg(provider) {
   }
 }
 
+let aiKeyEditing = false;
+
+/* #163/#167/#168/#169：AI 设置标题表达整体状态；保存态只显示提供商+模型摘要，编辑态恢复完整字段。 */
+function renderAISettingsUI(statusOverride) {
+  const provider = aiStore.active;
+  const p = aiStore.providers[provider] || {};
+  const hasKey = !!p.apiKey;
+  const showEditableConfig = !hasKey || aiKeyEditing;
+  const baseField = $('aiBaseUrlField');
+  const baseInput = $('aiBaseUrlInput');
+  const modelField = $('aiModelField');
+  if (baseField) baseField.classList.toggle('hidden', !showEditableConfig);
+  if (baseInput) {
+    baseInput.readOnly = !showEditableConfig;
+    baseInput.setAttribute('aria-readonly', String(!showEditableConfig));
+    baseInput.classList.toggle('settings-text-input-readonly', !showEditableConfig);
+  }
+  if (modelField) modelField.classList.toggle('hidden', !showEditableConfig);
+  syncAIInputPlaceholders(provider);
+  renderAIModelMigrationHint(provider, p.model || '', showEditableConfig);
+
+  const hasConfig = hasKey && !!p.baseUrl && !!p.model;
+  const statusEl = $('aiConfigStatus');
+  if (statusEl) {
+    const state = statusOverride || (hasConfig ? 'ready' : (hasKey ? 'error' : 'idle'));
+    statusEl.dataset.state = state;
+    statusEl.textContent = state === 'ready' ? '已配置' : (state === 'error' ? '配置异常' : '未配置');
+  }
+
+  const providerLabel = (AI_PROVIDERS[provider] && AI_PROVIDERS[provider].label) || provider;
+  const summaryEl = $('aiConfigSummary');
+  if (summaryEl) {
+    summaryEl.textContent = hasConfig
+      ? `${providerLabel} · ${p.model}`
+      : `${providerLabel} · 配置未完成`;
+    summaryEl.title = summaryEl.textContent;
+  }
+
+  const editField = $('apiKeyEditField');
+  const editRow = $('apiKeyEditRow');
+  const savedRow = $('apiKeySavedRow');
+  if (editField) editField.classList.toggle('hidden', !showEditableConfig);
+  if (editRow) editRow.classList.toggle('hidden', hasKey && !aiKeyEditing);
+  if (savedRow) savedRow.classList.toggle('hidden', !hasKey || aiKeyEditing);
+}
+
 // 回显配置（按 active 提供商）
 (function initAIUI() {
   setProviderSeg(aiStore.active);
@@ -628,6 +695,8 @@ function setProviderSeg(provider) {
   $('aiBaseUrlInput').value = p.baseUrl || '';
   $('aiModelInput').value = p.model || '';
   $('apiKeyInput').value = p.apiKey || '';
+  syncAIInputPlaceholders(aiStore.active);
+  renderAISettingsUI();
   if (typeof renderAIDailyTipSetting === 'function') renderAIDailyTipSetting();
 })();
 
@@ -646,16 +715,24 @@ $('apiKeySave').addEventListener('click', () => {
   if (!cfg.baseUrl || !cfg.model) { toast('请填写 Base URL 和模型'); return; }
   aiConfig = { ...cfg };
   saveAIConfig(aiConfig);
+  aiKeyEditing = false;
+  renderAISettingsUI('ready');
+  $('aiTestStatus').textContent = '尚未测试连接';
   renderAIDailyTipSetting();
   toast('AI 配置已保存（仅存本机）');
+});
+
+$('apiKeyChange').addEventListener('click', () => {
+  aiKeyEditing = true;
+  renderAISettingsUI();
 });
 
 // 连接测试：发最小请求验证
 $('aiTestBtn').addEventListener('click', async () => {
   const cfg = readAIConfigFromInputs();
   const statusEl = $('aiTestStatus');
-  if (!cfg.apiKey) { statusEl.textContent = '请先填写 API 密钥再测试'; return; }
-  if (!cfg.baseUrl || !cfg.model) { statusEl.textContent = '请先填写 Base URL 和模型'; return; }
+  if (!cfg.apiKey) { statusEl.textContent = '请先填写 API 密钥再测试'; renderAISettingsUI('error'); return; }
+  if (!cfg.baseUrl || !cfg.model) { statusEl.textContent = '请先填写 Base URL 和模型'; renderAISettingsUI('error'); return; }
   statusEl.textContent = '正在测试连接…';
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
@@ -673,37 +750,53 @@ $('aiTestBtn').addEventListener('click', async () => {
     });
     if (res.ok) {
       statusEl.textContent = `✓ 连接成功 · 模型 ${cfg.model}`;
+      renderAISettingsUI('ready');
     } else if (res.status === 401) {
       statusEl.textContent = '✗ 密钥无效（401），请检查 API 密钥';
+      renderAISettingsUI('error');
     } else if (res.status === 404) {
       statusEl.textContent = '✗ 接口路径错误（404），请检查 Base URL';
+      renderAISettingsUI('error');
     } else {
       statusEl.textContent = `✗ 请求失败（HTTP ${res.status}）`;
+      renderAISettingsUI('error');
     }
   } catch (err) {
     if (err.name === 'AbortError') statusEl.textContent = '✗ 连接超时，请检查网络或 Base URL';
     else statusEl.textContent = '✗ 网络错误，请检查 Base URL 是否可访问';
+    renderAISettingsUI('error');
   } finally {
     clearTimeout(timer);
   }
 });
 
-// #146：AI 每日话语改为显式可选，基础本地话语始终可用
+// #163：每日话语是首页体验开关；AI 已配置时优先增强，未配置时使用本地话语
 $('aiDailyTipSwitch').addEventListener('click', () => {
-  if (!aiDailyTipEnabled() && !apiKey) {
-    toast('请先填写并保存 API Key');
-    return;
-  }
-  setAIDailyTipEnabled(!aiDailyTipEnabled());
-  toast(aiDailyTipEnabled() ? 'AI 每日话语已开启' : 'AI 每日话语已关闭');
+  const enabled = !dailyTipEnabled();
+  setDailyTipEnabled(enabled);
+  renderGreeting();
+  toast(enabled ? (apiKey ? '每日话语已开启' : '每日话语已开启，将使用本地话语') : '每日话语已关闭');
 });
 $('aiDailyTipAccept').addEventListener('click', () => {
   setAIDailyTipEnabled(true);
+  setDailyTipEnabled(true);
+  renderGreeting();
   toast('已继续使用 AI 每日话语');
 });
 $('aiDailyTipDecline').addEventListener('click', () => {
   setAIDailyTipEnabled(false);
-  toast('已关闭 AI 每日话语，首页将使用本地话语');
+  setDailyTipEnabled(true);
+  renderGreeting();
+  toast('已改用本地话语');
+});
+
+// #163：隐私摘要进入详情面板，主卡片只保留一行数据范围提示
+const aiDataScopeBackdrop = $('aiDataScopeBackdrop');
+const closeAIDataScope = () => aiDataScopeBackdrop?.classList.add('hidden');
+$('aiDataScopeBtn').addEventListener('click', () => aiDataScopeBackdrop?.classList.remove('hidden'));
+$('aiDataScopeClose').addEventListener('click', closeAIDataScope);
+aiDataScopeBackdrop?.addEventListener('click', (e) => {
+  if (e.target === aiDataScopeBackdrop) closeAIDataScope();
 });
 
 // 我的页：每日记录提醒开关（#13）
@@ -985,36 +1078,141 @@ function initRecordModeUI() {
   }));
 }
 
-/* 设置页「实况通知」测试（分级提示 + 内联状态区） */
+/* #172：计时通知模块状态渲染。结果使用「项目 / 状态」行，避免多段文本堆叠。 */
+function renderLiveTestResult(rows, badgeText, badgeState = 'idle') {
+  const result = $('liveTestStatus');
+  const badge = $('liveTestBadge');
+  if (!result) return;
+  result.replaceChildren();
+  rows.forEach(([label, value, state]) => {
+    const row = document.createElement('div');
+    row.className = 'live-test-result-row';
+    const labelEl = document.createElement('span');
+    labelEl.className = 'live-test-result-label';
+    labelEl.textContent = label;
+    const valueEl = document.createElement('span');
+    valueEl.className = `live-test-result-value${state ? ` is-${state}` : ''}`;
+    valueEl.textContent = value;
+    row.append(labelEl, valueEl);
+    result.appendChild(row);
+  });
+  result.classList.remove('hidden');
+  if (badge) {
+    badge.textContent = badgeText;
+    badge.dataset.state = badgeState;
+  }
+}
+
+function setLiveTestBadge(text, state = 'idle') {
+  const badge = $('liveTestBadge');
+  if (!badge) return;
+  badge.textContent = text;
+  badge.dataset.state = state;
+}
+
+function updateTimerNotificationUI(enabled) {
+  const sw = $('timerNotificationSwitch');
+  const btn = $('liveTestBtn');
+  const block = $('liveTestBlock');
+  const hint = $('liveTestHint');
+  const result = $('liveTestStatus');
+  if (sw) {
+    sw.classList.toggle('on', enabled);
+    sw.setAttribute('aria-checked', String(enabled));
+  }
+  if (btn) btn.disabled = !enabled;
+  if (block) block.classList.toggle('is-disabled', !enabled);
+  if (hint) hint.textContent = enabled
+    ? '支持的设备会显示为实况通知，其他设备使用普通通知。'
+    : '开启计时通知后，可在这里检查系统权限和显示方式。';
+  if (!enabled) {
+    if (result) {
+      result.replaceChildren();
+      result.classList.add('hidden');
+    }
+    setLiveTestBadge('已关闭', 'off');
+  } else if (!result || result.classList.contains('hidden')) {
+    setLiveTestBadge('未测试', 'idle');
+  }
+}
+
+function initTimerNotificationUI() {
+  const sw = $('timerNotificationSwitch');
+  if (!sw) return;
+  updateTimerNotificationUI(timerNotificationEnabled());
+  const toggle = () => {
+    const enabled = !timerNotificationEnabled();
+    if (!enabled) notifyStopTimer(true);
+    saveTimerNotificationEnabled(enabled);
+    updateTimerNotificationUI(enabled);
+    if (enabled && timerState.running) notifyStartTimer(timerState.startTime);
+    toast(enabled ? '计时通知已开启' : '计时通知已关闭');
+  };
+  sw.addEventListener('click', toggle);
+  sw.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggle();
+    }
+  });
+}
+
+function liveTestRows(st) {
+  return [
+    ['系统', `Android ${st.sdkInt || '未知'}`],
+    ['通知权限', st.permissionGranted ? '已开启' : '需要系统权限', st.permissionGranted ? 'ok' : 'warn'],
+    ['显示方式', st.supported ? '实况通知已支持' : '普通通知 · 系统降级', st.supported ? 'ok' : 'muted'],
+  ];
+}
+
+/* 设置页「实况通知」测试（分级提示 + 结构化状态区） */
 async function testLiveUpdate() {
+  if (!timerNotificationEnabled()) {
+    toast('请先开启计时通知');
+    return;
+  }
+  const btn = $('liveTestBtn');
+  if (btn) btn.disabled = true;
+  setLiveTestBadge('测试中…', 'loading');
   const P = window.Capacitor && window.Capacitor.Plugins;
   if (!P || !P.TimerLiveUpdate) {
-    $('liveTestStatus').textContent = '当前是浏览器预览环境，实况通知需要在安卓手机上测试。';
+    renderLiveTestResult([
+      ['环境', '浏览器预览'],
+      ['显示方式', '需要 Android 真机测试', 'muted'],
+    ], '需真机', 'muted');
+    $('liveTestHint').textContent = '当前环境不会发送系统通知，请在 Android 真机上测试。';
+    if (btn) btn.disabled = false;
     return;
   }
   try {
     let st = await P.TimerLiveUpdate.getLiveUpdateStatus();
-    let rows = [
-      `系统：Android ${st.sdkInt}`,
-      `通知权限：${st.permissionGranted ? '已开启' : '未开启'}`,
-      st.supported ? '实况通知：支持 · 已提升' : '实况通知：不支持提升（系统低于 Android 16，将以普通通知显示）',
-    ];
-    $('liveTestStatus').innerHTML = rows.join('<br>');
     if (!st.permissionGranted) {
       const res = await P.TimerLiveUpdate.requestNotificationPermission();
-      if (!res.granted) { toast('未获得通知权限，计时仍可用，只是没有通知'); return; }
+      if (!res.granted) {
+        renderLiveTestResult([
+          ['系统', `Android ${st.sdkInt || '未知'}`],
+          ['通知权限', '需要系统权限', 'warn'],
+          ['下一步', '请在系统设置中打开通知权限', 'warn'],
+        ], '需开启权限', 'warn');
+        $('liveTestHint').textContent = 'App 开关仍保持开启；打开系统通知权限后可再次测试。';
+        toast('请在系统设置中打开通知权限后再测试');
+        return;
+      }
       st = await P.TimerLiveUpdate.getLiveUpdateStatus();
-      rows = [
-        `系统：Android ${st.sdkInt}`,
-        '通知权限：已开启',
-        st.supported ? '实况通知：支持 · 已提升' : '实况通知：不支持提升（系统低于 Android 16，将以普通通知显示）',
-      ];
-      $('liveTestStatus').innerHTML = rows.join('<br>');
     }
-    P.TimerLiveUpdate.testLiveUpdate({ seconds: 15 });
+    renderLiveTestResult(liveTestRows(st), st.supported ? '可用' : '普通通知', st.supported ? 'ready' : 'muted');
+    $('liveTestHint').textContent = st.supported
+      ? '实况通知已支持，测试通知将持续约 15 秒。'
+      : '当前系统会使用普通通知显示计时，测试通知将持续约 15 秒。';
+    await P.TimerLiveUpdate.testLiveUpdate({ seconds: 15 });
     toast('已发送测试通知，请查看锁屏/通知栏');
   } catch (e) {
-    $('liveTestStatus').textContent = '测试失败：' + e.message;
+    renderLiveTestResult([
+      ['结果', '测试失败，请稍后重试', 'warn'],
+    ], '测试失败', 'warn');
+    $('liveTestHint').textContent = '请检查系统通知权限和观己是否允许后台运行。';
+  } finally {
+    if (btn) btn.disabled = !timerNotificationEnabled();
   }
 }
 $('liveTestBtn').addEventListener('click', testLiveUpdate);

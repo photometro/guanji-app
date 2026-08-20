@@ -166,6 +166,7 @@ initTheme();                       // 深色模式初始化（head 内联脚本�
 initLiquidGlass();                 // #72：液态玻璃实验开关同步 UI（head 内联脚本已应用类）
 initReminderUI();                  // 提醒设置回显（#13）
 initRecordModeUI();                // #51：记录方式偏好回显
+initTimerNotificationUI();         // #172：计时通知开关与测试模块回显
 applyReminderSchedule(loadReminder());   // 重启后恢复/更新调度（幂等）
 $('positiveSwitch').classList.toggle('on', positiveEnabled());   // 正向反馈开关回显（#17）
 
@@ -190,6 +191,8 @@ function handleBackButton() {
   const isHidden = (id) => $(id).classList.contains('hidden');
   // 1. 自定义词弹窗（最上层优先）
   if (!isHidden('addBackdrop')) { closeAddDialog(); return; }
+  // 1.5 AI 数据范围说明（#163）
+  if (!isHidden('aiDataScopeBackdrop')) { $('aiDataScopeBackdrop').classList.add('hidden'); return; }
   // 2. 删除确认弹窗
   if (!isHidden('delBackdrop')) { closeDeleteDialog(); return; }
   // 3. 数据管理确认弹窗

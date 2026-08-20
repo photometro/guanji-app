@@ -229,6 +229,7 @@
 .insight-ai-copy { margin: 10px 0 0; color: var(--ink-2); font-size: 12px; line-height: 1.7; }
 .insight-module .insight-bars { margin-top: 4px; }
 .ai-optional-title { margin: 4px 0 2px; font-size: 13px; font-weight: 700; color: var(--accent-deep); }
+.ai-optional-summary { margin: 2px 0 20px; font-size: 12px; color: var(--ink-2); line-height: 1.6; }
 .ai-migration-prompt { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--bg-elev); color: var(--ink-2); font-size: 12px; line-height: 1.7; }
 .ai-migration-prompt p { margin: 0; }
 .ai-migration-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
@@ -762,6 +763,11 @@
   cursor: pointer;
   transition: color 0.2s ease;
 }
+/* #161：我的页 row-btn 都是导航/操作入口，不是下拉选择器；右箭头表达进入下一层 */
+#screen-me .row-btn > svg {
+  transform: rotate(-90deg);
+  transform-origin: center;
+}
 .row-btn:last-child { border-bottom: none; }
 @media (hover: hover) {
 .row-btn:hover { color: var(--accent-deep); }
@@ -772,13 +778,108 @@
 
 /* #129：卡片负责一级分组；仅连续的导航操作使用行间 hairline。 */
 .settings-card-title { margin-bottom: 14px; }
+.settings-card-heading { display: flex; align-items: baseline; justify-content: flex-start; gap: 0; }
+.settings-card-heading .settings-card-title { margin-bottom: 0; }
+.settings-state { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; font-size: 11px; font-weight: 500; color: var(--ink-3); letter-spacing: 0.02em; white-space: nowrap; }
+.settings-state::before { content: ''; width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: var(--ink-3); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ink-3) 14%, transparent); }
+.settings-state[data-state="ready"] { color: var(--sage); }
+.settings-state[data-state="ready"]::before { background: var(--sage); box-shadow: 0 0 0 2px var(--sage-soft); }
+.settings-state[data-state="error"] { color: var(--accent-deep); }
+.settings-state[data-state="error"]::before { background: var(--accent-deep); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-deep) 14%, transparent); }
+.settings-subtitle { margin: 22px 0 10px; font-size: 12px; font-weight: 700; color: var(--ink-2); letter-spacing: 0.02em; }
+.settings-card-title + .settings-subtitle { margin-top: 0; }
+.settings-description-compact { margin-top: 6px; line-height: 1.55; }
 .settings-list-title { margin-bottom: 6px; }
 .settings-control-gap { margin-top: 14px; }
 .settings-control-gap-sm { margin-top: 10px; }
 .settings-description { margin-top: 12px; }
 .settings-description-tight { margin-top: 4px; }
 .settings-action-list { width: 100%; }
+.settings-group-card .switch-row { margin-top: 8px; }
+.settings-group-card .settings-subtitle:not(:first-child) { margin-top: 24px; }
 .settings-single-action .row-btn { border-bottom: none; }
+.settings-secondary-action { margin-top: 18px; padding-top: 0; border-top: none; }
+.settings-secondary-action .row-btn { padding-top: 8px; padding-bottom: 8px; }
+#feedbackSettingsCard .switch-row + .switch-row { margin-top: 20px; padding-top: 0; border-top: none; }
+
+/* #172：计时通知与测试模块——纵向层级，测试按钮不再伪装成下拉列表。 */
+.live-test-block {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.live-test-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.live-test-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-2);
+  letter-spacing: 0.02em;
+}
+.live-test-caption {
+  margin: 5px 0 0;
+  color: var(--ink-3);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.live-test-state {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.live-test-state::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+.live-test-state[data-state="ready"] { color: var(--sage); }
+.live-test-state[data-state="ready"]::before { background: var(--sage); }
+.live-test-state[data-state="warn"] { color: var(--accent-deep); }
+.live-test-state[data-state="warn"]::before { background: var(--accent-deep); }
+.live-test-state[data-state="loading"] { color: var(--accent-deep); }
+.live-test-state[data-state="loading"]::before { background: var(--accent-deep); animation: live-test-pulse 1s ease-in-out infinite; }
+.live-test-state[data-state="off"] { color: var(--ink-3); }
+.live-test-block.is-disabled { opacity: 0.62; }
+.live-test-btn {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 14px;
+  padding: 10px 16px;
+  font-size: 13px;
+}
+.live-test-btn:disabled { cursor: not-allowed; opacity: 0.5; }
+.live-test-result {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.live-test-result-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 5px 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.live-test-result-label { color: var(--ink-3); }
+.live-test-result-value { color: var(--ink-2); text-align: right; }
+.live-test-result-value.is-ok { color: var(--sage); font-weight: 600; }
+.live-test-result-value.is-warn { color: var(--accent-deep); font-weight: 600; }
+.live-test-result-value.is-muted { color: var(--ink-3); }
+@keyframes live-test-pulse { 50% { opacity: 0.35; } }
 .settings-control-action {
   margin-top: 14px;
   padding-top: 12px;
@@ -805,6 +906,60 @@
 
 /* #117/#122：行副标题（11px 次级灰，跟随行主文字；#122 间距 2px→8px 防粘连） */
 .row-btn .row-sub { font-size: 11px; color: var(--ink-3); font-weight: 400; margin-left: 8px; }
+.switch-row .row-sub { display: block; margin: 3px 0 0; font-size: 11px; color: var(--ink-3); font-weight: 400; line-height: 1.45; }
+.ai-base-url-field.hidden,
+.ai-model-field.hidden { display: none; }
+.settings-text-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font);
+  font-size: 14px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--ink);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.settings-text-input:focus {
+  outline: 2px solid var(--accent-deep);
+  outline-offset: 0;
+  border-color: transparent;
+}
+.settings-text-input.settings-text-input-readonly,
+.settings-text-input[readonly] { color: var(--ink-2); background: transparent; cursor: default; }
+.settings-text-input.settings-text-input-readonly:focus,
+.settings-text-input[readonly]:focus { outline: none; border-color: var(--line); box-shadow: none; }
+.ai-model-migration-hint { margin: 8px 0 0; color: var(--ink-3); font-size: 12px; line-height: 1.55; }
+.ai-key-saved-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; padding: 0 2px; color: var(--ink-2); font-size: 14px; }
+.ai-key-saved-row > span { display: block; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; line-height: 1.4; }
+.ai-config-summary { color: var(--ink-2); }
+.ai-key-saved-row .btn-ghost { width: auto; min-width: 64px; min-height: 40px; padding: 8px 14px; font-size: 12px; font-weight: 600; color: var(--ink-2); background: transparent; border-color: var(--line); }
+@media (hover: hover) {
+  .ai-key-saved-row .btn-ghost:hover { color: var(--ink); background: var(--bg-elev); border-color: var(--ink-3); transform: none; }
+}
+html.liquid-glass .ai-key-saved-row .btn-ghost { background: transparent; border-color: var(--line); box-shadow: none; }
+.ai-data-scope-btn { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--line); border-bottom: none; }
+.ai-scope-list { margin: 10px 0 0; }
+.ai-scope-list li { margin-bottom: 10px; font-size: 12px; line-height: 1.65; }
+
+/* #165/#171：AI 设置卡片增加呼吸感，强化标题/说明/字段层级。 */
+#aiSettingsCard { padding-top: 26px; padding-bottom: 26px; }
+#aiSettingsCard .settings-card-title { line-height: 1.35; }
+#aiSettingsCard .settings-card-heading + .ai-optional-summary { margin-top: 7px; margin-bottom: 24px; line-height: 1.7; }
+#aiSettingsCard .field-label { margin-top: 24px; margin-bottom: 11px; line-height: 1.4; letter-spacing: 0.03em; }
+#aiSettingsCard .settings-card-heading + .ai-optional-summary + .field-label { margin-top: 0; }
+#aiSettingsCard #providerSeg { margin-bottom: 0 !important; }
+#aiSettingsCard .ai-base-url-field + .ai-model-field .field-label { margin-top: 24px; }
+#aiSettingsCard .picker-row { margin-top: 0; }
+#aiSettingsCard .ai-model-migration-hint { margin-top: 12px; line-height: 1.65; }
+#aiSettingsCard .ai-key-saved-row { min-height: 48px; margin-top: 22px; }
+#aiSettingsCard .ai-api-key-edit-field.hidden,
+#aiSettingsCard .ai-base-url-field.hidden,
+#aiSettingsCard .ai-model-field.hidden { display: none; }
+#aiSettingsCard #aiTestBtn { margin-top: 24px !important; }
+#aiSettingsCard #aiTestStatus { margin-top: 10px; line-height: 1.6; }
+#aiSettingsCard .ai-data-scope-btn { margin-top: 24px; padding-top: 18px; }
 
 .about-card { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 28px 18px; }
 .about-name { font-size: 16px; font-weight: 700; margin-top: 12px; letter-spacing: 0.06em; }

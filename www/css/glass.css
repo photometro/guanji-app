@@ -189,6 +189,11 @@ html.liquid-glass .ask-answer::before {
   pointer-events: none;
   z-index: 2;
 }
+/* #162：tab 栏材质层必须位于滑块和 tab 内容之下；边缘/光带不可覆盖文字图标 */
+html.liquid-glass .tabbar::before,
+html.liquid-glass .tabbar::after {
+  z-index: 0;
+}
 /* #112 方案 C（用户拍板）：深色模式去除大面积光带——深色底 #121212 对比度高，
    130%×70% 椭圆 + 0.12 峰值 = 大片灰白晕染刺眼；只保留 ::after 边框环 + inset 顶部高光
    （Material 深色语言：无大面积高光）；浅色光带完全不变 */
@@ -208,7 +213,7 @@ html.liquid-glass .tabbar:active { --lg-saturate: 2.2; }
 
 /* #72-P2/#76/#81 玻璃态选中滑块：材质迁回单一滑块（滑动弹性 + SVG 液体变形脉冲）
    —— #76 定稿的渐变玻璃胶囊材质由 .tab-slide 承担（::before 底座删除，避免双重渲染） */
-html.liquid-glass .tab-pill { position: relative; z-index: 1; }
+html.liquid-glass .tab-pill { position: relative; z-index: 3; }
 /* #81 方案 C 定稿：玻璃态滑块 = 渐变玻璃胶囊材质 + filter: url(#lg-distort) 液体变形
    （切换时 app.js liquidTabPulse 驱动 feDisplacementMap scale 0→20→0；静止时 scale=0 无变形） */
 html.liquid-glass .tab-slide {

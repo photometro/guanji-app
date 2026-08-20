@@ -67,19 +67,27 @@ class TimerLiveUpdatePlugin : Plugin() {
         call.resolve(JSObject().put("ok", true))
     }
 
-    /** 设备状态（设置页「实况通知」测试用）：系统版本 / 通知权限 / 是否可提升 */
+    /** 设备状态（设置页「实况通知」测试用）：双路径能力 / 系统版本 / 通知权限。 */
     @PluginMethod
     fun getLiveUpdateStatus(call: PluginCall) {
         val out = JSObject()
         out.put("sdkInt", Build.VERSION.SDK_INT)
-        out.put("permissionGranted", hasNotificationPermission())
+        val permissionGranted = hasNotificationPermission()
+        out.put("permissionGranted", permissionGranted)
         var canPromote = false
         if (Build.VERSION.SDK_INT >= 36) {
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             canPromote = nm.canPostPromotedNotifications()
         }
+        // 魅族 Flyme 使用私有实况通知扩展（TimerService.flymeLiveBundle），不依赖
+        // Android 16 的 promoted ongoing 能力；通知权限仍是两条路径的共同前提。
+        val flymeSupported = TimerService.isFlyme() && permissionGranted
+        val androidLiveUpdateSupported = Build.VERSION.SDK_INT >= 36 && permissionGranted && canPromote
         out.put("canPostPromoted", canPromote)
-        out.put("supported", Build.VERSION.SDK_INT >= 36 && hasNotificationPermission() && canPromote)
+        out.put("flymeSupported", flymeSupported)
+        out.put("androidLiveUpdateSupported", androidLiveUpdateSupported)
+        // 前端只消费统一能力结果：任一路径可用即视为支持实况通知。
+        out.put("supported", flymeSupported || androidLiveUpdateSupported)
         call.resolve(out)
     }
 

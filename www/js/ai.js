@@ -325,14 +325,14 @@ function updateInsightActionState() {
 const AI_CONFIG_KEY = 'guanji_ai_config_v2';        // #43：per-provider 结构
 const AI_CONFIG_KEY_V1 = 'guanji_ai_config_v1';     // 旧版单份配置（迁移用）
 const AI_PROVIDERS = {
-  deepseek: { label: 'DeepSeek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat' },
+  deepseek: { label: 'DeepSeek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-v4-flash' },
   openai: { label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
   custom: { label: '自定义', baseUrl: '', model: '' },
 };
 
 /* 每个提供商的完整配置（默认值 + 用户填写，互不干扰） */
 const DEFAULT_PROVIDERS = {
-  deepseek: { baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat', apiKey: '' },
+  deepseek: { baseUrl: 'https://api.deepseek.com', model: 'deepseek-v4-flash', apiKey: '' },
   openai: { baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini', apiKey: '' },
   custom: { baseUrl: '', model: '', apiKey: '' },
 };
@@ -344,7 +344,15 @@ function loadAIStore() {
   try {
     const s = JSON.parse(localStorage.getItem(AI_CONFIG_KEY) || 'null');
     if (s && s.providers) {
-      return { providers: { ...JSON.parse(JSON.stringify(DEFAULT_PROVIDERS)), ...s.providers }, active: s.active || 'deepseek' };
+      const providers = JSON.parse(JSON.stringify(DEFAULT_PROVIDERS));
+      Object.keys(s.providers).forEach((key) => {
+        providers[key] = { ...(providers[key] || {}), ...(s.providers[key] || {}) };
+      });
+      // 内置服务商缺失 Base URL 时恢复官方默认地址；自定义服务商继续保留空值。
+      ['deepseek', 'openai'].forEach((key) => {
+        if (!providers[key].baseUrl) providers[key].baseUrl = DEFAULT_PROVIDERS[key].baseUrl;
+      });
+      return { providers, active: s.active || 'deepseek' };
     }
   } catch { /* 损坏配置走迁移/默认 */ }
   // #43：v1 单份配置迁移（旧 key 归入原 provider）
@@ -742,11 +750,24 @@ function getGreeting() {
 
 /* 每日话语：基础版本地生成；AI 仅作为用户主动开启的增强。 */
 const AI_DAILY_TIP_KEY = 'guanji_ai_daily_tip_enabled';
+const DAILY_TIP_VISIBLE_KEY = 'guanji_daily_tip_visible_v1';
 const AI_DAILY_TIP_MIGRATION_KEY = 'guanji_ai_daily_tip_migration_v1';
 let tipPending = false;
 
+/* #163：每日话语是首页体验开关；无 AI 时仍可使用本地话语。默认开启以保持旧用户体验。 */
+function dailyTipEnabled() {
+  return localStorage.getItem(DAILY_TIP_VISIBLE_KEY) !== '0';
+}
+
+function setDailyTipEnabled(enabled) {
+  localStorage.setItem(DAILY_TIP_VISIBLE_KEY, enabled ? '1' : '0');
+  if (typeof renderAIDailyTipSetting === 'function') renderAIDailyTipSetting();
+}
+
+/* 旧 key 继续表示 AI 增强偏好；新用户配置 AI 后默认获得增强，旧用户显式关闭则尊重原选择。 */
 function aiDailyTipEnabled() {
-  return localStorage.getItem(AI_DAILY_TIP_KEY) === '1';
+  const legacyChoice = localStorage.getItem(AI_DAILY_TIP_KEY);
+  return legacyChoice === null ? !!apiKey : legacyChoice === '1';
 }
 
 function setAIDailyTipEnabled(enabled) {
@@ -764,7 +785,7 @@ function shouldShowAIDailyTipMigration() {
 
 function renderAIDailyTipSetting() {
   const sw = $('aiDailyTipSwitch');
-  if (sw) sw.classList.toggle('on', aiDailyTipEnabled());
+  if (sw) sw.classList.toggle('on', dailyTipEnabled());
   const prompt = $('aiDailyTipMigration');
   if (prompt) prompt.classList.toggle('hidden', !shouldShowAIDailyTipMigration());
 }
@@ -784,6 +805,7 @@ function getLocalDailyTip(snapshot) {
 
 function getDailyTip() {
   return new Promise((resolve) => {
+    if (!dailyTipEnabled()) { resolve(''); return; }
     const today = fmtDateInput(new Date());
     const localTip = getLocalDailyTip(buildInsightSnapshot({ days: 7 }));
     let cached = null;
@@ -820,8 +842,14 @@ function getDailyTip() {
    标题永不截断（≤13 字一行），提醒完整可见不丢失 */
 function renderGreeting() {
   $('greetingTitle').textContent = getGreeting();
+  const tipEl = $('greetingTip');
+  if (!dailyTipEnabled()) {
+    tipEl.textContent = '';
+    tipEl.classList.add('hidden');
+    return;
+  }
   getDailyTip().then((tip) => {
-    const tipEl = $('greetingTip');
+    if (!dailyTipEnabled()) { tipEl.textContent = ''; tipEl.classList.add('hidden'); return; }
     tipEl.textContent = tip || getLocalDailyTip(buildInsightSnapshot({ days: 7 }));
     tipEl.classList.remove('hidden');
   });
