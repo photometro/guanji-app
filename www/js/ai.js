@@ -398,38 +398,148 @@ function aiEndpoint(cfg) {
   return (cfg.baseUrl || '').replace(/\/+$/, '') + '/chat/completions';
 }
 
-async function askAI(userContent, signal) {
-  const cfg = aiConfig;
-  if (!cfg.apiKey) throw new Error('NO_KEY');
-  if (!cfg.baseUrl || !cfg.model) throw new Error('NO_CONFIG');
-  const res = await fetch(aiEndpoint(cfg), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${cfg.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: cfg.model,
-      messages: [
-        { role: 'system', content: AI_SYSTEM_PROMPT },
-        { role: 'user', content: userContent },
-      ],
-      temperature: 0.7,
-      max_tokens: 1200,
-      stream: false,
-    }),
-    signal,
-  });
-  if (!res.ok) {
-    if (res.status === 401) throw new Error('KEY_INVALID');
-    throw new Error('API_ERROR');
+/* #174：按提供商/模型建立请求能力档案。深度思考模型默认会把正文放进
+   reasoning_content，导致旧版只读 message.content 时误判为空；对 DeepSeek
+   V4 关闭 thinking，并在结构化报告请求中显式启用 JSON 输出。 */
+function aiCapabilityProfile(cfg, options = {}) {
+  const provider = String((cfg && cfg.provider) || 'custom').toLowerCase();
+  const model = String((cfg && cfg.model) || '').trim();
+  const isDeepSeekV4 = provider === 'deepseek' && /^deepseek-v4(?:[-_]|$)/i.test(model);
+  const structured = !!options.structured;
+  const supportsJson = provider === 'deepseek' || provider === 'openai';
+  const maxTokens = Number.isFinite(Number(options.maxTokens))
+    ? Math.max(64, Math.min(4096, Number(options.maxTokens)))
+    : (structured ? 1800 : 1200);
+  return {
+    provider,
+    model,
+    isDeepSeekV4,
+    thinkingDisabled: isDeepSeekV4,
+    structured,
+    responseFormat: structured && supportsJson,
+    maxTokens,
+  };
+}
+
+function aiDiagnostic(meta) {
+  // 只保留本地、脱敏的排障元数据；绝不保存密钥、原始统计或完整回答。
+  try {
+    localStorage.setItem('guanji_ai_last_diagnostic', JSON.stringify({
+      at: new Date().toISOString(),
+      provider: meta.provider || 'custom',
+      model: meta.model || '',
+      status: meta.status || 0,
+      finishReason: meta.finishReason || '',
+      contentLength: Number(meta.contentLength) || 0,
+      reasoningLength: Number(meta.reasoningLength) || 0,
+      thinkingDisabled: !!meta.thinkingDisabled,
+      responseFormat: !!meta.responseFormat,
+      maxTokens: Number(meta.maxTokens) || 0,
+      errorCode: meta.errorCode || '',
+    }));
+  } catch (e) { /* 本地排障信息失败不影响 AI 主流程 */ }
+}
+
+function aiRequestError(code, extra = {}) {
+  const error = new Error(code);
+  Object.assign(error, extra);
+  return error;
+}
+
+function aiContentText(value) {
+  if (typeof value === 'string') return value.trim();
+  if (Array.isArray(value)) {
+    return value.map((part) => {
+      if (typeof part === 'string') return part;
+      if (part && typeof part.text === 'string') return part.text;
+      return '';
+    }).join('').trim();
   }
-  const data = await res.json();
-  const content = data.choices && data.choices[0] && data.choices[0].message
-    ? data.choices[0].message.content
-    : '';
-  if (!content) throw new Error('API_EMPTY');
+  return '';
+}
+
+async function aiRequest(cfg, userContent, signal, options = {}) {
+  if (!cfg || !cfg.apiKey) throw aiRequestError('NO_KEY');
+  if (!cfg.baseUrl || !cfg.model) throw aiRequestError('NO_CONFIG');
+  const profile = aiCapabilityProfile(cfg, options);
+  const body = {
+    model: cfg.model,
+    messages: [
+      { role: 'system', content: AI_SYSTEM_PROMPT },
+      { role: 'user', content: userContent },
+    ],
+    temperature: 0.7,
+    max_tokens: profile.maxTokens,
+    stream: false,
+  };
+  if (profile.thinkingDisabled) body.thinking = { type: 'disabled' };
+  if (profile.responseFormat) body.response_format = { type: 'json_object' };
+
+  let res;
+  try {
+    res = await fetch(aiEndpoint(cfg), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${cfg.apiKey}`,
+      },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (error) {
+    if (error && error.name === 'AbortError') throw error;
+    const networkError = aiRequestError('API_ERROR', { cause: error });
+    aiDiagnostic({ ...profile, errorCode: networkError.message });
+    throw networkError;
+  }
+  if (!res.ok) {
+    const code = res.status === 401 ? 'KEY_INVALID' : 'API_ERROR';
+    const error = aiRequestError(code, { status: res.status });
+    aiDiagnostic({ ...profile, status: res.status, errorCode: code });
+    throw error;
+  }
+
+  let data;
+  try {
+    data = await res.json();
+  } catch (error) {
+    const parseError = aiRequestError('API_INVALID_RESPONSE', { status: res.status });
+    aiDiagnostic({ ...profile, status: res.status, errorCode: parseError.message });
+    throw parseError;
+  }
+  const choice = data && Array.isArray(data.choices) ? data.choices[0] : null;
+  const message = choice && choice.message ? choice.message : null;
+  const content = aiContentText(message && message.content);
+  const reasoning = aiContentText(message && (message.reasoning_content || message.reasoning));
+  const finishReason = choice && (choice.finish_reason || choice.finishReason) || '';
+  const diag = {
+    ...profile,
+    status: res.status,
+    finishReason,
+    contentLength: content.length,
+    reasoningLength: reasoning.length,
+  };
+  if (!choice || !message) {
+    const error = aiRequestError('API_INVALID_RESPONSE', { status: res.status });
+    aiDiagnostic({ ...diag, errorCode: error.message });
+    throw error;
+  }
+  if (!content) {
+    const code = finishReason === 'length' ? 'API_TRUNCATED' : (reasoning ? 'API_EMPTY_REASONING' : 'API_EMPTY');
+    const error = aiRequestError(code, {
+      status: res.status,
+      reasoningLength: reasoning.length,
+      finishReason,
+    });
+    aiDiagnostic({ ...diag, errorCode: code });
+    throw error;
+  }
+  aiDiagnostic(diag);
   return content;
+}
+
+async function askAI(userContent, signal, options = {}) {
+  return aiRequest(aiConfig, userContent, signal, options);
 }
 
 /* 从 AI 回复中提取 JSON（容错：可能夹带说明文字） */
@@ -485,6 +595,10 @@ function esc(s) {
 function aiErrorToast(err) {
   if (err && err.message === 'NO_KEY') toast('请先在「我的 → AI 设置」填入 DeepSeek 密钥');
   else if (err && err.message === 'KEY_INVALID') toast('密钥无效，请检查后重试');
+  else if (err && err.message === 'API_EMPTY') toast('模型未返回有效内容，请稍后重试');
+  else if (err && err.message === 'API_EMPTY_REASONING') toast('模型只返回了思考过程，请稍后重试');
+  else if (err && err.message === 'API_TRUNCATED') toast('模型输出被截断，请稍后重试');
+  else if (err && err.message === 'API_INVALID_RESPONSE') toast('模型返回格式异常，请稍后重试');
   else if (err && err.name === 'AbortError') toast('AI 响应超时，请稍后重试');
   else toast('AI 服务暂时不可用，请检查网络后重试');
 }
@@ -492,6 +606,13 @@ function aiErrorToast(err) {
 /* 自动模式失败后展示给用户的错误说明 */
 function aiErrorMessage(err) {
   if (err && err.message === 'KEY_INVALID') return '密钥无效，请检查「我的 → AI 设置」中的配置';
+  if (err && err.message === 'API_EMPTY') return '模型未返回有效内容，请稍后重试';
+  if (err && err.message === 'API_EMPTY_REASONING') return '模型只返回了思考过程，请切换稳定模型或稍后重试';
+  if (err && err.message === 'API_TRUNCATED') return '模型输出被截断，请稍后重试';
+  if (err && err.message === 'API_INVALID_RESPONSE') return '模型返回格式异常，请检查模型是否兼容 Chat Completions';
+  if (err && err.message === 'API_FORMAT') return '连接成功但模型没有返回可解析内容';
+  if (err && err.message === 'API_ERROR' && err.status === 404) return '接口路径错误（404），请检查 Base URL';
+  if (err && err.message === 'API_ERROR' && err.status) return `请求失败（HTTP ${err.status}）`;
   if (err && err.name === 'AbortError') return '响应超时，请检查网络后重试';
   if (err && err.message === 'API_ERROR') return 'AI 服务暂时不可用，请稍后重试';
   return '发生未知错误，请稍后重试';
@@ -500,7 +621,7 @@ function aiErrorMessage(err) {
 /* ---------- AI 分析：自动生成 + 指纹 + 重试 ---------- */
 
 const REPORT_FP_KEY = 'guanji_report_fingerprint';
-const RETRY_DELAYS = [2000, 4000, 8000];   // 自动重试退避（3 次）
+const RETRY_DELAYS = [3000];   // #174：结构化分析最多自动安全重试 1 次
 
 /* 数据指纹：日期 + 记录数 + 最新 id + 全量内容摘要——数据未变则不重复调用；
    #38：摘要覆盖情绪/诱因/时长/相关影响等聚合字段（note 不影响聚合特征，不参与），
@@ -583,7 +704,8 @@ function generateAnalysis(ev, opts) {
     askAI(
       `以下是用户${insightWindowLabel()}个人行为与习惯的聚合统计（注意：只有聚合数据，没有单条记录、备注、附件或自定义标签原文）：\n` +
       JSON.stringify(buildAggregatePayload(7), null, 2) + AI_JSON_INSTRUCTION,
-      controller.signal
+      controller.signal,
+      { structured: true, purpose: 'insight-report' }
     ).then((content) => {
       const data = extractJSON(content);
       if (!data) throw new Error('PARSE_FAIL');
@@ -592,9 +714,12 @@ function generateAnalysis(ev, opts) {
       renderAIReport(data);
       succeeded = true;
     }).catch((err) => {
-      // 可重试：网络/超时/解析失败（密钥无效属配置问题，重试无意义；刷新模式不重试，避免多次调用）
-      const retriable = err && (err.name === 'AbortError' || err.message === 'API_ERROR' || err.message === 'PARSE_FAIL');
-      if (auto && !refresh && retriable && attemptNo < 3) {
+      // 可重试：网络/超时/空正文/格式失败（密钥无效属配置问题，刷新模式不重试）。
+      const retriable = err && (err.name === 'AbortError' || [
+        'API_ERROR', 'API_EMPTY', 'API_EMPTY_REASONING', 'API_TRUNCATED',
+        'API_INVALID_RESPONSE', 'PARSE_FAIL',
+      ].includes(err.message));
+      if (auto && !refresh && retriable && attemptNo < RETRY_DELAYS.length) {
         attemptNo++;
         retryScheduled = true;
         insightAIStatus = 'loading';
@@ -609,8 +734,8 @@ function generateAnalysis(ev, opts) {
         renderInsightLocal();
         toast('报告刷新失败，仍显示上次结果');
       } else if (auto) {
-        // 自动模式 3 次全失败：卡片内保留重试入口
-        toast(err && err.message === 'UNSAFE_OUTPUT' ? 'AI 回复未通过内容边界校验，请稍后重试' : 'AI 生成失败，已自动重试 3 次');
+        // 自动模式重试失败：卡片内保留重试入口
+        toast(err && err.message === 'UNSAFE_OUTPUT' ? 'AI 回复未通过内容边界校验，请稍后重试' : 'AI 生成失败，已自动重试 1 次');
         insightAIStatus = 'error';
         renderInsightLocal();
       } else {

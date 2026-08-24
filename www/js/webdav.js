@@ -7,7 +7,7 @@
 const WD = {
   CFG_KEY: 'guanji_webdav_cfg',      // { url, username, dir }（dir 如 'guanji'；密码独立存安全存储）
   PASS_KEY: 'guanji_webdav_pass',    // Keystore（@aparajita 同款 internal API）；浏览器降级 localStorage
-  STAT_KEY: 'guanji_webdav_stat',    // { lastBackup, lastStatus:'ok'|'error'|'never', lastError, lastErrorTime, fingerprint }
+  STAT_KEY: 'guanji_webdav_stat',    // { lastBackup, lastStatus, lastError, lastErrorTime, fingerprint, autoState }
   AUTO_KEY: 'guanji_webdav_auto',    // 'on' | 'off'（打开 App 时自动备份，默认 off——上传需明确授权）
   DEVICE_KEY: 'guanji_device_id',    // 设备短标识（文件名防多设备撞车）
   DIR: 'guanji',                     // 服务器子目录（自动建）
@@ -132,9 +132,30 @@ async function wdEnsureDir() {
   throw new Error('创建目录失败（HTTP ' + res.status + '）');
 }
 
+/* #175：新备份文件名仅保留日期与时分秒；同一任务的重试由调用方复用同名文件。 */
+function wdBackupFilename(date = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `guanji-${fmtDateKey(date)}-${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}.json`;
+}
+
+/* 同一秒跨设备生成同名文件时顺延序号；列举失败不阻断上传，避免把列表服务故障变成无法备份。 */
+async function wdUniqueBackupFilename(base) {
+  try {
+    const files = await wdList();
+    const names = new Set(files.map((file) => file.name));
+    if (!names.has(base)) return base;
+    const dot = base.lastIndexOf('.json');
+    const stem = dot > 0 ? base.slice(0, dot) : base;
+    for (let i = 2; i <= 99; i += 1) {
+      const candidate = `${stem}-${i}.json`;
+      if (!names.has(candidate)) return candidate;
+    }
+  } catch (e) { /* 列表不可用时仍尝试使用稳定主文件名 */ }
+  return base;
+}
+
 /* 上传密文包 */
-async function wdUpload(pkgJson) {
-  const fname = 'guanji-' + wdDeviceId() + '-backup-' + fmtDateKey(new Date()) + '-' + Date.now().toString(36) + '.json';
+async function wdUpload(pkgJson, fname) {
   await wdEnsureDir();
   const res = await wdRequest('PUT', '/' + WD.DIR + '/' + encodeURIComponent(fname), { body: pkgJson });
   if (res.status === 201 || (res.status >= 200 && res.status < 300)) return fname;
@@ -188,57 +209,145 @@ async function wdDelete(name) {
 
 /* ---------- 数据指纹（自动备份去重） ---------- */
 
-function wdFingerprint() {
-  const latest = records.length ? records[records.length - 1].id : '';
-  return records.length + '|' + latest + '|' + secureMode();
+function wdCanonical(value) {
+  if (Array.isArray(value)) return value.map((item) => wdCanonical(item));
+  if (value && typeof value === 'object') {
+    return Object.keys(value).sort().reduce((out, key) => {
+      out[key] = wdCanonical(value[key]);
+      return out;
+    }, {});
+  }
+  return value;
+}
+
+/* #175：全量稳定内容摘要，覆盖新增、编辑、删除、导入/恢复及情绪/诱因/备注变化。 */
+async function wdFingerprint() {
+  const payload = wdCanonical({
+    schema: 2,
+    mode: secureMode(),
+    records: Array.isArray(records) ? records : [],
+  });
+  const raw = JSON.stringify(payload);
+  if (typeof crypto !== 'undefined' && crypto.subtle && typeof TextEncoder !== 'undefined') {
+    try {
+      const bytes = new TextEncoder().encode(raw);
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      const hex = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+      return 'sha256:' + hex;
+    } catch (e) { /* WebView 不支持 subtle 时使用稳定 JSON 回退 */ }
+  }
+  return 'v2:' + raw;
 }
 
 /* 手动备份（#115：复用加密包逻辑，内存生成不落盘） */
-async function wdBackupNow() {
+async function wdBackupNow(options = {}) {
   if (secureMode() !== 'encrypted') throw new Error('WebDAV 备份需要开启加密（明文模式不上传）');
   if (!records.length) throw new Error('还没有记录可备份');
+  const task = options.task || {};
+  const fingerprint = options.fingerprint || await wdFingerprint();
   const pkg = await secureExportPackage();
   const json = JSON.stringify(pkg);
-  const fname = await wdUpload(json);
+  if (!task.filename) task.filename = await wdUniqueBackupFilename(wdBackupFilename());
+  const fname = await wdUpload(json, task.filename);
   const stat = wdLoadStat();
   stat.lastBackup = new Date().toISOString();
   stat.lastStatus = 'ok';
   stat.lastError = '';
-  stat.fingerprint = wdFingerprint();
+  stat.lastErrorTime = '';
+  stat.lastFilename = fname;
+  stat.fingerprint = fingerprint;
+  stat.autoState = 'success';
+  stat.autoRetryCount = 0;
   wdSaveStat(stat);
   return { filename: fname, count: pkg.recordCount };
 }
 
 let wdAutoBackupPending = false;
 let wdAutoBackupTimer = null;
+const WD_AUTO_RETRY_DELAYS = [1000, 3000, 8000];
 
-/* #128：前台自动备份。加密态 + 已启用 + 指纹变化 + 有数据 → 上传；失败写入 stat。 */
+function wdIsOffline() {
+  return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
+
+function wdSetAutoState(state, error = '', retryCount = 0) {
+  const stat = wdLoadStat();
+  stat.autoState = state;
+  stat.autoRetryCount = retryCount;
+  if (state === 'waiting') {
+    stat.lastStatus = 'waiting';
+    stat.lastError = String(error || '等待网络恢复后自动上传').slice(0, 120);
+    stat.lastErrorTime = new Date().toISOString();
+  } else if (state === 'retrying') {
+    // 重试中不是最终失败，保留入口行的“已配置/上次成功”状态。
+    stat.lastError = String(error || '自动备份失败').slice(0, 120);
+    stat.lastErrorTime = new Date().toISOString();
+  } else if (error) {
+    stat.lastStatus = 'error';
+    stat.lastError = String(error).slice(0, 120);
+    stat.lastErrorTime = new Date().toISOString();
+  } else if (state === 'uploading' || state === 'retrying' || state === 'waiting') {
+    stat.lastStatus = state === 'waiting' ? 'waiting' : stat.lastStatus || 'never';
+  }
+  wdSaveStat(stat);
+  if (typeof wdRender === 'function') wdRender();
+}
+
+function wdDelay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/* #175：前台自动备份有限重试。每次任务复用同一文件名，避免超时后重复生成备份。 */
 async function wdAutoBackup() {
   if (!wdAutoEnabled()) return;
   if (secureMode() !== 'encrypted') return;
   if (!records.length) return;
-  const fp = wdFingerprint();
+  if (wdIsOffline()) {
+    wdSetAutoState('waiting', '等待网络恢复后自动上传');
+    return;
+  }
+  const fp = await wdFingerprint();
   const stat = wdLoadStat();
   if (stat.fingerprint === fp) return;   // 自上次备份无变化
   if (wdAutoBackupPending) return;       // 冷启动与前台事件重叠时只上传一次
   wdAutoBackupPending = true;
+  const task = { filename: null };
+  let lastError = null;
   try {
-    await wdBackupNow();
-  } catch (e) {
-    const s = wdLoadStat();
-    s.lastStatus = 'error';
-    s.lastError = ((e && e.message) || '自动备份失败').slice(0, 80);
-    s.lastErrorTime = new Date().toISOString();
-    wdSaveStat(s);
+    wdSetAutoState('uploading');
+    for (let attempt = 0; attempt <= WD_AUTO_RETRY_DELAYS.length; attempt += 1) {
+      try {
+        await wdBackupNow({ fingerprint: fp, task });
+        lastError = null;
+        break;
+      } catch (e) {
+        lastError = e;
+        if (attempt >= WD_AUTO_RETRY_DELAYS.length) break;
+        if (wdIsOffline()) {
+          wdSetAutoState('waiting', '等待网络恢复后自动上传', attempt + 1);
+          return;
+        }
+        wdSetAutoState('retrying', (e && e.message) || '自动备份失败', attempt + 1);
+        await wdDelay(WD_AUTO_RETRY_DELAYS[attempt]);
+      }
+    }
+    if (lastError) {
+      wdSetAutoState(wdIsOffline() ? 'waiting' : 'error', (lastError && lastError.message) || '自动备份失败', WD_AUTO_RETRY_DELAYS.length);
+    }
   } finally {
     wdAutoBackupPending = false;
     if (typeof wdRender === 'function') wdRender();
   }
 }
 
-/* WebView 恢复后的短暂等待，避免网络与原生桥尚未就绪时静默失败。 */
-function wdScheduleAutoBackup() {
+/* WebView 恢复后的短暂等待；离线时挂起，online/前台事件会重新调度。 */
+function wdScheduleAutoBackup(reason = 'foreground') {
   if (wdAutoBackupTimer) clearTimeout(wdAutoBackupTimer);
+  if (!wdAutoEnabled()) return;
+  if (wdIsOffline()) {
+    wdSetAutoState('waiting', '等待网络恢复后自动上传');
+    return;
+  }
   wdAutoBackupTimer = setTimeout(() => {
     wdAutoBackupTimer = null;
     wdAutoBackup().catch(() => {});
@@ -252,6 +361,24 @@ function wdRender() {
   const cfg = wdLoadCfg();
   const stat = wdLoadStat();
   const st = $('wdStatus');
+  const formatLast = () => {
+    if (!stat.lastBackup) return '尚未备份';
+    const d = new Date(stat.lastBackup), pad = (n) => String(n).padStart(2, '0');
+    return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  };
+  const syncSummary = !enc ? '开启加密后可用'
+    : !cfg ? '未配置服务器'
+    : stat.autoState === 'uploading' ? '正在同步…'
+    : stat.autoState === 'retrying' ? '同步重试中…'
+    : stat.autoState === 'waiting' ? '等待网络恢复'
+    : stat.lastStatus === 'error' ? '上次同步失败'
+    : '服务器已连接 · ' + formatLast() + ' · 自动同步' + (wdAutoEnabled() ? '已开启' : '已关闭');
+  const syncSub = $('backupSyncSub'), syncStatus = $('backupSyncStatus'), autoSwitch = $('wdAutoSwitch');
+  const manualBackup = $('backupSyncNowBtn');
+  if (syncSub) syncSub.textContent = syncSummary;
+  if (syncStatus && (!$('backupSyncBackdrop') || $('backupSyncBackdrop').dataset.backupHubView === 'home')) syncStatus.textContent = syncSummary;
+  if (autoSwitch) autoSwitch.classList.toggle('on', wdAutoEnabled());
+  if (manualBackup) manualBackup.disabled = !(enc && cfg);
   // #117：入口行副标题（未配置/已配置+状态）——服务器备份行
   const cfgSub = $('wdCfgSub');
   if (cfgSub) {
@@ -260,15 +387,6 @@ function wdRender() {
       : stat.lastStatus === 'error' ? '上次备份失败'
       : stat.lastBackup ? '已配置 · 上次备份 ' + ((new Date(stat.lastBackup)).getMonth() + 1) + '月' + (new Date(stat.lastBackup)).getDate() + '日'
       : '已配置';
-  }
-  // #119：自动备份入口行副标题（状态跟随——未配置引导/已开启/已关闭）
-  // 注意：必须在 if(st) 提前 return 之前更新，否则明文/未配置态不生效
-  const autoSub = $('wdAutoSub');
-  if (autoSub) {
-    autoSub.textContent = !enc ? '开启加密后可用'
-      : !cfg ? '未配置服务器'
-      : wdAutoEnabled() ? '已开启'
-      : '已关闭';
   }
   if (st) {
     if (!enc) {
@@ -279,7 +397,13 @@ function wdRender() {
       st.textContent = '配置你的 WebDAV 服务器（如坚果云、群晖、Nextcloud）。备份只发往你配置的服务器——观己不提供任何云服务。';
       return;
     }
-    if (stat.lastStatus === 'error') {
+    if (stat.autoState === 'uploading') {
+      st.textContent = '正在上传自动备份…';
+    } else if (stat.autoState === 'retrying') {
+      st.textContent = '自动备份遇到网络波动，正在重试…';
+    } else if (stat.autoState === 'waiting') {
+      st.textContent = '等待网络恢复后自动上传。';
+    } else if (stat.lastStatus === 'error') {
       st.textContent = '上次备份失败：' + (stat.lastError || '未知错误') + '（' + ((stat.lastErrorTime || '').slice(0, 10)) + '）';
     } else if (stat.lastBackup) {
       const d = new Date(stat.lastBackup);
@@ -289,7 +413,6 @@ function wdRender() {
       st.textContent = '已配置，尚未备份。';
     }
   }
-  $('wdAutoSwitch').classList.toggle('on', wdAutoEnabled());
 }
 
 async function initWebDAVUI() {
@@ -317,12 +440,13 @@ async function initWebDAVUI() {
     }
     wdRender();
     $('wdCfgBackdrop').classList.add('hidden');
-    $('wdManageBackdrop').classList.remove('hidden');
-    loadWdManage();
+    const openManage = () => { openSheetPanel('wdManageBackdrop'); loadWdManage(); };
+    if (!$('backupSyncBackdrop').classList.contains('hidden')) closeSheetPanel('backupSyncBackdrop', openManage);
+    else openManage();
     // 首次配置后询问自动备份（数据离开设备需明确授权）
     if (localStorage.getItem(WD.AUTO_KEY) === null) {
       localStorage.setItem(WD.AUTO_KEY, 'off');
-      toast('已保存配置。可在「打开 App 时自动备份」处开启自动备份');
+      toast('已保存配置。可在「备份与同步」中开启自动同步');
     } else {
       toast('配置已保存 ✓');
     }
@@ -333,7 +457,7 @@ async function initWebDAVUI() {
     catch (e) { toast((e && e.message) || '连接失败'); }
   });
 
-  $('wdBackupBtn').addEventListener('click', async () => {
+  async function performManualBackup() {
     try {
       const r = await wdBackupNow();
       toast('已备份到服务器：' + r.filename);
@@ -341,6 +465,14 @@ async function initWebDAVUI() {
       toast((e && e.message) || '备份失败');
     }
     wdRender();
+  }
+  $('wdBackupBtn').addEventListener('click', performManualBackup);
+  $('backupSyncNowBtn').addEventListener('click', performManualBackup);
+
+  $('backupSyncBtn').addEventListener('click', () => {
+    wdRender();
+    if (typeof window.openBackupHub === 'function') window.openBackupHub();
+    else openSheetPanel('backupSyncBackdrop');
   });
 
   // 恢复三模式
@@ -361,43 +493,66 @@ async function initWebDAVUI() {
     try {
       const files = await wdList();
       if (!files.length) {
-        listEl.innerHTML = '<p class="dialog-hint">服务器上没有备份——先「立即备份」一次。</p>';
+        listEl.innerHTML = backupPicker.renderList([], { emptyText: '服务器上没有备份——先「立即备份」一次。' });
         $('wdRestoreConfirm').disabled = true;
         return;
       }
       $('wdRestoreConfirm').disabled = false;
-      listEl.innerHTML = files.map((f, i) =>
-        `<button class="chip" data-i="${i}" style="width:100%;justify-content:flex-start;margin-bottom:6px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔒 ${f.name}${f.date ? ' · ' + f.date : ''}</button>`
-      ).join('');
-      listEl.querySelectorAll('.chip').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          listEl.querySelectorAll('.chip').forEach((c) => c.classList.remove('active'));
-          btn.classList.add('active');
-          wdRestoreName = files[parseInt(btn.dataset.i, 10)].name;
+      const renderRestorePrimary = (file) => {
+        if (!file) return '';
+        return `<div class="primary-card"><div class="primary-line"><span class="file-icon">${backupPicker.icon('encrypted')}</span><div class="primary-copy"><strong>当前选择备份</strong><span>${backupPicker.escapeHtml(file.date || '服务器备份')} · ${backupPicker.escapeHtml(file.name || '')}</span></div><span class="badge">可用</span></div><div class="primary-meta"><span>类型 <b>加密 JSON</b></span><span>大小 <b>${backupPicker.escapeHtml(file.sizeLabel || '128 KB')}</b></span></div></div>`;
+      };
+      const renderRestoreRow = (file, index, options) => {
+        const active = options.selectedIndex === index;
+        return `<div class="history-row" data-backup-index="${index}" role="button" tabindex="0"><span class="file-icon">${backupPicker.icon('encrypted')}</span><div class="history-copy"><strong>${backupPicker.escapeHtml(file.name || '')}</strong><span>${backupPicker.escapeHtml(file.date || '服务器备份')} · 加密 JSON</span></div><button class="select${active ? ' active' : ''}" type="button" data-select="${index}">${active ? '已选择' : '选择'}</button></div>`;
+      };
+      const render = (selectedIndex) => {
+        listEl.innerHTML = backupPicker.renderList(files, {
+          task: 'server',
+          selectedIndex,
+          historyTitle: '更早备份',
+          renderPrimary: renderRestorePrimary,
+          renderHistory: renderRestoreRow,
         });
-      });
+        listEl.querySelectorAll('.history-row[data-backup-index]').forEach((row) => {
+          const pick = () => {
+            const index = parseInt(row.dataset.backupIndex, 10);
+            wdRestoreName = files[index].name;
+            render(index);
+          };
+          row.addEventListener('click', (event) => {
+            if (event.target.closest('button')) event.preventDefault();
+            pick();
+          });
+          row.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); pick(); } });
+        });
+      };
       wdRestoreName = files[0].name;
-      const first = listEl.querySelector('.chip');
-      if (first) first.classList.add('active');
+      render(0);
     } catch (e) {
       listEl.innerHTML = '<p class="dialog-hint">读取失败：' + ((e && e.message) || '') + '</p>';
     }
   }
-  $('wdRestoreBtn').addEventListener('click', () => {
+  window.openServerRestore = () => {
+    wdRestoreName = null;
     $('wdRestorePass').value = '';
-    $('wdRestoreInfo').textContent = '选择要恢复的备份，输入创建它时设置的口令。历史备份各用各自创建时的口令。';
-    $('wdRestoreBackdrop').classList.remove('hidden');
+    $('wdRestoreInfo').textContent = '';
+    $('wdRestoreInfo').classList.add('hidden');
+    if (typeof window.openBackupHubServer === 'function') window.openBackupHubServer();
     loadWdRestoreList();
+  };
+  $('wdRestoreBtn').addEventListener('click', () => window.openServerRestore());
+  $('wdRestoreCancel').addEventListener('click', () => {
+    if (typeof window.backupHubBack === 'function') window.backupHubBack();
   });
-  $('wdRestoreCancel').addEventListener('click', () => $('wdRestoreBackdrop').classList.add('hidden'));
   $('wdRestoreConfirm').addEventListener('click', async () => {
     const info = $('wdRestoreInfo');
     try {
-      if (!wdRestoreName) { info.textContent = '请先选择一个备份'; return; }
+      if (!wdRestoreName) { info.textContent = '请先选择一个备份'; info.classList.remove('hidden'); return; }
       const text = await wdDownload(wdRestoreName);
       const pkg = JSON.parse(text);
       const pass = $('wdRestorePass').value;
-      if (!pass) { info.textContent = '请输入创建该备份时设置的口令'; return; }
+      if (!pass) { info.textContent = '请输入创建该备份时设置的口令'; info.classList.remove('hidden'); return; }
       const list = await secureImportPackage(pkg, pass);
       if (!Array.isArray(list)) throw new Error('备份数据格式异常');
       if (wdRestoreMode === 'overwrite') {
@@ -421,12 +576,13 @@ async function initWebDAVUI() {
       if (typeof normalizeOffsets === 'function') normalizeOffsets();
       Storage.saveRecords(records);
       afterRecordsChanged();
-      $('wdRestoreBackdrop').classList.add('hidden');
+      if (typeof window.closeBackupHub === 'function') window.closeBackupHub();
       toast('已从服务器恢复 ' + list.length + ' 条记录');
       renderHome();
       wdRender();
     } catch (e) {
       info.textContent = '恢复失败：' + ((e && e.message) || '口令错误或数据损坏');
+      info.classList.remove('hidden');
     }
   });
 
@@ -434,8 +590,9 @@ async function initWebDAVUI() {
   $('wdCfgBtn').addEventListener('click', () => {
     if (secureMode() !== 'encrypted') { toast('开启加密后可用——服务器备份是加密通道'); return; }
     if (wdLoadCfg()) {
-      $('wdManageBackdrop').classList.remove('hidden');
-      loadWdManage();
+      const openManage = () => { openSheetPanel('wdManageBackdrop'); loadWdManage(); };
+      if (!$('backupSyncBackdrop').classList.contains('hidden')) closeSheetPanel('backupSyncBackdrop', openManage);
+      else openManage();
     } else {
       $('wdStatus').textContent = '配置你的 WebDAV 服务器（如坚果云、群晖、Nextcloud）。备份只发往你配置的服务器——观己不提供任何云服务。';
       $('wdCfgBackdrop').classList.remove('hidden');
@@ -448,25 +605,36 @@ async function initWebDAVUI() {
   async function loadWdManage() {
     const listEl = $('wdManageList');
     try {
+      const manageHint = $('wdManageHint');
+      if (manageHint) { manageHint.dataset.state = 'loading'; manageHint.textContent = '正在读取…'; }
       const files = await wdList();
-      if (!files.length) { listEl.innerHTML = '<p class="dialog-hint">服务器上没有备份。</p>'; return; }
-      listEl.innerHTML = files.map((f, i) =>
-        `<div class="bkp-row" style="display:flex;align-items:center;gap:8px;padding:10px 2px;border-bottom:1px solid var(--line)">
-          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">🔒 ${f.name}</span>
-          <button class="bkp-del" data-i="${i}" style="flex-shrink:0;border:none;background:none;color:var(--accent-deep);font-size:12px;padding:4px 8px;cursor:pointer">删除</button>
-        </div>`).join('');
-      listEl.querySelectorAll('.bkp-del').forEach((btn) => {
+      const stat = wdLoadStat();
+      const lastUpload = stat.lastBackup
+        ? (() => { const d = new Date(stat.lastBackup); const pad = (n) => String(n).padStart(2, '0'); return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); })()
+        : (files[0] && files[0].date) || '尚未上传';
+      if (manageHint) { manageHint.dataset.state = 'ready'; manageHint.textContent = '已连接 · 最近上传 ' + lastUpload; }
+      if (!files.length) { listEl.innerHTML = backupPicker.renderList([], { emptyText: '服务器上没有备份。' }); return; }
+      const renderManagePrimary = (file) => `<div class="primary-card"><div class="primary-line"><span class="file-icon">${backupPicker.icon('check')}</span><div class="primary-copy"><strong>最近一次备份</strong><span>${backupPicker.escapeHtml(file.date || '服务器备份')} · ${backupPicker.escapeHtml(file.name || '')}</span></div></div><div class="primary-meta"><span>远端文件 <b>${files.length} 份</b></span><span>文件类型 <b>加密 JSON</b></span></div></div>`;
+      const renderManageRow = (file, index) => `<div class="history-row" data-backup-index="${index}"><span class="file-icon">${backupPicker.icon('encrypted')}</span><div class="history-copy"><strong>${backupPicker.escapeHtml(file.name || '')}</strong><span>${backupPicker.escapeHtml(file.date || '服务器备份')} · 加密 JSON</span></div><button type="button" class="select" data-wd-delete-index="${index}">删除</button></div>`;
+      listEl.innerHTML = backupPicker.renderList(files, {
+        task: 'manage',
+        selectedIndex: 0,
+        historyTitle: '更早备份',
+        renderPrimary: renderManagePrimary,
+        renderHistory: renderManageRow,
+      });
+      listEl.querySelectorAll('.select[data-wd-delete-index]').forEach((btn) => {
         btn.addEventListener('click', async () => {
           if (btn.dataset.armed !== '1') {
             btn.dataset.armed = '1';
             btn.textContent = '确认删除？';
             clearTimeout(wdManageTimer);
             wdManageTimer = setTimeout(() => {
-              listEl.querySelectorAll('.bkp-del').forEach((b) => { b.dataset.armed = ''; b.textContent = '删除'; });
+              listEl.querySelectorAll('.select[data-wd-delete-index]').forEach((b) => { b.dataset.armed = ''; b.textContent = '删除'; });
             }, 3000);
             return;
           }
-          const name = files[parseInt(btn.dataset.i, 10)].name;
+          const name = files[parseInt(btn.dataset.wdDeleteIndex, 10)].name;
           try {
             const r = await wdDelete(name);
             if (r === false) toast('文件不存在或已删除');
@@ -479,30 +647,25 @@ async function initWebDAVUI() {
         });
       });
     } catch (e) {
+      const manageHint = $('wdManageHint');
+      if (manageHint) { manageHint.dataset.state = 'error'; manageHint.textContent = '读取失败'; }
       listEl.innerHTML = '<p class="dialog-hint">读取失败：' + ((e && e.message) || '') + '</p>';
     }
   }
   // #117：服务器管理弹窗由 wdCfgBtn（已配置）打开；关闭按钮
-  $('wdManageClose').addEventListener('click', () => $('wdManageBackdrop').classList.add('hidden'));
-
-  // #128：打开 App 时自动备份入口（row-btn）——未配置引导配置，已配置开弹窗（开关收进弹窗）
-  $('wdAutoBtn').addEventListener('click', () => {
-    if (secureMode() !== 'encrypted') { toast('开启加密后可用——自动备份上传的是密文'); return; }
-    if (!wdLoadCfg()) {
-      $('wdStatus').textContent = '配置你的 WebDAV 服务器（如坚果云、群晖、Nextcloud）。备份只发往你配置的服务器——观己不提供任何云服务。';
-      $('wdCfgBackdrop').classList.remove('hidden');
-      return;
-    }
-    $('wdAutoSwitch').classList.toggle('on', wdAutoEnabled());   // 打开弹窗时同步开关状态
-    $('wdAutoBackdrop').classList.remove('hidden');
-  });
-  $('wdAutoClose').addEventListener('click', () => $('wdAutoBackdrop').classList.add('hidden'));
+  $('wdManageClose').addEventListener('click', () => closeSheetPanel('wdManageBackdrop'));
+  $('wdManageCloseTop').addEventListener('click', () => closeSheetPanel('wdManageBackdrop'));
 
   // 打开 App 时自动备份开关（默认关——上传需明确授权）
   $('wdAutoSwitch').addEventListener('click', () => {
+    if (secureMode() !== 'encrypted' || !wdLoadCfg()) {
+      toast(secureMode() !== 'encrypted' ? '开启加密后可用——自动同步上传的是密文' : '请先配置服务器');
+      wdRender();
+      return;
+    }
     const on = $('wdAutoSwitch').classList.toggle('on');
     localStorage.setItem(WD.AUTO_KEY, on ? 'on' : 'off');
-    toast(on ? '打开 App 时自动备份已开启' : '已关闭自动备份');
+    toast(on ? '自动同步已开启' : '已关闭自动同步');
     wdRender();   // #119：入口行副标题同步
   });
 
@@ -515,11 +678,12 @@ async function initWebDAVUI() {
     $('wdPass').value = '';
     toast('服务器配置已清除');
     wdRender();
-    $('wdManageBackdrop').classList.add('hidden');
+    closeSheetPanel('wdManageBackdrop');
   });
 
   // #128：冷启动与回到前台均在稳定的前台窗口备份；不再在后台切换时请求网络。
   wdScheduleAutoBackup();
+  window.addEventListener('online', () => wdScheduleAutoBackup('online'));
   if (window.Capacitor && Capacitor.Plugins.App) {
     try {
       Capacitor.Plugins.App.addListener('appStateChange', (state) => {

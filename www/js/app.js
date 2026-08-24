@@ -188,7 +188,7 @@ renderHome();
 /* #87：Android 返回键/侧滑兜底——分层关闭浮层（弹窗→日历→全屏计时→记录面板），全部关闭后二次确认退出 */
 let backPressedAt = 0;
 function handleBackButton() {
-  const isHidden = (id) => $(id).classList.contains('hidden');
+  const isHidden = (id) => { const el = $(id); return !el || el.classList.contains('hidden'); };
   // 1. 自定义词弹窗（最上层优先）
   if (!isHidden('addBackdrop')) { closeAddDialog(); return; }
   // 1.5 AI 数据范围说明（#163）
@@ -197,6 +197,11 @@ function handleBackButton() {
   if (!isHidden('delBackdrop')) { closeDeleteDialog(); return; }
   // 3. 数据管理确认弹窗
   if (!isHidden('dialogBackdrop')) { $('dialogBackdrop').classList.add('hidden'); return; }
+  // 3.5 数据保护任务：独立管理页直接关闭；恢复流程按层级逐步返回。
+  if (!isHidden('localManageBackdrop')) { closeSheetPanel('localManageBackdrop'); return; }
+  if (!isHidden('wdManageBackdrop')) { closeSheetPanel('wdManageBackdrop'); return; }
+  if (!isHidden('exportBackdrop')) { closeSheetPanel('exportBackdrop'); return; }
+  if (!isHidden('backupSyncBackdrop')) { if (typeof window.backupHubBack === 'function') window.backupHubBack(); else closeSheetPanel('backupSyncBackdrop'); return; }
   // 4. 日历弹层
   if (!isHidden('calendarSheet')) { closeCalendar(); return; }
   // 5. 全屏计时/汇总页（#51/#54：全屏覆盖在面板之上，返回 = 取消计时）

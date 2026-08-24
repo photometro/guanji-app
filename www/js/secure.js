@@ -443,6 +443,7 @@ function initSecureUI() {
   // 导入备份（#95/#104/#111：下载目录列表 + 浏览其他位置 + 模式/类型自适——CSV 明文无需口令，加密包需口令）
   let secImportData = null;   // 点选下载目录备份时暂存的内容
   let secImportIsCsv = false; // 当前选中文件是否为 CSV（决定口令框显隐与解析路径）
+  let secImportSelectedIndex = null; // #176：本机文件列表不自动选中，需用户明确选择
 
   /* #111：按文件类型更新口令框显隐与提示 */
   function secImportPickFile(name) {
@@ -456,55 +457,92 @@ function initSecureUI() {
   }
   async function loadImportFiles() {
     const box = $('secImportFiles'), list = $('secImportFileList');
-    if (!window.Capacitor || !Capacitor.Plugins.GuanjiSave) { box.classList.add('hidden'); return; }
+    if (!window.Capacitor || !Capacitor.Plugins.GuanjiSave) {
+      box.classList.remove('hidden');
+      list.innerHTML = backupPicker.renderList([], { task: 'local', showEmptyPrimary: true, historyTitle: '本机文件' });
+      return;
+    }
     try {
       const res = await Capacitor.Plugins.GuanjiSave.listBackupFiles();
-      const files = (res.files || []).filter((f) => /\.(json|csv)$/i.test(f));
-      if (!files.length) { box.classList.add('hidden'); return; }
-      list.innerHTML = files.map((f, i) => {
-        const isCsv = /\.csv$/i.test(f);
-        return `<button class="chip" data-idx="${i}" style="width:100%;justify-content:flex-start;margin-bottom:6px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${isCsv ? '📄 ' : '🔒 '}${f}</button>`;
-      }).join('');
+      const names = (res.files || []).filter((f) => /\.(json|csv)$/i.test(f));
+      if (!names.length) {
+        box.classList.remove('hidden');
+        list.innerHTML = backupPicker.renderList([], { task: 'local', showEmptyPrimary: true, historyTitle: '本机文件' });
+        return;
+      }
+      const files = names.map((name) => {
+        const isCsv = /\.csv$/i.test(name);
+        return { name, icon: isCsv ? 'csv' : 'encrypted', label: isCsv ? 'CSV 明文' : '加密备份' };
+      });
+      const renderLocalRow = (file, index, options) => {
+        const name = file.name;
+        const isCsv = file.label === 'CSV 明文';
+        const active = options.selectedIndex === index;
+        const action = active ? '已选择' : '选择';
+        return `<div class="history-row" data-backup-index="${index}" role="button" tabindex="0">
+          <span class="file-icon">${backupPicker.icon(isCsv ? 'csv' : 'encrypted')}</span>
+          <div class="history-copy"><strong>${backupPicker.escapeHtml(name)}</strong><span>${isCsv ? 'CSV 明文' : '加密备份'}</span></div>
+          <button class="select${active ? ' active' : ''}" type="button">${action}</button>
+        </div>`;
+      };
+      list.innerHTML = backupPicker.renderList(files, {
+        task: 'local',
+        selectedIndex: secImportSelectedIndex,
+        historyTitle: '本机文件',
+        renderHistory: renderLocalRow,
+      });
       box.classList.remove('hidden');
-      list.querySelectorAll('.chip').forEach((btn) => {
-        btn.addEventListener('click', async () => {
+      list.querySelectorAll('.history-row[data-backup-index]').forEach((btn) => {
+        const pick = async () => {
+          const index = parseInt(btn.dataset.backupIndex, 10);
+          const filename = names[index];
           try {
-            const r = await Capacitor.Plugins.GuanjiSave.readDownloadedFile({ filename: btn.textContent.trim().replace(/^[📄🔒]\s*/, '') });
+            const r = await Capacitor.Plugins.GuanjiSave.readDownloadedFile({ filename });
             secImportData = r.data;
-            list.querySelectorAll('.chip').forEach((c) => c.classList.remove('active'));
-            btn.classList.add('active');
-            $('secImportFileLabel').textContent = '已选：' + btn.textContent.trim().replace(/^[📄🔒]\s*/, '');
-            secImportPickFile(btn.textContent.trim());
+            secImportSelectedIndex = index;
+            $('secImportConfirm').disabled = false;
+            $('secImportFileLabel').textContent = '更换本机文件';
+            secImportPickFile(filename);
+            await loadImportFiles();
           } catch (e) {
             $('secImportInfo').textContent = '读取备份失败：' + ((e && e.message) || '');
           }
-        });
+        };
+        btn.addEventListener('click', pick);
+        btn.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); pick(); } });
       });
     } catch (e) {
       box.classList.add('hidden');
     }
   }
-  $('secureImportBtn').addEventListener('click', () => {
+  window.openLocalRestore = () => {
     secImportData = null;
     secImportIsCsv = false;
+    secImportSelectedIndex = null;
     $('secImportFile').value = '';
     $('secImportPass').value = '';
     $('secImportFileLabel').textContent = '浏览其他位置';
-    // #111：按模式设置默认提示——明文态说明 CSV/加密包两种选择，不再默认要求口令
-    const modeText = secureMode() === 'encrypted'
-      ? '可导入加密备份（需当初口令）或 CSV（无需口令）。导入后以本机加密方式保存。'
-      : '可导入加密备份（需当初口令）或 CSV 明文数据（无需口令）。导入按记录合并去重。';
-    $('secImportInfo').textContent = '可直接点选下载目录中的备份，或选择其他位置的文件。' + modeText;
+    $('secImportConfirm').disabled = true;
+    $('secImportInfo').textContent = '加密 JSON 需要创建时的口令；CSV 明文无需口令。导入后按记录合并去重，并按当前本机安全设置保存。';
     $('secImportPass').classList.add('hidden');
-    $('secImportBackdrop').classList.remove('hidden');
+    if (typeof window.openBackupHubLocal === 'function') window.openBackupHubLocal();
     loadImportFiles();
-  });
+  };
+  // #184：旧版独立导入入口已合并至「备份与恢复 → 恢复数据」。
+  // 保留对旧页面的兼容，避免缺失的遗留节点中断整个安全/备份初始化链。
+  const legacyImportBtn = $('secureImportBtn');
+  if (legacyImportBtn) legacyImportBtn.addEventListener('click', () => window.openLocalRestore());
   $('secImportFile').addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0];
-    $('secImportFileLabel').textContent = f ? '已选择：' + f.name : '浏览其他位置';
+    secImportSelectedIndex = null;
+    secImportData = null;
+    $('secImportConfirm').disabled = !f;
+    $('secImportFileLabel').textContent = f ? '更换本机文件' : '浏览其他位置';
     if (f) secImportPickFile(f.name);
   });
-  $('secImportCancel').addEventListener('click', () => $('secImportBackdrop').classList.add('hidden'));
+  $('secImportCancel').addEventListener('click', () => {
+    if (typeof window.backupHubBack === 'function') window.backupHubBack();
+  });
   $('secImportConfirm').addEventListener('click', async () => {
     const info = $('secImportInfo');
     try {
@@ -529,7 +567,7 @@ function initSecureUI() {
         if (normalizeOffsets) normalizeOffsets();
         Storage.saveRecords(records);
         afterRecordsChanged();
-        $('secImportBackdrop').classList.add('hidden');
+        if (typeof window.closeBackupHub === 'function') window.closeBackupHub();
         toast(`已导入 ${added} 条 CSV 记录${skipped ? '（跳过 ' + skipped + ' 条重复）' : ''}`);
         renderHome();
         return;
@@ -546,7 +584,7 @@ function initSecureUI() {
       records = [...byId.values()];
       Storage.saveRecords(records);
       afterRecordsChanged();
-      $('secImportBackdrop').classList.add('hidden');
+      if (typeof window.closeBackupHub === 'function') window.closeBackupHub();
       // #111：明文态导入加密包 → 数据解密后明文落盘，如实提示
       if (secureMode() !== 'encrypted') {
         toast(`已导入并合并 ${list.length} 条备份记录（当前以明文保存——建议开启加密）`);
@@ -559,30 +597,32 @@ function initSecureUI() {
     }
   });
 
-  // 备份管理（#110：列出下载目录备份/导出文件 + 删除）
+  // #184：本机文件管理复用新版备份选择器；不再退回旧 Dialog 或无限行内列表。
   let bkpConfirmTimer = null;
   async function loadBackupFiles() {
-    const listEl = $('bkpManageList');
+    const listEl = $('localManageList');
+    const hint = $('localManageHint');
     if (!window.Capacitor || !Capacitor.Plugins.GuanjiSave) {
-      listEl.innerHTML = '<p class="dialog-hint">当前环境不支持备份管理（仅真机可用）</p>';
+      listEl.innerHTML = backupPicker.renderList([], { emptyText: '当前环境不支持本机文件管理（仅真机可用）' });
       return;
     }
     try {
       const res = await Capacitor.Plugins.GuanjiSave.listBackupFiles();
-      const files = (res.files || []).filter((f) => /\.(json|csv)$/i.test(f));
+      const names = (res.files || []).filter((f) => /\.(json|csv)$/i.test(f));
+      const files = names.map((name) => {
+        const isCsv = /\.csv$/i.test(name);
+        const match = name.match(/(\d{4}-\d{2}-\d{2})-(\d{2})-(\d{2})-(\d{2})/);
+        const date = match ? `${match[1]} ${match[2]}:${match[3]}` : '下载目录';
+        return { name, date, icon: isCsv ? 'csv' : 'encrypted', label: isCsv ? 'CSV 明文' : '加密备份' };
+      });
+      if (hint) hint.textContent = files.length ? `下载目录中共 ${files.length} 个备份或导出文件` : '下载目录中的备份与导出文件';
       if (!files.length) {
-        listEl.innerHTML = '<p class="dialog-hint">暂无备份文件——导出数据后这里会显示。</p>';
+        listEl.innerHTML = backupPicker.renderList([], { emptyText: '暂无本机文件——导出数据后这里会显示。' });
         return;
       }
-      listEl.innerHTML = files.map((f, i) => {
-        const isCsv = /\.csv$/i.test(f);
-        const label = isCsv ? 'CSV 明文' : '加密包';
-        return `<div class="bkp-row" style="display:flex;align-items:center;gap:8px;padding:10px 2px;border-bottom:1px solid var(--line)">
-          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px">${isCsv ? '📄 ' : '🔒 '}${f}</span>
-          <span style="font-size:10px;color:var(--ink-3);flex-shrink:0">${label}</span>
-          <button class="bkp-del" data-i="${i}" style="flex-shrink:0;border:none;background:none;color:var(--accent-deep);font-size:12px;padding:4px 8px;cursor:pointer">删除</button>
-        </div>`;
-      }).join('');
+      const renderPrimary = (file) => `<div class="primary-card"><div class="primary-line"><span class="file-icon">${backupPicker.icon(file.icon)}</span><div class="primary-copy"><strong>最近本机文件</strong><span>${backupPicker.escapeHtml(file.date)} · ${backupPicker.escapeHtml(file.name)}</span></div><span class="badge">${backupPicker.escapeHtml(file.label)}</span></div><div class="primary-meta"><span>本机文件 <b>${files.length} 个</b></span><span>可恢复 <b>JSON / CSV</b></span><button class="select bkp-del" type="button" data-i="0">删除</button></div></div>`;
+      const renderHistory = (file, index) => `<div class="history-row"><span class="file-icon">${backupPicker.icon(file.icon)}</span><div class="history-copy"><strong>${backupPicker.escapeHtml(file.name)}</strong><span>${backupPicker.escapeHtml(file.date)} · ${backupPicker.escapeHtml(file.label)}</span></div><button class="select bkp-del" type="button" data-i="${index}">删除</button></div>`;
+      listEl.innerHTML = backupPicker.renderList(files, { task: 'manage', selectedIndex: 0, historyTitle: '更早文件', renderPrimary, renderHistory });
       listEl.querySelectorAll('.bkp-del').forEach((btn) => {
         btn.addEventListener('click', async () => {
           // 行内二次确认（3 秒内再次点击才执行）
@@ -596,7 +636,7 @@ function initSecureUI() {
             }, 3000);
             return;
           }
-          const name = files[parseInt(btn.dataset.i, 10)];
+          const name = names[parseInt(btn.dataset.i, 10)];
           try {
             const r = await Capacitor.Plugins.GuanjiSave.deleteBackupFile({ filename: name });
             if (r && r.deleted === false) { btn.dataset.armed = ''; btn.textContent = '删除'; btn.style.color = ''; toast('文件不存在或已删除'); }
@@ -613,10 +653,15 @@ function initSecureUI() {
     }
   }
   $('bkpManageBtn').addEventListener('click', () => {
-    $('bkpManageBackdrop').classList.remove('hidden');
-    loadBackupFiles();
+    const openManage = () => {
+      openSheetPanel('localManageBackdrop');
+      loadBackupFiles();
+    };
+    if ($('backupSyncBackdrop') && !$('backupSyncBackdrop').classList.contains('hidden') && typeof closeSheetPanel === 'function') closeSheetPanel('backupSyncBackdrop', openManage);
+    else openManage();
   });
-  $('bkpManageClose').addEventListener('click', () => $('bkpManageBackdrop').classList.add('hidden'));
+  $('localManageClose').addEventListener('click', () => closeSheetPanel('localManageBackdrop'));
+  $('localManageCloseTop').addEventListener('click', () => closeSheetPanel('localManageBackdrop'));
 
   // 加密模式下 CSV 明文导出禁用（#93 定稿：离开设备的都是密文——检查在 ui-sheet.js exportBtn 内）
 }

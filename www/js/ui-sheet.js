@@ -177,8 +177,9 @@ function openSheet(mode, presetDate) {
    故用 easeOutBack + 550ms（回弹幅度 ~7%）。只动画 transform，不碰布局属性（#66 教训） */
 let sheetOpenAnim = null;
 
-function playSheetOpen() {
-  const sheet = $('recordSheet');
+function playSheetOpen(sheet = $('recordSheet')) {
+  if (!sheet) return;
+  if (sheetOpenAnim) { sheetOpenAnim.pause(); sheetOpenAnim = null; }
   if (!window.anime || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   sheet.style.animation = 'none';               // 关闭 CSS sheetUp，避免与 anime 双动画
   sheet.style.transform = 'translateY(100%)';
@@ -231,8 +232,8 @@ let sheetHeightTimer = null;
    修复前：to 误取 step 自身高度（不含 grab/标题/按钮区 chrome ≈188px）→
    过渡反向收缩 + 400ms 固定定时器在动画尾段清 inline →「弹一部分卡一下显示完整」；
    修复后：目标 = 切换后 sheet 自然全高，清理改 transitionend（兜底定时器防 display:none 场景） */
-function transitionSheetHeight(from) {
-  const sheet = $('recordSheet');
+function transitionSheetHeight(sheet, from, afterTransition) {
+  if (!sheet) return;
   clearTimeout(sheetHeightTimer);
   const to = sheet.getBoundingClientRect().height;   // 步骤已切换完，此为自然全高（含 chrome）
   if (Math.abs(from - to) < 1) return;
@@ -246,7 +247,7 @@ function transitionSheetHeight(from) {
     sheet.style.transition = '';
     sheet.style.overflow = '';
     sheet.removeEventListener('transitionend', onEnd);
-    requestAnimationFrame(updateDetailsScrollState);
+    if (afterTransition) requestAnimationFrame(afterTransition);
   };
   const onEnd = (e) => { if (e.target === sheet && e.propertyName === 'height') cleanup(); };
   sheet.addEventListener('transitionend', onEnd);
@@ -264,7 +265,7 @@ function goToDetails() {
   $('nextBtn').classList.add('hidden');
   $('prevBtn').classList.remove('hidden');
   $('saveBtn').classList.remove('hidden');
-  transitionSheetHeight(from);
+  transitionSheetHeight($('recordSheet'), from, updateDetailsScrollState);
 }
 
 function goToTime() {
@@ -276,7 +277,7 @@ function goToTime() {
   $('prevBtn').classList.add('hidden');
   $('nextBtn').classList.remove('hidden');
   if (sheetMode === 'now') setupNowStep();   // 回到步骤一：恢复计时器态/经典流程
-  transitionSheetHeight(from);
+  transitionSheetHeight($('recordSheet'), from, updateDetailsScrollState);
 }
 
 $('nextBtn').addEventListener('click', () => {
@@ -463,6 +464,97 @@ function renderObservationChips(selectText, box = $('observationChips')) {
     if (box === $('observationChips')) updateDetailsScrollState();
   });
 }
+
+/* #181：任务 Sheet 与记录 Sheet 复用同一套样式复位和开关动画。 */
+function taskPanel(backdropId) {
+  const backdrop = $(backdropId);
+  const panel = backdrop && backdrop.querySelector('.sheet--task');
+  return { backdrop, panel };
+}
+
+function openSheetPanel(backdropId, { presentation = 'root' } = {}) {
+  const { backdrop, panel } = taskPanel(backdropId);
+  if (!backdrop || !panel) return;
+  resetSheetStyle(panel);
+  backdrop.classList.remove('hidden');
+  panel.classList.remove('hidden');
+  if (presentation === 'detail') {
+    panel.style.animation = 'none';
+    panel.style.transform = 'translateX(24px)';
+    panel.style.opacity = '0';
+    requestAnimationFrame(() => {
+      panel.style.transition = 'transform .24s cubic-bezier(.33,1,.68,1), opacity .20s ease';
+      panel.style.transform = '';
+      panel.style.opacity = '';
+      setTimeout(() => { panel.style.transition = ''; panel.style.animation = 'none'; }, 280);
+    });
+  } else {
+    playSheetOpen(panel);
+  }
+}
+
+function closeSheetPanel(backdropId, afterClose) {
+  const { backdrop, panel } = taskPanel(backdropId);
+  if (!backdrop || !panel || backdrop.classList.contains('hidden')) return;
+  animateSheetClose(panel, backdrop, () => {
+    backdrop.classList.add('hidden');
+    backdrop.style.zIndex = '';
+    if (afterClose) afterClose();
+  });
+}
+
+/* #183/#184：数据保护中心内的恢复步骤共享同一张 Sheet；不再叠加第二遮罩或横向详情页。 */
+let backupHubView = 'home';
+const backupHubCopy = {
+  home: { title: '备份与恢复', subtitle: null },
+  source: { title: '恢复数据', subtitle: '选择要恢复的数据来源' },
+  local: { title: '从本机文件恢复', subtitle: '从下载目录或其他位置导入数据' },
+  server: { title: '从服务器恢复', subtitle: '选择一份备份恢复到本机' },
+};
+
+function isBackupHubOpen() {
+  const backdrop = $('backupSyncBackdrop');
+  return !!backdrop && !backdrop.classList.contains('hidden');
+}
+
+function setBackupHubView(view, { animate = true } = {}) {
+  const backdrop = $('backupSyncBackdrop');
+  const sheet = $('backupHubSheet');
+  if (!backdrop || !sheet || !backupHubCopy[view]) return;
+  const from = sheet.getBoundingClientRect().height;
+  backupHubView = view;
+  backdrop.dataset.backupHubView = view;
+  document.querySelectorAll('[data-backup-hub-view]').forEach((section) => {
+    if (section === backdrop) return;
+    section.classList.toggle('hidden', section.dataset.backupHubView !== view);
+  });
+  document.querySelectorAll('[data-backup-hub-footer]').forEach((footer) => footer.classList.toggle('hidden', footer.dataset.backupHubFooter !== view));
+  $('backupHubTitle').textContent = backupHubCopy[view].title;
+  if (backupHubCopy[view].subtitle) $('backupSyncStatus').textContent = backupHubCopy[view].subtitle;
+  else if (typeof wdRender === 'function') wdRender();
+  $('backupHubBody').scrollTop = 0;
+  if (animate && isBackupHubOpen()) requestAnimationFrame(() => transitionSheetHeight(sheet, from));
+}
+
+function openBackupHub() {
+  setBackupHubView('home', { animate: false });
+  openSheetPanel('backupSyncBackdrop');
+}
+
+function closeBackupHub() { closeSheetPanel('backupSyncBackdrop'); }
+
+function backupHubBack() {
+  if (backupHubView === 'home') { closeBackupHub(); return; }
+  setBackupHubView(backupHubView === 'source' ? 'home' : 'source');
+}
+
+window.openBackupHub = openBackupHub;
+window.closeBackupHub = closeBackupHub;
+window.backupHubBack = backupHubBack;
+window.openBackupHubRestore = () => setBackupHubView('source');
+window.openBackupHubLocal = () => setBackupHubView('local');
+window.openBackupHubServer = () => setBackupHubView('server');
+window.isBackupHubOpen = isBackupHubOpen;
 
 /* #145：内容不足时不把详情滚动区强行撑满；内容超出时仅标记为可滚动。
    CSS 负责实际的高度约束，这个状态用于在新增/删除标签、键盘和旋转后重新计算。 */
@@ -727,7 +819,8 @@ $('apiKeyChange').addEventListener('click', () => {
   renderAISettingsUI();
 });
 
-// 连接测试：发最小请求验证
+// #174：连接测试不再只看 HTTP 200；发送一个极小的真实请求并校验正文可解析，
+// 这样 DeepSeek V4、代理网关或错误模型配置不会被误报为“连接成功”。
 $('aiTestBtn').addEventListener('click', async () => {
   const cfg = readAIConfigFromInputs();
   const statusEl = $('aiTestStatus');
@@ -737,33 +830,21 @@ $('aiTestBtn').addEventListener('click', async () => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
-    const res = await fetch(aiEndpoint(cfg), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.apiKey}` },
-      body: JSON.stringify({
-        model: cfg.model,
-        messages: [{ role: 'user', content: 'ping' }],
-        max_tokens: 1,
-        stream: false,
-      }),
-      signal: controller.signal,
+    const content = await aiRequest(cfg, '请只返回 JSON：{"ok":true}', controller.signal, {
+      structured: true,
+      maxTokens: 256,
+      purpose: 'connection-test',
     });
-    if (res.ok) {
+    const parsed = extractJSON(content);
+    if (!parsed || parsed.ok !== true) throw new Error('API_FORMAT');
+    if (content.trim()) {
       statusEl.textContent = `✓ 连接成功 · 模型 ${cfg.model}`;
       renderAISettingsUI('ready');
-    } else if (res.status === 401) {
-      statusEl.textContent = '✗ 密钥无效（401），请检查 API 密钥';
-      renderAISettingsUI('error');
-    } else if (res.status === 404) {
-      statusEl.textContent = '✗ 接口路径错误（404），请检查 Base URL';
-      renderAISettingsUI('error');
-    } else {
-      statusEl.textContent = `✗ 请求失败（HTTP ${res.status}）`;
-      renderAISettingsUI('error');
     }
   } catch (err) {
-    if (err.name === 'AbortError') statusEl.textContent = '✗ 连接超时，请检查网络或 Base URL';
-    else statusEl.textContent = '✗ 网络错误，请检查 Base URL 是否可访问';
+    statusEl.textContent = '✗ ' + (typeof aiErrorMessage === 'function'
+      ? aiErrorMessage(err)
+      : (err && err.name === 'AbortError' ? '连接超时，请检查网络或 Base URL' : '连接测试失败，请检查配置'));
     renderAISettingsUI('error');
   } finally {
     clearTimeout(timer);
@@ -841,8 +922,8 @@ $('positiveSwitch').addEventListener('click', () => {
   toast(on ? '正向反馈已关闭' : '正向反馈已开启');
 });
 
-// 我的页：导出数据（#96：按模式自适应——明文 CSV / 加密密文备份文件）
-$('exportBtn').addEventListener('click', async () => {
+// 我的页：导出数据（#184：由独立导出 Sheet 明确承接，保留原有安全分流与文件实现）
+async function runDataExport() {
   // #111：两种模式统一空数据提示（此前加密分支无检查，会导出空备份包）
   if (!records.length) { toast('还没有记录可导出'); return; }
   if (secureMode() === 'encrypted') {
@@ -913,21 +994,31 @@ $('exportBtn').addEventListener('click', async () => {
     try { document.execCommand('copy'); toast('已复制到剪贴板'); } catch { toast('复制失败'); }
     ta.remove();
   }
-});
+}
 
-// #117：恢复数据统一入口（来源选择：本机文件 / 服务器备份）
-$('restoreDataBtn').addEventListener('click', () => {
-  $('restoreSourceBackdrop').classList.remove('hidden');
+$('exportBtn').addEventListener('click', () => {
+  if (!records.length) { toast('还没有记录可导出'); return; }
+  const encrypted = secureMode() === 'encrypted';
+  $('exportDialogText').textContent = encrypted ? '创建一份受口令保护、可用于恢复的本机副本' : '创建一份可在表格中查看的 CSV 数据副本';
+  $('exportChoiceCard').innerHTML = `<div class="primary-line"><span class="file-icon">${backupPicker.icon(encrypted ? 'encrypted' : 'csv')}</span><div class="primary-copy"><strong>${encrypted ? '加密备份文件' : 'CSV 数据副本'}</strong><span>${encrypted ? '受当前加密口令保护，可从本机文件恢复' : '可在表格中查看，也可从本机文件恢复'}</span></div><span class="badge">本机</span></div><div class="primary-meta"><span>服务器备份 <b>备份与恢复中管理</b></span></div>`;
+  $('exportRunBtn').textContent = encrypted ? '导出加密备份' : '导出 CSV';
+  openSheetPanel('exportBackdrop');
 });
+$('exportRunBtn').addEventListener('click', async () => { await runDataExport(); closeSheetPanel('exportBackdrop'); });
+$('exportCancel').addEventListener('click', () => closeSheetPanel('exportBackdrop'));
+$('exportCloseTop').addEventListener('click', () => closeSheetPanel('exportBackdrop'));
+
+// #183/#184：恢复是“备份与恢复”内部的连续状态，而非单独覆盖层。
+$('backupHubRestoreBtn').addEventListener('click', () => window.openBackupHubRestore());
 $('restoreLocalBtn').addEventListener('click', () => {
-  $('restoreSourceBackdrop').classList.add('hidden');
-  $('secureImportBtn').click();   // 触发原导入弹窗（#111 自适逻辑）
+  if (typeof window.openLocalRestore === 'function') window.openLocalRestore();
 });
 $('restoreServerBtn').addEventListener('click', () => {
-  $('restoreSourceBackdrop').classList.add('hidden');
-  $('wdRestoreBtn').click();      // 触发原服务器恢复弹窗（#115 三模式）
+  if (typeof window.openServerRestore === 'function') window.openServerRestore();
 });
-$('restoreSourceCancel').addEventListener('click', () => $('restoreSourceBackdrop').classList.add('hidden'));
+$('restoreSourceCancel').addEventListener('click', () => window.backupHubBack());
+$('backupSyncClose').addEventListener('click', () => window.closeBackupHub());
+$('backupHubClose').addEventListener('click', () => window.closeBackupHub());
 
 // 我的页：清除 / 恢复
 // #115：清除可连带删除服务器备份（仅 WebDAV 已配置 + 加密态显示该选项）
