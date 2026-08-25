@@ -11,7 +11,7 @@ const AI_SYSTEM_PROMPT =
 const AI_JSON_INSTRUCTION =
   '\n\n请严格只返回以下 JSON（不要有任何其他文字、不要用 markdown 代码块）：\n' +
   '{"overview":"一句话概览（呼应当前时间窗口数据）","timeInsight":"时段观察一句话（只描述分布，不做因果断言）",' +
-  '"labelInsights":{"状况 key":"对应观察"},"pairInsights":{"状况 key + 状况 key":"共同出现观察"},' +
+  '"labelInsights":{"状况 key":"对应观察（最多5项）"},"pairInsights":{"状况 key + 状况 key":"共同记录观察（最多3项）"},' +
   '"changeInsight":"近 7 天与前 7 天的变化观察（不要重复具体数字，不使用“窗口”术语）","patterns":["模式1","模式2"],' +
   '"moodInsight":"发生前状况观察一句话（兼容旧版字段，数据不足时返回空字符串）",' +
   '"suggestions":["建议1（具体可执行）","建议2","建议3"]}';
@@ -37,6 +37,12 @@ function buildAggregatePayload(days = 7) {
   const observationCount = Object.fromEntries(defaultLabels.map((item) => [item.label, item.count]));
   const observationPct = Object.fromEntries(defaultLabels.map((item) => [item.label, Math.round(item.ratio * 100)]));
   const adult = defaultLabels.find((item) => item.key === 'adult_content_effect');
+  const safePairs = snapshot.cooccurrence
+    .filter((item) => String(item.pair || '').split(/\s+\+\s+/).every((key) => {
+      const clean = String(key).trim();
+      return !!(typeof OBSERVATION_BY_KEY !== 'undefined' && OBSERVATION_BY_KEY[clean]) && clean !== 'none' && clean !== 'unsure';
+    }))
+    .slice(0, 3);
 
   return {
     '时间窗口': `近 ${snapshot.days} 天`,
@@ -47,12 +53,15 @@ function buildAggregatePayload(days = 7) {
     [`近 ${snapshot.days} 天时段分布`]: snapshot.timeBuckets,
     [`近 ${snapshot.days} 天发生前状况分布（出现于记录次数）`]: observationCount,
     [`近 ${snapshot.days} 天发生前状况比例（百分比）`]: observationPct,
-    [`近 ${snapshot.days} 天共同出现（前 3）`]: snapshot.cooccurrence.slice(0, 3),
+    [`近 ${snapshot.days} 天共同记录（前 3）`]: safePairs,
     '上一窗口记录数': snapshot.previous.recordCount,
     '记录数变化': snapshot.changes.recordDelta,
     '记录数变化百分比': snapshot.changes.recordDeltaPct,
     '连续记录天数': countStreak(),
     '成人内容影响记录占比': adult ? Math.round(adult.ratio * 100) : 0,
+    '没有明显情绪/诱因记录数': snapshot.noneCount || 0,
+    '原因不确定记录数': snapshot.unsureCount || 0,
+    '发生前状况覆盖率': Math.round((snapshot.observationCoverage || 0) * 100),
     '发生前状况统计口径': '每条记录中出现的标签各计一次；标签可以并存，比例之和可能超过 100%，只表示伴随出现，不代表因果关系。',
     '隐私边界': '只发送默认标签的聚合 key、计数、比例、时间桶和窗口变化；不发送单条记录、备注、附件或自定义标签原文。',
   };
@@ -210,7 +219,9 @@ function insightSuggestionKey(value) {
 function insightSuggestionsHTML(snapshot, aiValue, aiVisible) {
   const localItems = insightSuggestionsLocalItems(snapshot).map((text) => ({ text, source: 'local' }));
   const aiItems = aiVisible ? insightAIItems(aiValue, 3).map((text) => ({ text, source: 'ai' })) : [];
-  const ordered = aiVisible ? [...aiItems, ...localItems] : localItems;
+  // #190：AI 增强可用时只展示 AI 建议；没有有效 AI 建议时回退本地建议。
+  // 这样不会因为本地前三条把 AI 建议挤出列表，也不改变 AI 请求或隐私边界。
+  const ordered = aiItems.length ? aiItems : localItems;
   const seen = new Set();
   const items = ordered.filter((item) => {
     const key = insightSuggestionKey(item.text);
@@ -234,7 +245,7 @@ function insightAIBlock(aiValue) {
 function insightNarrativeHTML(fact, aiValue, aiVisible) {
   const ai = aiVisible ? insightAIBlock(aiValue) : '';
   const evidence = fact ? `<p class="insight-card-fact">${fact}</p>` : '';
-  return `<div class="insight-card-narrative ${ai ? 'has-ai' : ''}">${ai}${evidence}</div>`;
+  return `<div class="insight-card-narrative ${ai ? 'has-ai' : ''}">${evidence}${ai}</div>`;
 }
 
 function insightCardBodyHTML(key, snapshot, fact, aiValue, aiVisible) {
@@ -374,7 +385,57 @@ function loadAIStore() {
 }
 
 function saveAIStore() {
-  localStorage.setItem(AI_CONFIG_KEY, JSON.stringify(aiStore));
+  const nativeSecure = !!(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.SecureStorage);
+  const stored = {
+    active: aiStore.active,
+    providers: Object.fromEntries(Object.entries(aiStore.providers).map(([key, value]) => [key, {
+      baseUrl: value.baseUrl || '',
+      model: value.model || '',
+      // 原生环境不再把 API Key 放入 localStorage；浏览器调试保留降级路径。
+      apiKey: nativeSecure ? '' : (value.apiKey || ''),
+    }])),
+  };
+  localStorage.setItem(AI_CONFIG_KEY, JSON.stringify(stored));
+}
+
+const AI_SECURE_KEY_PREFIX = 'guanji_ai_key_';
+async function readSecureAIKey(provider) {
+  if (!(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.SecureStorage)) return '';
+  try {
+    const res = await Capacitor.Plugins.SecureStorage.internalGetItem({
+      prefixedKey: 'capacitor-storage_' + AI_SECURE_KEY_PREFIX + provider,
+      sync: false,
+    });
+    return res && res.data != null ? String(res.data) : '';
+  } catch { return ''; }
+}
+
+async function persistSecureAIKey(provider, value) {
+  if (!(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.SecureStorage)) return;
+  await Capacitor.Plugins.SecureStorage.internalSetItem({
+    prefixedKey: 'capacitor-storage_' + AI_SECURE_KEY_PREFIX + provider,
+    data: String(value || ''),
+    sync: false,
+  });
+}
+
+async function hydrateAISecureKeys() {
+  if (!(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.SecureStorage)) return;
+  let changed = false;
+  for (const provider of Object.keys(aiStore.providers)) {
+    const storedKey = await readSecureAIKey(provider);
+    const localKey = aiStore.providers[provider].apiKey || '';
+    if (storedKey) {
+      if (localKey !== storedKey) changed = true;
+      aiStore.providers[provider].apiKey = storedKey;
+    } else if (localKey) {
+      await persistSecureAIKey(provider, localKey);
+    }
+    if (aiStore.providers[provider].apiKey) changed = true;
+  }
+  if (changed) saveAIStore();
+  syncActiveConfig();
+  if (typeof renderAISettingsUI === 'function') renderAISettingsUI();
 }
 
 /* 同步 active 提供商的扁平视图（askAI/getDailyTip 等读取 aiConfig/apiKey） */
@@ -388,6 +449,7 @@ function saveAIConfig(cfg) {
   aiStore.providers[aiStore.active] = { baseUrl: cfg.baseUrl, model: cfg.model, apiKey: cfg.apiKey };
   saveAIStore();
   syncActiveConfig();
+  persistSecureAIKey(aiStore.active, cfg.apiKey).catch(() => {});
 }
 
 let aiConfig = { ...aiStore.providers[aiStore.active], provider: aiStore.active };
@@ -436,6 +498,10 @@ function aiDiagnostic(meta) {
       responseFormat: !!meta.responseFormat,
       maxTokens: Number(meta.maxTokens) || 0,
       errorCode: meta.errorCode || '',
+      normalization: meta.normalization || '',
+      truncatedFields: Array.isArray(meta.truncatedFields) ? meta.truncatedFields.slice(0, 4).join(',') : '',
+      droppedFieldCount: Number(meta.droppedFieldCount) || 0,
+      schemaError: meta.schemaError || '',
     }));
   } catch (e) { /* 本地排障信息失败不影响 AI 主流程 */ }
 }
@@ -570,6 +636,99 @@ function questionNeedsAIBoundary(question) {
   ].some((rule) => rule.test(text));
 }
 
+const INSIGHT_COLLECTION_LIMITS = Object.freeze({
+  labelInsights: 5,
+  pairInsights: 3,
+  patterns: 3,
+  suggestions: 3,
+});
+const INSIGHT_SCHEMA_FIELDS = Object.freeze([
+  'overview', 'timeInsight', 'labelInsights', 'pairInsights', 'changeInsight',
+  'patterns', 'moodInsight', 'suggestions',
+]);
+let insightNormalizationMeta = {
+  status: 'idle',
+  truncatedFields: [],
+  droppedFieldCount: 0,
+  schemaError: '',
+};
+
+/*
+ * 兼容不同模型的结构化输出：只保留已知字段，并在严格校验前截断
+ * 合法但超量的集合。类型错误仍交给 validateInsightAIData() 拒绝，
+ * 不用“过滤”把不安全或错误类型伪装成合法响应。
+ */
+function normalizeInsightAIData(data) {
+  insightNormalizationMeta = {
+    status: 'normalized',
+    truncatedFields: [],
+    droppedFieldCount: 0,
+    schemaError: '',
+  };
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    insightNormalizationMeta.status = 'invalid-root';
+    insightNormalizationMeta.schemaError = 'ROOT_OBJECT_REQUIRED';
+    return null;
+  }
+
+  const normalized = {};
+  for (const key of INSIGHT_SCHEMA_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(data, key)) normalized[key] = data[key];
+  }
+  insightNormalizationMeta.droppedFieldCount = Math.max(0, Object.keys(data).length - Object.keys(normalized).length);
+
+  for (const [key, limit] of Object.entries(INSIGHT_COLLECTION_LIMITS)) {
+    if (!Object.prototype.hasOwnProperty.call(normalized, key)) continue;
+    const value = normalized[key];
+    if (Array.isArray(value) && value.length > limit) {
+      normalized[key] = value.slice(0, limit);
+      insightNormalizationMeta.truncatedFields.push(key);
+    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+      const entries = Object.entries(value);
+      if (entries.length > limit) {
+        normalized[key] = Object.fromEntries(entries.slice(0, limit));
+        insightNormalizationMeta.truncatedFields.push(key);
+      }
+    }
+  }
+  if (insightNormalizationMeta.truncatedFields.length) insightNormalizationMeta.status = 'truncated';
+  return normalized;
+}
+
+function insightSchemaDiagnostic(errorCode) {
+  aiDiagnostic({
+    ...aiCapabilityProfile(aiConfig, { structured: true }),
+    errorCode,
+    normalization: insightNormalizationMeta.status,
+    truncatedFields: insightNormalizationMeta.truncatedFields,
+    droppedFieldCount: insightNormalizationMeta.droppedFieldCount,
+    schemaError: insightNormalizationMeta.schemaError,
+  });
+}
+
+function validateInsightAIData(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+  const textFields = ['overview', 'timeInsight', 'changeInsight', 'moodInsight'];
+  if (textFields.some((key) => data[key] != null && typeof data[key] !== 'string')) return false;
+  if (textFields.some((key) => String(data[key] || '').length > 180)) return false;
+  for (const key of ['patterns', 'suggestions']) {
+    const limit = INSIGHT_COLLECTION_LIMITS[key];
+    if (data[key] != null && (!Array.isArray(data[key]) || data[key].length > limit || data[key].some((v) => typeof v !== 'string' || v.length > 120))) return false;
+  }
+  for (const key of ['labelInsights', 'pairInsights']) {
+    const value = data[key];
+    if (value == null) continue;
+    const limit = INSIGHT_COLLECTION_LIMITS[key];
+    if (Array.isArray(value)) {
+      if (value.length > limit || value.some((v) => typeof v !== 'string' || v.length > 180)) return false;
+    } else if (typeof value === 'object') {
+      const entries = Object.entries(value);
+      if (entries.length > limit || entries.some(([k, v]) => k.length > 80 || typeof v !== 'string' || v.length > 180)) return false;
+    } else return false;
+  }
+  return true;
+}
+
 function renderAIReport(data) {
   insightAIData = {
     ...data,
@@ -623,15 +782,22 @@ function aiErrorMessage(err) {
 const REPORT_FP_KEY = 'guanji_report_fingerprint';
 const RETRY_DELAYS = [3000];   // #174：结构化分析最多自动安全重试 1 次
 
-/* 数据指纹：日期 + 记录数 + 最新 id + 全量内容摘要——数据未变则不重复调用；
-   #38：摘要覆盖情绪/诱因/时长/相关影响等聚合字段（note 不影响聚合特征，不参与），
-   编辑记录内容后指纹变化 → 报告自动过期刷新（保证时效性与可信度） */
+function insightLocalDigest(text) {
+  // 同步、不可逆的本地摘要；不把日期、记录 ID 或标签原文写入可读存储。
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+/* 数据指纹：仅用于本地判断报告是否过期，不再把可读记录摘要写入 localStorage。 */
 function reportFingerprint() {
-  const latest = [...records].sort((a, b) => (b.offset - a.offset) || b.time.localeCompare(a.time))[0];
   const digest = records.map((r) =>
      `${r.offset}|${r.time}|${recordObservationValues(r).join(',')}|${(r.moods || []).join(',')}|${(r.triggers || []).join(',')}|${r.duration || ''}|${r.media ? '1' : ''}`
   ).join(';');
-  return JSON.stringify({ date: fmtDateInput(new Date()), window: 7, layout: 'ai-card-v1', count: records.length, latestId: latest ? latest.id : '', digest });
+  return `v2:${insightLocalDigest(JSON.stringify({ date: fmtDateInput(new Date()), window: 7, count: records.length, digest }))}`;
 }
 
 /* ---------- #147：报告过期检测 + 旧版自动触发 ---------- */
@@ -707,9 +873,23 @@ function generateAnalysis(ev, opts) {
       controller.signal,
       { structured: true, purpose: 'insight-report' }
     ).then((content) => {
-      const data = extractJSON(content);
-      if (!data) throw new Error('PARSE_FAIL');
-      if (violatesAIOutputBoundary(JSON.stringify(data))) throw new Error('UNSAFE_OUTPUT');
+      const rawData = extractJSON(content);
+      const data = normalizeInsightAIData(rawData);
+      if (!data) {
+        insightSchemaDiagnostic('SCHEMA_ROOT');
+        throw new Error('PARSE_FAIL');
+      }
+      if (!validateInsightAIData(data)) {
+        insightSchemaDiagnostic('SCHEMA_INVALID');
+        throw new Error('PARSE_FAIL');
+      }
+      if (insightNormalizationMeta.status === 'truncated' || insightNormalizationMeta.droppedFieldCount) {
+        insightSchemaDiagnostic('SCHEMA_NORMALIZED');
+      }
+      if (violatesAIOutputBoundary(JSON.stringify(data))) {
+        insightSchemaDiagnostic('UNSAFE_OUTPUT');
+        throw new Error('UNSAFE_OUTPUT');
+      }
       localStorage.setItem(REPORT_FP_KEY, reportFingerprint());   // 成功后更新指纹
       renderAIReport(data);
       succeeded = true;

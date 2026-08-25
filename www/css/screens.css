@@ -116,8 +116,22 @@
 .logo-mark {
   width: 52px; height: 52px;
   border-radius: 14px;
-  background: var(--accent);
+  background: transparent;
   display: flex; align-items: center; justify-content: center;
+}
+
+.logo-mark .about-logo {
+  display: block;
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  /* #191：浅蓝玻璃外壳与“我的”页卡片之间用接触阴影分层，不增加边框。 */
+  filter: drop-shadow(0 10px 9px rgba(28, 107, 174, .16)) drop-shadow(0 2px 3px rgba(28, 107, 174, .10));
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .logo-mark .about-logo { filter: none; }
 }
 
 @keyframes fadeUp {

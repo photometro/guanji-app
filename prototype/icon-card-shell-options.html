@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>原型 · 观己图标外壳优化</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #eef5fb;
+      --card: rgba(255, 255, 255, .84);
+      --card-solid: #fff;
+      --ink: #172b42;
+      --muted: #72869b;
+      --line: rgba(75, 115, 150, .14);
+      --accent: #087de4;
+      --accent-soft: #e4f2ff;
+      --shadow: 0 18px 42px rgba(24, 74, 117, .12), 0 3px 10px rgba(24, 74, 117, .06);
+      --ease: cubic-bezier(.22, 1, .36, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(90% 55% at 10% 0%, rgba(128, 202, 255, .22), transparent 72%),
+        radial-gradient(70% 48% at 100% 0%, rgba(84, 158, 229, .12), transparent 68%),
+        var(--bg);
+      color: var(--ink);
+      padding: 22px 16px 108px;
+    }
+    .phone { max-width: 390px; margin: 0 auto; }
+    .eyebrow { margin: 0 0 8px; color: var(--accent); font-size: 11px; font-weight: 760; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: 29px; letter-spacing: -.04em; line-height: 1.08; }
+    .lead { margin: 10px 0 18px; color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .about-card {
+      position: relative;
+      overflow: hidden;
+      padding: 28px 18px 24px;
+      border: 1px solid rgba(255, 255, 255, .86);
+      border-radius: 25px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      text-align: center;
+      backdrop-filter: blur(18px) saturate(1.25);
+    }
+    .about-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(125deg, rgba(255,255,255,.58), transparent 30%, transparent 72%, rgba(185,225,255,.18));
+    }
+    .about-card > * { position: relative; z-index: 1; }
+    .logo-stage { display: inline-grid; place-items: center; width: 96px; height: 96px; margin-bottom: 14px; }
+    .logo-stage svg { display: block; width: 76px; height: 76px; overflow: visible; }
+    .logo-stage.variant-a svg { filter: drop-shadow(0 10px 9px rgba(28, 107, 174, .16)) drop-shadow(0 2px 3px rgba(28, 107, 174, .10)); }
+    .logo-stage.variant-b svg { filter: drop-shadow(0 12px 11px rgba(28, 107, 174, .20)) drop-shadow(0 2px 3px rgba(28, 107, 174, .14)); }
+    .logo-stage.variant-c { border-radius: 25px; background: radial-gradient(circle, rgba(119, 205, 255, .24), rgba(119, 205, 255, 0) 72%); }
+    .logo-stage.variant-c svg { filter: drop-shadow(0 10px 17px rgba(26, 126, 213, .17)); }
+    .about-name { margin: 0; font-size: 17px; font-weight: 760; letter-spacing: .06em; }
+    .about-ver { margin: 6px 0 0; color: var(--muted); font-size: 11px; letter-spacing: .03em; }
+    .privacy { display: grid; gap: 9px; margin: 20px 0 0; padding: 16px 0 0; border-top: 1px solid var(--line); text-align: left; }
+    .privacy p { display: flex; gap: 9px; margin: 0; color: #486076; font-size: 12px; line-height: 1.5; }
+    .privacy i { flex: 0 0 auto; width: 6px; height: 6px; margin-top: 6px; border-radius: 50%; background: #45aaf4; box-shadow: 0 0 0 3px rgba(69, 170, 244, .12); }
+    .spec { display: grid; gap: 10px; margin-top: 14px; padding: 14px 15px; border: 1px solid rgba(80, 135, 180, .13); border-radius: 17px; background: rgba(237, 247, 255, .62); }
+    .spec strong { font-size: 12px; }
+    .spec span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .option-label { display: inline-flex; align-items: center; gap: 7px; margin: 0 0 10px; color: var(--accent); font-size: 11px; font-weight: 750; letter-spacing: .08em; }
+    .option-label::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .prototype-bar {
+      position: fixed; z-index: 5; left: 50%; bottom: 18px; display: flex; align-items: center; gap: 10px;
+      min-width: 255px; padding: 8px 10px; transform: translateX(-50%);
+      border: 1px solid rgba(255,255,255,.8); border-radius: 999px; background: rgba(22, 49, 74, .92);
+      box-shadow: 0 12px 30px rgba(11, 35, 57, .26); color: #fff; backdrop-filter: blur(14px);
+    }
+    .prototype-bar button { width: 30px; height: 30px; border: 0; border-radius: 50%; background: rgba(255,255,255,.1); color: #fff; cursor: pointer; font-size: 18px; }
+    .prototype-bar button:active { transform: scale(.94); }
+    .variant-name { flex: 1; text-align: center; font-size: 12px; font-weight: 700; }
+    .variant-name small { display: block; margin-top: 2px; color: rgba(255,255,255,.58); font-size: 10px; font-weight: 500; }
+    @media (prefers-reduced-transparency: reduce) { .about-card { backdrop-filter: none; background: var(--card-solid); } }
+  </style>
+</head>
+<body>
+  <!-- PROTOTYPE: 三种 01-C 外壳对比，回答“白底融入关于卡片”问题。非生产路由。 -->
+  <main class="phone">
+    <p class="eyebrow">关于卡片 · 原型</p>
+    <h1>让图标从卡片里浮出来</h1>
+    <p class="lead">内部玻璃切片保持 01-C 定稿，只比较外壳如何与浅色卡片建立边界。</p>
+    <p class="option-label" id="optionLabel">A · 浅蓝玻璃外壳</p>
+    <section class="about-card">
+      <div class="logo-stage variant-a" id="logoStage" aria-label="观己图标预览"></div>
+      <p class="about-name">观己</p>
+      <p class="about-ver">v3.48 · 数据默认仅存本地</p>
+      <div class="privacy">
+        <p><i></i><span>记录只保存在你的设备中</span></p>
+        <p><i></i><span>不需要账号，不建立公开社区</span></p>
+        <p><i></i><span>AI 仅在主动配置后提供可选增强</span></p>
+      </div>
+    </section>
+    <div class="spec">
+      <div><strong id="specTitle">方案 A：浅蓝玻璃外壳 + 细边缘</strong><span id="specBody">用极浅蓝渐变替代纯白底，并保留低对比度轮廓；不改变切片比例，也不增加第二层卡片。</span></div>
+    </div>
+  </main>
+  <nav class="prototype-bar" aria-label="原型方案切换">
+    <button type="button" id="prev" aria-label="上一个方案">‹</button>
+    <div class="variant-name" id="variantName">A — 浅蓝玻璃外壳<small>← / → 可切换</small></div>
+    <button type="button" id="next" aria-label="下一个方案">›</button>
+  </nav>
+  <script>
+    const variants = {
+      A: { label: 'A · 浅蓝玻璃外壳', name: '浅蓝玻璃外壳', title: '方案 A：浅蓝玻璃外壳 + 柔和阴影', body: '用极浅蓝渐变替代纯白底，完全去掉描边，靠下方柔和投影和轻微接触阴影建立层次。' },
+      B: { label: 'B · 透明外壳阴影', name: '透明外壳阴影', title: '方案 B：透明外壳 + 阴影', body: '去掉实心底色与描边，只保留玻璃切片、接触阴影和下方投影；层次更明显，但仍保持轻量。' },
+      C: { label: 'C · 外部柔和光晕', name: '外部柔和光晕', title: '方案 C：浅蓝外壳 + 环境光影', body: '保留浅蓝外壳，用外部环境光和投影拉开距离；分离感最强，但视觉存在感也最高。' },
+    };
+    const order = ['A', 'B', 'C'];
+    const params = new URLSearchParams(location.search);
+    let current = (params.get('variant') || 'A').toUpperCase();
+    if (!variants[current]) current = 'A';
+    const optionLabel = document.getElementById('optionLabel');
+    const variantName = document.getElementById('variantName');
+    const logoStage = document.getElementById('logoStage');
+    const specTitle = document.getElementById('specTitle');
+    const specBody = document.getElementById('specBody');
+    const icon = (kind) => {
+      const shell = kind === 'A'
+        ? '<linearGradient id="shell" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6fbff"/><stop offset="1" stop-color="#dcefff"/></linearGradient>'
+        : kind === 'B'
+          ? '<linearGradient id="shell" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="0"/><stop offset="1" stop-color="#d9efff" stop-opacity="0"/></linearGradient>'
+          : '<linearGradient id="shell" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f5fbff"/><stop offset="1" stop-color="#def2ff"/></linearGradient>';
+      const outline = '';
+      return `<svg viewBox="0 0 64 64" role="img" aria-label="01-C 玻璃切片图标"><defs>${shell}<linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4ebaff"/><stop offset="1" stop-color="#0780ef"/></linearGradient><linearGradient id="light" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a6e6ff"/><stop offset="1" stop-color="#40aef7"/></linearGradient></defs><rect width="64" height="64" rx="18" fill="url(#shell)"/>${outline}<path d="M13.8 22.1 41 49.3 50.1 40.2" fill="none" stroke="#0c5fae" stroke-opacity=".17" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.8 44.1 23 53.2 50.1 26.1" fill="none" stroke="#0c5fae" stroke-opacity=".13" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 21 23 11l28 28-10 10L13 21Z" fill="url(#blue)" fill-opacity=".88"/><path d="M13 43 23 53l28-25-10-10L13 43Z" fill="url(#light)" fill-opacity=".78"/><path d="M15.2 19.7 23 11.9 49.2 38.1" fill="none" stroke="#fff" stroke-opacity=".34" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.2 44.3 23 52.1 49.2 25.9" fill="none" stroke="#fff" stroke-opacity=".23" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/><path d="M24.5 31.5 30.5 25.5" fill="none" stroke="#075eb5" stroke-opacity=".13" stroke-width="2" stroke-linecap="round"/></svg>`;
+    };
+    function render() {
+      const item = variants[current];
+      const data = new URLSearchParams(location.search); data.set('variant', current);
+      history.replaceState(null, '', `${location.pathname}?${data.toString()}`);
+      optionLabel.textContent = item.label;
+      variantName.innerHTML = `${current} — ${item.name}<small>← / → 可切换</small>`;
+      specTitle.textContent = item.title;
+      specBody.textContent = item.body;
+      logoStage.className = `logo-stage variant-${current.toLowerCase()}`;
+      logoStage.innerHTML = icon(current);
+    }
+    function step(delta) { current = order[(order.indexOf(current) + delta + order.length) % order.length]; render(); }
+    document.getElementById('prev').addEventListener('click', () => step(-1));
+    document.getElementById('next').addEventListener('click', () => step(1));
+    document.addEventListener('keydown', (event) => { if (event.key === 'ArrowLeft') step(-1); if (event.key === 'ArrowRight') step(1); });
+    render();
+  </script>
+</body>
+</html>

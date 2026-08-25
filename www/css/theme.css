@@ -18,6 +18,9 @@
   --ink: #000000;
   --ink-2: #8E8E93;
   --ink-3: #C7C7CC;
+  /* #195：液态玻璃模式专用辅助文字；经典模式仍使用 --ink-2/--ink-3 */
+  --lg-text-secondary: #46566A;
+  --lg-text-meta: #627286;
 
   /* 强调（iOS systemBlue） */
   --accent: #007AFF;
@@ -101,6 +104,8 @@
   --ink: #FFFFFF;
   --ink-2: #B0B0B4;
   --ink-3: #6E6E73;
+  --lg-text-secondary: #B7C5D6;
+  --lg-text-meta: #9CADBF;
 
   --accent: #0A84FF;
   --accent-deep: #409CFF;

@@ -14,6 +14,9 @@ const WD = {
   TIMEOUT: 20000,
 };
 
+// #187：未配置时从“备份与恢复”进入配置页，关闭后回到该任务首页。
+let wdConfigReturnToBackupHub = false;
+
 function wdIsNative() {
   return !!(window.Capacitor && Capacitor.Plugins.SecureStorage);
 }
@@ -132,10 +135,9 @@ async function wdEnsureDir() {
   throw new Error('创建目录失败（HTTP ' + res.status + '）');
 }
 
-/* #175：新备份文件名仅保留日期与时分秒；同一任务的重试由调用方复用同名文件。 */
+/* #175/#185：服务器备份使用统一类型标识；同一任务的重试由调用方复用同名文件。 */
 function wdBackupFilename(date = new Date()) {
-  const pad = (n) => String(n).padStart(2, '0');
-  return `guanji-${fmtDateKey(date)}-${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}.json`;
+  return buildGuanjiFilename('server', 'json', date);
 }
 
 /* 同一秒跨设备生成同名文件时顺延序号；列举失败不阻断上传，避免把列表服务故障变成无法备份。 */
@@ -440,9 +442,15 @@ async function initWebDAVUI() {
     }
     wdRender();
     $('wdCfgBackdrop').classList.add('hidden');
-    const openManage = () => { openSheetPanel('wdManageBackdrop'); loadWdManage(); };
-    if (!$('backupSyncBackdrop').classList.contains('hidden')) closeSheetPanel('backupSyncBackdrop', openManage);
-    else openManage();
+    wdConfigReturnToBackupHub = false;
+    const openManage = () => {
+      if (typeof window.openBackupHubServerManage === 'function') {
+        if (typeof window.isBackupHubOpen !== 'function' || !window.isBackupHubOpen()) window.openBackupHub();
+        window.openBackupHubServerManage();
+      }
+      loadWdManage();
+    };
+    openManage();
     // 首次配置后询问自动备份（数据离开设备需明确授权）
     if (localStorage.getItem(WD.AUTO_KEY) === null) {
       localStorage.setItem(WD.AUTO_KEY, 'off');
@@ -560,7 +568,7 @@ async function initWebDAVUI() {
         if (records.length && window.Capacitor && Capacitor.Plugins.GuanjiSave) {
           try {
             const cur = JSON.stringify(await secureExportPackage());
-            await Capacitor.Plugins.GuanjiSave.saveToDownloads({ filename: 'guanji-before-restore-' + fmtDateKey(new Date()) + '.json', data: cur });
+            await Capacitor.Plugins.GuanjiSave.saveToDownloads({ filename: await uniqueGuanjiFilename('restore', 'json'), data: cur });
           } catch (e) { /* 本机备份失败不阻断恢复 */ }
         }
         records = list;
@@ -590,15 +598,35 @@ async function initWebDAVUI() {
   $('wdCfgBtn').addEventListener('click', () => {
     if (secureMode() !== 'encrypted') { toast('开启加密后可用——服务器备份是加密通道'); return; }
     if (wdLoadCfg()) {
-      const openManage = () => { openSheetPanel('wdManageBackdrop'); loadWdManage(); };
-      if (!$('backupSyncBackdrop').classList.contains('hidden')) closeSheetPanel('backupSyncBackdrop', openManage);
-      else openManage();
+      const openManage = () => {
+        if (typeof window.openBackupHubServerManage === 'function') {
+          if (typeof window.isBackupHubOpen !== 'function' || !window.isBackupHubOpen()) window.openBackupHub();
+          window.openBackupHubServerManage();
+        }
+        loadWdManage();
+      };
+      openManage();
     } else {
       $('wdStatus').textContent = '配置你的 WebDAV 服务器（如坚果云、群晖、Nextcloud）。备份只发往你配置的服务器——观己不提供任何云服务。';
-      $('wdCfgBackdrop').classList.remove('hidden');
+      const openConfig = () => $('wdCfgBackdrop').classList.remove('hidden');
+      const backupHubOpen = typeof window.isBackupHubOpen === 'function' && window.isBackupHubOpen();
+      wdConfigReturnToBackupHub = backupHubOpen;
+      if (backupHubOpen && typeof closeSheetPanel === 'function') {
+        // 先完成父 Sheet 的关闭动画，避免两个同层级 backdrop 同时拦截点击。
+        closeSheetPanel('backupSyncBackdrop', openConfig);
+      } else {
+        openConfig();
+      }
     }
   });
-  $('wdCfgCancel').addEventListener('click', () => $('wdCfgBackdrop').classList.add('hidden'));
+  function closeWdConfigAndReturn() {
+    $('wdCfgBackdrop').classList.add('hidden');
+    const shouldReturn = wdConfigReturnToBackupHub;
+    wdConfigReturnToBackupHub = false;
+    if (shouldReturn && typeof window.openBackupHub === 'function') window.openBackupHub();
+  }
+  window.closeWdConfigAndReturn = closeWdConfigAndReturn;
+  $('wdCfgCancel').addEventListener('click', closeWdConfigAndReturn);
 
   // 服务器管理弹窗（#117：测试连接/立即上传/列表删除/清除配置）
   let wdManageTimer = null;
@@ -652,9 +680,10 @@ async function initWebDAVUI() {
       listEl.innerHTML = '<p class="dialog-hint">读取失败：' + ((e && e.message) || '') + '</p>';
     }
   }
-  // #117：服务器管理弹窗由 wdCfgBtn（已配置）打开；关闭按钮
-  $('wdManageClose').addEventListener('click', () => closeSheetPanel('wdManageBackdrop'));
-  $('wdManageCloseTop').addEventListener('click', () => closeSheetPanel('wdManageBackdrop'));
+  // #184：服务器管理留在同一数据保护 Sheet 内，返回首页而不是退出到“我的”。
+  $('wdManageClose').addEventListener('click', () => {
+    if (typeof window.backupHubBack === 'function') window.backupHubBack();
+  });
 
   // 打开 App 时自动备份开关（默认关——上传需明确授权）
   $('wdAutoSwitch').addEventListener('click', () => {
@@ -678,7 +707,7 @@ async function initWebDAVUI() {
     $('wdPass').value = '';
     toast('服务器配置已清除');
     wdRender();
-    closeSheetPanel('wdManageBackdrop');
+    if (typeof window.backupHubBack === 'function') window.backupHubBack();
   });
 
   // #128：冷启动与回到前台均在稳定的前台窗口备份；不再在后台切换时请求网络。

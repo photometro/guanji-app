@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">观己</title>
+  <desc id="desc">两片居中的蓝色玻璃切片</desc>
+  <defs>
+    <linearGradient id="shell" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7fcff"/>
+      <stop offset="1" stop-color="#dcefff"/>
+    </linearGradient>
+    <linearGradient id="sliceBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4ebaff"/>
+      <stop offset="1" stop-color="#0780ef"/>
+    </linearGradient>
+    <linearGradient id="sliceLight" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a6e6ff"/>
+      <stop offset="1" stop-color="#40aef7"/>
+    </linearGradient>
+  </defs>
+  <!-- 01-C / 构图 A：外部圆角留安全区，浅蓝玻璃外壳与居中玻璃切片保持同一材质语言。 -->
+  <rect width="64" height="64" rx="18" fill="url(#shell)"/>
+  <path d="M13.8 22.1 41 49.3 50.1 40.2" fill="none" stroke="#0c5fae" stroke-opacity=".17" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M13.8 44.1 23 53.2 50.1 26.1" fill="none" stroke="#0c5fae" stroke-opacity=".13" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M13 21 23 11l28 28-10 10L13 21Z" fill="url(#sliceBlue)" fill-opacity=".88"/>
+  <path d="M13 43 23 53l28-25-10-10L13 43Z" fill="url(#sliceLight)" fill-opacity=".78"/>
+  <path d="M15.2 19.7 23 11.9 49.2 38.1" fill="none" stroke="#fff" stroke-opacity=".34" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M15.2 44.3 23 52.1 49.2 25.9" fill="none" stroke="#fff" stroke-opacity=".23" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M24.5 31.5 30.5 25.5" fill="none" stroke="#075eb5" stroke-opacity=".13" stroke-width="2" stroke-linecap="round"/>
+</svg>

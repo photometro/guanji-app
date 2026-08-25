@@ -4,15 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>观己 · 个人行为与习惯觉察</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23007AFF'/%3E%3Cpath d='M32 18c-6 0-10 4.2-10 9.8 0 6.5 7.5 11.8 9.4 13.1a1.2 1.2 0 0 0 1.2 0c1.9-1.3 9.4-6.6 9.4-13.1C42 22.2 38 18 32 18Zm0 13.3a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z' fill='%23FFFFFF'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/theme.css?v=141">
-<link rel="stylesheet" href="css/base.css?v=141">
-<link rel="stylesheet" href="css/components.css?v=141">
-<link rel="stylesheet" href="css/tabbar.css?v=141">
-<link rel="stylesheet" href="css/sheets.css?v=141">
-<link rel="stylesheet" href="css/screens.css?v=141">
-<link rel="stylesheet" href="css/responsive.css?v=141">
-<link rel="stylesheet" href="css/glass.css?v=141">
+<link rel="icon" type="image/svg+xml" href="assets/guanji-icon-01c.svg?v=147">
+<link rel="stylesheet" href="css/theme.css?v=149">
+<link rel="stylesheet" href="css/base.css?v=149">
+<link rel="stylesheet" href="css/components.css?v=149">
+<link rel="stylesheet" href="css/tabbar.css?v=149">
+<link rel="stylesheet" href="css/sheets.css?v=149">
+<link rel="stylesheet" href="css/screens.css?v=149">
+<link rel="stylesheet" href="css/responsive.css?v=149">
+<link rel="stylesheet" href="css/glass.css?v=149">
 <script src="vendor/anime.min.js"></script>   <!-- #72：anime v3.2（弹簧动画），缺失时 app.js 自动回退 CSS -->
 <script>
   /* 防闪烁：在渲染前根据 localStorage + 系统设置确定主题 + 玻璃效果开关（#72，默认 on） */
@@ -357,10 +357,10 @@
       <!-- #68：隐私说明并入关于卡（数据相关操作后展示，强调本地存储） -->
       <div class="card settings-card about-card">
         <div class="logo-mark">
-          <svg width="26" height="26" viewBox="0 0 46 46"><path d="M23 12c-6 0-10 4.2-10 9.8 0 6.5 7.5 11.8 9.4 13.1a1.2 1.2 0 0 0 1.2 0c1.9-1.3 9.4-6.6 9.4-13.1C33 16.2 29 12 23 12Zm0 13.3a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" fill="#FFFFFF"/></svg>
+          <img class="about-logo" src="assets/guanji-icon-01c.svg?v=147" alt="观己图标" width="52" height="52">
         </div>
         <p class="about-name">观己</p>
-          <p class="about-ver">v3.45 · 数据默认仅存本地</p>
+          <p class="about-ver">v3.53 · 数据默认仅存本地</p>
         <!-- #69：隐私条目直接跟随品牌区（无分割线/无标题，苹果页脚风格） -->
         <ul class="privacy-list about-privacy">
           <li><span class="dot"></span>记录默认只保存在这台设备上；WebDAV 备份由你自选，上传的是密文（仅你的口令可解）</li>
@@ -535,27 +535,7 @@
       </div>
     </div>
 
-    <!-- #115/#117：WebDAV 服务器备份管理弹层（测试/上传/列表删除/清除配置） -->
-    <div class="backdrop dialog-layer backdrop--sheet hidden" id="wdManageBackdrop">
-      <div class="sheet sheet--task sheet--fixed-footer backup-dialog--manage">
-        <header class="sheet__header backup-panel-header">
-          <span class="backup-panel-dot" id="wdManageDot"></span>
-          <div class="sheet__header-copy backup-panel-header-copy"><p class="dialog-title">服务器备份</p><p class="dialog-text" id="wdManageHint">已连接 · 最近上传 尚未上传</p></div>
-          <button class="backup-panel-close" id="wdManageCloseTop" type="button" aria-label="关闭">×</button>
-        </header>
-        <div class="sheet__body backup-panel-body">
-          <div id="wdManageList" class="backup-list-host"></div>
-          <div class="backup-manage-secondary">
-            <button class="row-btn hidden" id="wdTestBtn" type="button"><span>测试连接</span></button>
-            <button class="row-btn danger" id="wdResetBtn" type="button"><span>清除配置</span></button>
-          </div>
-          <button class="row-btn" id="wdRestoreBtn" style="display:none"></button>
-        </div>
-        <footer class="sheet__footer backup-panel-footer"><button class="btn-ghost" id="wdManageClose" type="button">关闭</button><button class="btn-primary" id="wdBackupBtn" type="button">上传新备份</button></footer>
-      </div>
-    </div>
-
-    <!-- #183/#184：数据保护中心。恢复相关步骤共用同一张 Sheet；两类文件管理仍是独立一级任务。 -->
+    <!-- #183/#184：数据保护中心。管理、恢复相关步骤共用同一张 Sheet。 -->
     <div class="backdrop dialog-layer backdrop--sheet hidden" id="backupSyncBackdrop" data-backup-hub-view="home">
       <div class="sheet sheet--task sheet--fixed-footer backup-sync-sheet" id="backupHubSheet">
         <header class="sheet__header backup-panel-header">
@@ -566,7 +546,7 @@
           <section class="backup-hub-view" data-backup-hub-view="home">
             <div class="section-label"><span>同步到服务器</span></div>
             <button class="backup-source-action" id="wdCfgBtn" type="button"><span class="backup-source-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><path d="M6.3 15.8h7.2a3.1 3.1 0 0 0 .4-6.2A4.5 4.5 0 0 0 5.2 8.3a3.8 3.8 0 0 0 1.1 7.5Z" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="backup-source-copy"><strong>服务器备份</strong><span class="row-sub" id="wdCfgSub">未配置</span></span><span class="backup-source-arrow">›</span></button>
-            <label class="switch-row backup-sync-switch"><span>自动同步<span class="row-sub">打开或回到 App 时，数据变化后同步</span></span><span class="switch" id="wdAutoSwitch"><span class="knob"></span></span></label>
+            <label class="switch-row backup-sync-switch"><span class="backup-source-copy"><strong>自动同步</strong><span class="row-sub">打开或回到 App 时，数据变化后同步</span></span><span class="switch" id="wdAutoSwitch"><span class="knob"></span></span></label>
             <button class="compact-action" id="backupSyncNowBtn" type="button">上传新备份</button>
             <div class="section-label"><span>本机文件</span></div>
             <button class="backup-source-action" id="bkpManageBtn" type="button"><span class="backup-source-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><path d="M6.4 2.9h5.1l3.1 3.2v10.3a.8.8 0 0 1-.8.8H6.4a.8.8 0 0 1-.8-.8V3.7a.8.8 0 0 1 .8-.8Zm4.7.3v3.4h3.3M8 11h4M8 14h4" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="backup-source-copy"><strong>本机文件管理</strong><span class="row-sub">查看下载目录中的备份与导出文件</span></span><span class="backup-source-arrow">›</span></button>
@@ -598,21 +578,29 @@
             <p class="helper hidden" id="wdRestoreInfo"></p>
             <p class="dialog-hint" id="wdRestoreModeHint" style="display:none">合并：按 id 去重并入当前记录（推荐）。</p>
           </section>
+          <section class="backup-hub-view hidden" data-backup-hub-view="localManage">
+            <p class="dialog-text backup-manage-hint" id="localManageHint">下载目录中的备份与导出文件</p>
+            <div id="localManageList" class="backup-list-host"></div>
+          </section>
+          <section class="backup-hub-view hidden" data-backup-hub-view="serverManage">
+            <p class="dialog-text backup-manage-hint" id="wdManageHint">已连接 · 最近上传 尚未上传</p>
+            <div id="wdManageList" class="backup-list-host"></div>
+            <div class="backup-manage-secondary">
+              <button class="row-btn hidden" id="wdTestBtn" type="button"><span>测试连接</span></button>
+              <button class="row-btn danger" id="wdResetBtn" type="button"><span>清除配置</span></button>
+            </div>
+            <button class="row-btn" id="wdRestoreBtn" style="display:none"></button>
+          </section>
         </div>
         <footer class="sheet__footer backup-panel-footer" data-backup-hub-footer="home"><button class="btn-ghost" id="backupSyncClose" type="button">关闭</button></footer>
         <footer class="sheet__footer backup-panel-footer hidden" data-backup-hub-footer="source"><button class="btn-ghost" id="restoreSourceCancel" type="button">返回</button></footer>
         <footer class="sheet__footer backup-panel-footer hidden" data-backup-hub-footer="local"><button class="btn-ghost" id="secImportCancel" type="button">返回</button><button class="btn-primary" id="secImportConfirm" type="button">导入到本机</button></footer>
         <footer class="sheet__footer backup-panel-footer hidden" data-backup-hub-footer="server"><button class="btn-ghost" id="wdRestoreCancel" type="button">返回</button><button class="btn-primary" id="wdRestoreConfirm" type="button">恢复到本机</button></footer>
+        <footer class="sheet__footer backup-panel-footer hidden" data-backup-hub-footer="localManage"><button class="btn-ghost" id="localManageClose" type="button">返回</button></footer>
+        <footer class="sheet__footer backup-panel-footer hidden" data-backup-hub-footer="serverManage"><button class="btn-ghost" id="wdManageClose" type="button">返回</button><button class="btn-primary" id="wdBackupBtn" type="button">上传新备份</button></footer>
       </div>
     </div>
 
-    <div class="backdrop dialog-layer backdrop--sheet hidden" id="localManageBackdrop">
-      <div class="sheet sheet--task sheet--fixed-footer backup-dialog--manage">
-        <header class="sheet__header backup-panel-header"><div class="sheet__header-copy backup-panel-header-copy"><p class="dialog-title">本机文件管理</p><p class="dialog-text" id="localManageHint">下载目录中的备份与导出文件</p></div><button class="backup-panel-close" id="localManageCloseTop" type="button" aria-label="关闭">×</button></header>
-        <div class="sheet__body backup-panel-body"><div id="localManageList" class="backup-list-host"></div></div>
-        <footer class="sheet__footer backup-panel-footer"><button class="btn-ghost" id="localManageClose" type="button">关闭</button></footer>
-      </div>
-    </div>
 
     <div class="backdrop dialog-layer backdrop--sheet hidden" id="exportBackdrop">
       <div class="sheet sheet--task sheet--fixed-footer backup-dialog--export">
@@ -701,19 +689,19 @@
   </defs>
 </svg>
 
-<script src="js/backup-picker.js?v=142"></script>
-<script src="js/secure.js?v=142"></script>
-<script src="js/storage.js?v=142"></script>
-<script src="js/records.js?v=142"></script>
-<script src="js/stats.js?v=142"></script>
-<script src="js/ai.js?v=142"></script>
-<script src="js/ui-home.js?v=142"></script>
-<script src="js/ui-timer.js?v=142"></script>
-<script src="js/ui-sheet.js?v=142"></script>
-<script src="js/ui-calendar.js?v=142"></script>
-<script src="js/liquid-glass.js?v=142"></script>
-<script src="js/webdav.js?v=142"></script>
-<script src="js/app.js?v=142"></script>
+<script src="js/backup-picker.js?v=150"></script>
+<script src="js/secure.js?v=150"></script>
+<script src="js/storage.js?v=150"></script>
+<script src="js/records.js?v=150"></script>
+<script src="js/stats.js?v=150"></script>
+<script src="js/ai.js?v=150"></script>
+<script src="js/ui-home.js?v=150"></script>
+<script src="js/ui-timer.js?v=150"></script>
+<script src="js/ui-sheet.js?v=150"></script>
+<script src="js/ui-calendar.js?v=150"></script>
+<script src="js/liquid-glass.js?v=150"></script>
+<script src="js/webdav.js?v=150"></script>
+<script src="js/app.js?v=150"></script>
 </body>
 </html>
 

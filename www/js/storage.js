@@ -6,6 +6,40 @@
 
 const $ = (id) => document.getElementById(id);
 
+/* #185：所有新生成的观己文件使用同一套可读命名；旧文件只读不迁移。 */
+function buildGuanjiFilename(type, extension = 'json', date = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const safeType = String(type || 'secure').replace(/[^a-z0-9_-]/gi, '').toLowerCase() || 'secure';
+  const ext = String(extension || 'json').replace(/[^a-z0-9]/gi, '').toLowerCase() || 'json';
+  const stamp = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}-${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
+  return `guanji-${safeType}-${stamp}.${ext}`;
+}
+
+/* 本机同秒导出不覆盖已有文件；浏览器降级路径用本地已生成名集合兜底。 */
+async function uniqueGuanjiFilename(type, extension = 'json', date = new Date()) {
+  const base = buildGuanjiFilename(type, extension, date);
+  let names = [];
+  try {
+    if (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.GuanjiSave) {
+      const listed = await Capacitor.Plugins.GuanjiSave.listBackupFiles();
+      names = Array.isArray(listed && listed.files) ? listed.files : [];
+    }
+  } catch { /* 列表失败不阻断导出 */ }
+  if (!names.includes(base)) return base;
+  const dot = base.lastIndexOf('.');
+  const stem = dot > 0 ? base.slice(0, dot) : base;
+  const ext = dot > 0 ? base.slice(dot) : '';
+  for (let i = 2; i <= 99; i += 1) {
+    const candidate = `${stem}-${i}${ext}`;
+    if (!names.includes(candidate)) return candidate;
+  }
+  return `${stem}-${Date.now().toString(36)}${ext}`;
+}
+
+// 供跨脚本模块（以及原生调试桥）显式复用，避免 WebView 全局词法环境差异。
+window.buildGuanjiFilename = buildGuanjiFilename;
+window.uniqueGuanjiFilename = uniqueGuanjiFilename;
+
 const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 const MOODS = ['平静', '放松', '愉悦', '无聊', '焦虑', '压力'];
 // v3.18：新记录采用中性、明确的命名；旧记录和旧 CSV 保持原始值不改写。
@@ -24,8 +58,8 @@ const OBSERVATION_OPTIONS = [
   { key: 'adult_content_effect', label: ADULT_CONTENT_TRIGGER, section: 'primary', dimension: 'content', order: 6 },
   { key: 'loneliness', label: '缺少陪伴', section: 'more', dimension: 'state', order: 7 },
   { key: 'insomnia', label: '睡不着', section: 'more', dimension: 'sleep', order: 8 },
-  { key: 'none', label: '无特别情况', section: 'more', dimension: 'empty', order: 9, exclusive: true },
-  { key: 'unsure', label: '说不清', section: 'more', dimension: 'uncertainty', order: 10, exclusive: true },
+  { key: 'none', label: '没有明显情绪/诱因', section: 'more', dimension: 'state', marker: 'none', order: 9, exclusive: true },
+  { key: 'unsure', label: '原因不确定', section: 'more', dimension: 'uncertainty', marker: 'uncertainty', order: 10 },
   // #144：补齐低落、烦躁、精力、自动性与放松动机维度；新标签只作为前置状况自报，不代表确定原因。
   { key: 'low_mood', label: '低落', section: 'more', dimension: 'state', order: 11 },
   { key: 'irritability', label: '烦躁', section: 'more', dimension: 'state', order: 12 },
@@ -50,9 +84,11 @@ const OBSERVATION_KEY_BY_LABEL = {
   [LEGACY_ADULT_CONTENT_TRIGGER]: 'adult_content_effect',
   '无特别情况': 'none',
   '无特别诱因': 'none',
+  '没有明显情绪/诱因': 'none',
   '正常': 'none',
   '说不清': 'unsure',
   '不确定': 'unsure',
+  '原因不确定': 'unsure',
   // #144：允许研究/认知访谈中的同义显示文案回填为稳定 key。
   '情绪低落': 'low_mood',
   '低落': 'low_mood',
@@ -90,22 +126,40 @@ function isAdultContentObservation(value) {
   return observationKeyFromValue(value) === 'adult_content_effect';
 }
 
-/* #138/#133A：统一映射为稳定 key，并按输入顺序执行界面的独占规则。 */
+function observationMetaFromKey(value) {
+  const key = observationKeyFromValue(value);
+  return OBSERVATION_OPTIONS.find((option) => option.key === key) || null;
+}
+
+/* #138/#186：稳定 key 兼容读取；普通标签多选，确定性标记按自身维度处理。 */
 function normalizeObservationValues(values) {
   const list = Array.isArray(values) ? values : (values ? [values] : []);
   const out = [];
   list.forEach((value) => {
     const key = observationKeyFromValue(value);
     if (!key) return;
-    if (key === 'none' || key === 'unsure') {
-      out.splice(0, out.length, key);
-      return;
+    const meta = observationMetaFromKey(key);
+    if (key === 'none') {
+      // “没有明显情绪/诱因”只与状态维度互斥；时间、环境和“不确定”仍可并存。
+      for (let i = out.length - 1; i >= 0; i -= 1) {
+        const existing = observationMetaFromKey(out[i]);
+        if (existing && existing.dimension === 'state' && out[i] !== 'none') out.splice(i, 1);
+      }
+    } else if (meta && meta.dimension === 'state') {
+      const noneIndex = out.indexOf('none');
+      if (noneIndex >= 0) out.splice(noneIndex, 1);
     }
-    const exclusiveIndex = out.findIndex((item) => item === 'none' || item === 'unsure');
-    if (exclusiveIndex >= 0) out.splice(exclusiveIndex, 1);
-    if (!out.includes(key)) out.push(key);
+    if (!out.includes(key)) {
+      out.push(key);
+    }
   });
   return out;
+}
+
+/* 用于 UI 与统计的维度判断；未知旧/自定义标签保持普通多选。 */
+function observationDimension(value) {
+  const meta = observationMetaFromKey(value);
+  return meta ? meta.dimension : 'custom';
 }
 
 /* 读取优先级：observations（v3.22）→ observation（v3.20 单值）→ 旧 moods/triggers。 */

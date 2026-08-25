@@ -225,7 +225,7 @@ async function secureImportPackage(pkg, passphrase) {
 async function exportEncryptedBackupFile() {
   const pkg = await secureExportPackage();
   const json = JSON.stringify(pkg);
-  const fname = 'guanji-backup-' + fmtDateKey(new Date()) + '.json';
+  const fname = await uniqueGuanjiFilename('secure', 'json');
   if (window.Capacitor && Capacitor.Plugins.GuanjiSave) {
     const res = await Capacitor.Plugins.GuanjiSave.saveToDownloads({ filename: fname, data: json });
     return { count: pkg.recordCount, filename: fname, path: res.path };
@@ -278,9 +278,16 @@ function csvToRecords(text) {
     const d = String(row['日期'] || '').split('-').map((n) => String(parseInt(n, 10)).padStart(2, '0'));
     if (d.length !== 3 || d.some((n) => !/^\d{2,4}$/.test(n)) || parseInt(d[0], 10) < 1900) continue;   // 跳过无法识别的行（年份 4 位）
     const observationRaw = row['发生前状况(多选)'] || row['发生前状况'] || '';
-    const observations = observationRaw
+    let observations = observationRaw
       ? parseObservationCsv(observationRaw, true)
       : parseObservationCsv(row['发生前情况'] || row['观察前情况'] || row['观察标签'] || '', false);
+    // #186：旧 CSV 只有情绪/诱因列时，立即回退为统一观察 key，避免洞察层静默丢失。
+    if (!observations.length) {
+      observations = normalizeObservationValues([
+        ...(row['情绪'] ? String(row['情绪']).split('|') : []),
+        ...(row['诱因'] ? String(row['诱因']).split('|') : []),
+      ]);
+    }
     const rec = {
       id: newRecordId('csv'),
       dateKey: d.join('-'),
@@ -654,14 +661,17 @@ function initSecureUI() {
   }
   $('bkpManageBtn').addEventListener('click', () => {
     const openManage = () => {
-      openSheetPanel('localManageBackdrop');
+      if (typeof window.openBackupHubLocalManage === 'function') {
+        if (typeof window.isBackupHubOpen !== 'function' || !window.isBackupHubOpen()) window.openBackupHub();
+        window.openBackupHubLocalManage();
+      }
       loadBackupFiles();
     };
-    if ($('backupSyncBackdrop') && !$('backupSyncBackdrop').classList.contains('hidden') && typeof closeSheetPanel === 'function') closeSheetPanel('backupSyncBackdrop', openManage);
-    else openManage();
+    openManage();
   });
-  $('localManageClose').addEventListener('click', () => closeSheetPanel('localManageBackdrop'));
-  $('localManageCloseTop').addEventListener('click', () => closeSheetPanel('localManageBackdrop'));
+  $('localManageClose').addEventListener('click', () => {
+    if (typeof window.backupHubBack === 'function') window.backupHubBack();
+  });
 
   // 加密模式下 CSV 明文导出禁用（#93 定稿：离开设备的都是密文——检查在 ui-sheet.js exportBtn 内）
 }

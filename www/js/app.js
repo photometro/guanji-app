@@ -161,7 +161,9 @@ records = await Storage.loadRecords();
 normalizeOffsets();   // v3.6.1：启动即恢复旧记录绝对日期（id 时间戳）并重算 offset
 localStorage.setItem(LAST_DATE_KEY, fmtDateKey(new Date()));   // 初始化跨天检测基准
 // 密钥回显由 initAIUI 按 active 提供商负责（#43 per-provider），这里保持配置同步
+if (typeof hydrateAISecureKeys === 'function') await hydrateAISecureKeys();
 syncActiveConfig();
+if (typeof renderAISettingsUI === 'function') renderAISettingsUI();
 initTheme();                       // 深色模式初始化（head 内联脚本已做初值，这里同步 UI）
 initLiquidGlass();                 // #72：液态玻璃实验开关同步 UI（head 内联脚本已应用类）
 initReminderUI();                  // 提醒设置回显（#13）
@@ -197,10 +199,10 @@ function handleBackButton() {
   if (!isHidden('delBackdrop')) { closeDeleteDialog(); return; }
   // 3. 数据管理确认弹窗
   if (!isHidden('dialogBackdrop')) { $('dialogBackdrop').classList.add('hidden'); return; }
-  // 3.5 数据保护任务：独立管理页直接关闭；恢复流程按层级逐步返回。
-  if (!isHidden('localManageBackdrop')) { closeSheetPanel('localManageBackdrop'); return; }
-  if (!isHidden('wdManageBackdrop')) { closeSheetPanel('wdManageBackdrop'); return; }
+  // 3.5 数据保护任务：管理/恢复状态均由同一父 Sheet 逐级返回；导出仍是独立任务。
   if (!isHidden('exportBackdrop')) { closeSheetPanel('exportBackdrop'); return; }
+  // #187：WebDAV 配置是父 Sheet 之上的临时表单，返回时沿用取消路径回到备份与恢复首页。
+  if (!isHidden('wdCfgBackdrop')) { if (typeof window.closeWdConfigAndReturn === 'function') window.closeWdConfigAndReturn(); else $('wdCfgBackdrop').classList.add('hidden'); return; }
   if (!isHidden('backupSyncBackdrop')) { if (typeof window.backupHubBack === 'function') window.backupHubBack(); else closeSheetPanel('backupSyncBackdrop'); return; }
   // 4. 日历弹层
   if (!isHidden('calendarSheet')) { closeCalendar(); return; }

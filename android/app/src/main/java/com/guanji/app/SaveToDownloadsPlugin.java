@@ -89,8 +89,11 @@ public class SaveToDownloadsPlugin extends Plugin {
         try {
             Uri collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI;
             String[] projection = { MediaStore.Downloads.DISPLAY_NAME };
-            String selection = MediaStore.Downloads.DISPLAY_NAME + " LIKE ? OR " + MediaStore.Downloads.DISPLAY_NAME + " LIKE ? OR " + MediaStore.Downloads.DISPLAY_NAME + " LIKE ?";
-            String[] selArgs = { "guanji-backup-%", "guanji-export-%", "guanji-before-restore-%" };   // #115：覆盖前自动备份也列出
+            String selection = MediaStore.Downloads.DISPLAY_NAME + " LIKE ? OR " + MediaStore.Downloads.DISPLAY_NAME + " LIKE ? OR " + MediaStore.Downloads.DISPLAY_NAME + " LIKE ? OR " + MediaStore.Downloads.DISPLAY_NAME + " LIKE ? OR " + MediaStore.Downloads.DISPLAY_NAME + " LIKE ? OR " + MediaStore.Downloads.DISPLAY_NAME + " LIKE ?";
+            String[] selArgs = {
+                    "guanji-secure-%", "guanji-plain-%", "guanji-restore-%",
+                    "guanji-backup-%", "guanji-export-%", "guanji-before-restore-%"
+            };   // #185：新旧命名均可管理；覆盖前自动备份也列出
             try (Cursor c = getContext().getContentResolver().query(collection, projection, selection, selArgs, MediaStore.Downloads.DATE_ADDED + " DESC")) {
                 while (c != null && c.moveToNext()) names.add(c.getString(0));
             }

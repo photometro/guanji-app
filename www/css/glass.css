@@ -78,9 +78,14 @@ html.liquid-glass .dialog {
 html.liquid-glass .card,
 html.liquid-glass .report-card,
 html.liquid-glass .insight-module,
-html.liquid-glass .ask-answer {
+html.liquid-glass .ask-answer,
+html.liquid-glass .backup-source-action,
+html.liquid-glass .backup-sync-switch,
+html.liquid-glass .primary-card,
+html.liquid-glass .history-list {
   position: relative;   /* 伪元素定位上下文 */
   background: var(--lg-tint-card);
+  border: 0;
   backdrop-filter: blur(0px) saturate(var(--lg-saturate));
   -webkit-backdrop-filter: blur(0px) saturate(var(--lg-saturate));
   box-shadow:
@@ -159,7 +164,11 @@ html.liquid-glass .dialog::after,
 html.liquid-glass .card::after,
 html.liquid-glass .report-card::after,
 html.liquid-glass .insight-module::after,
-html.liquid-glass .ask-answer::after {
+html.liquid-glass .ask-answer::after,
+html.liquid-glass .backup-source-action::after,
+html.liquid-glass .backup-sync-switch::after,
+html.liquid-glass .primary-card::after,
+html.liquid-glass .history-list::after {
   content: "";
   position: absolute; inset: 0;
   border-radius: inherit;
@@ -179,7 +188,11 @@ html.liquid-glass .dialog::before,
 html.liquid-glass .card::before,
 html.liquid-glass .report-card::before,
 html.liquid-glass .insight-module::before,
-html.liquid-glass .ask-answer::before {
+html.liquid-glass .ask-answer::before,
+html.liquid-glass .backup-source-action::before,
+html.liquid-glass .backup-sync-switch::before,
+html.liquid-glass .primary-card::before,
+html.liquid-glass .history-list::before {
   content: "";
   position: absolute; inset: 0;
   border-radius: inherit;
@@ -189,6 +202,48 @@ html.liquid-glass .ask-answer::before {
   pointer-events: none;
   z-index: 2;
 }
+/* #193：备份卡片内容必须位于 L3 受光层/边缘环之上；复用现有洞悉卡片的内容提权语义。 */
+html.liquid-glass .backup-source-action > *,
+html.liquid-glass .backup-sync-switch > *,
+html.liquid-glass .primary-card > *,
+html.liquid-glass .history-list > * {
+  position: relative;
+  z-index: 3;
+}
+/* #193：备份面板标题区也必须位于 sheet 的受光伪层之上，避免标题被整体洗灰。 */
+html.liquid-glass .backup-sync-sheet .backup-panel-header > *,
+html.liquid-glass .backup-sync-sheet .backup-panel-footer > * {
+  position: relative;
+  z-index: 3;
+}
+/* #194：备份面板的分组标题与操作说明也复用 L3 内容层，避免被 Sheet 受光层洗灰。 */
+html.liquid-glass .backup-sync-sheet .backup-panel-body .section-label,
+html.liquid-glass .backup-sync-sheet .backup-panel-body .helper,
+html.liquid-glass .backup-sync-sheet .backup-panel-body .dialog-hint,
+html.liquid-glass .backup-sync-sheet .backup-panel-body .backup-manage-hint {
+  position: relative;
+  z-index: 3;
+}
+
+/* #195：方案 A——玻璃模式的辅助文字改用蓝灰色，提高半透明卡片上的对比度。
+   主标题、状态色和经典模式保持原有语义；元信息使用较弱但仍可读的蓝灰色。 */
+html.liquid-glass .backup-sync-sheet .backup-panel-header .dialog-text,
+html.liquid-glass .backup-sync-sheet .backup-panel-body .section-label,
+html.liquid-glass .backup-sync-sheet .backup-panel-body .helper,
+html.liquid-glass .backup-sync-sheet .backup-panel-body .dialog-hint,
+html.liquid-glass .backup-sync-sheet .backup-panel-body .backup-manage-hint,
+html.liquid-glass .backup-sync-sheet .backup-source-copy .row-sub,
+html.liquid-glass .backup-sync-sheet .backup-sync-switch .row-sub,
+html.liquid-glass .backup-sync-sheet .backup-source-arrow,
+html.liquid-glass .backup-sync-sheet .backup-picker-empty {
+  color: var(--lg-text-secondary);
+}
+html.liquid-glass .backup-sync-sheet .backup-panel-body .primary-copy span,
+html.liquid-glass .backup-sync-sheet .backup-panel-body .primary-meta,
+html.liquid-glass .backup-sync-sheet .backup-panel-body .history-copy span {
+  color: var(--lg-text-meta);
+}
+
 /* #162：tab 栏材质层必须位于滑块和 tab 内容之下；边缘/光带不可覆盖文字图标 */
 html.liquid-glass .tabbar::before,
 html.liquid-glass .tabbar::after {
@@ -204,8 +259,22 @@ html.liquid-glass .tabbar::after {
 :root[data-theme="dark"].liquid-glass .card::before,
 :root[data-theme="dark"].liquid-glass .report-card::before,
 :root[data-theme="dark"].liquid-glass .insight-module::before,
-:root[data-theme="dark"].liquid-glass .ask-answer::before {
+:root[data-theme="dark"].liquid-glass .ask-answer::before,
+:root[data-theme="dark"].liquid-glass .backup-source-action::before,
+:root[data-theme="dark"].liquid-glass .backup-sync-switch::before,
+:root[data-theme="dark"].liquid-glass .primary-card::before,
+:root[data-theme="dark"].liquid-glass .history-list::before {
   background: none;
+}
+
+/* #192：备份任务 Sheet 的 footer 复用记录页 .sheet-actions 的透明延续语义。
+   操作按钮仍保留既有 .btn-primary/.btn-ghost 玻璃材质，避免再叠一张白色卡片。 */
+html.liquid-glass .backup-panel-footer {
+  background: transparent;
+  border-top-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* 按压反馈（tab 栏饱和度增强） */
@@ -237,6 +306,26 @@ html.liquid-glass .overview-num {
 @media (prefers-reduced-transparency: reduce) {
   html.liquid-glass .tabbar, html.liquid-glass .sheet, html.liquid-glass .calendar-sheet,
   html.liquid-glass .dialog, html.liquid-glass .card, html.liquid-glass .report-card, html.liquid-glass .insight-module,
-  html.liquid-glass .ask-answer { background: var(--card); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  html.liquid-glass .ask-answer, html.liquid-glass .backup-source-action,
+  html.liquid-glass .backup-sync-switch, html.liquid-glass .primary-card,
+  html.liquid-glass .history-list { background: var(--card); border: 0; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: var(--shadow-1); }
+  html.liquid-glass .backup-source-action::before, html.liquid-glass .backup-source-action::after,
+  html.liquid-glass .backup-sync-switch::before, html.liquid-glass .backup-sync-switch::after,
+  html.liquid-glass .primary-card::before, html.liquid-glass .primary-card::after,
+  html.liquid-glass .history-list::before, html.liquid-glass .history-list::after { display: none; }
+  html.liquid-glass .backup-panel-footer { background: transparent; border-top-color: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  /* 降低透明度时回到经典主题文字 token，不启用方案 A 的玻璃专用色。 */
+  html.liquid-glass .backup-sync-sheet .backup-panel-header .dialog-text,
+  html.liquid-glass .backup-sync-sheet .backup-panel-body .section-label,
+  html.liquid-glass .backup-sync-sheet .backup-panel-body .helper,
+  html.liquid-glass .backup-sync-sheet .backup-panel-body .dialog-hint,
+  html.liquid-glass .backup-sync-sheet .backup-panel-body .backup-manage-hint,
+  html.liquid-glass .backup-sync-sheet .backup-source-copy .row-sub,
+  html.liquid-glass .backup-sync-sheet .backup-sync-switch .row-sub,
+  html.liquid-glass .backup-sync-sheet .backup-source-arrow,
+  html.liquid-glass .backup-sync-sheet .backup-picker-empty,
+  html.liquid-glass .backup-sync-sheet .backup-panel-body .primary-copy span,
+  html.liquid-glass .backup-sync-sheet .backup-panel-body .primary-meta,
+  html.liquid-glass .backup-sync-sheet .backup-panel-body .history-copy span { color: var(--ink-2); }
 }
 

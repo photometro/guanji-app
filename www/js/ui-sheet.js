@@ -427,16 +427,10 @@ function makeObservationChip(option, box) {
   const b = makeChip(option.label, option.label, (chip) => {
     const selected = selectedObservationValues(box);
     const wasActive = selected.has(option.key);
-    if (option.key === 'none' || option.key === 'unsure') {
-      selected.clear();
-      if (!wasActive) selected.add(option.key);
-    } else {
-      selected.delete('none');
-      selected.delete('unsure');
-      if (wasActive) selected.delete(option.key);
-      else selected.add(option.key);
-    }
-    renderObservationChips(selected, box);
+    if (wasActive) selected.delete(option.key);
+    else selected.add(option.key);
+    // #186：通过统一归一化处理维度互斥；“原因不确定”可与事实并存。
+    renderObservationChips(normalizeObservationValues([...selected]), box);
   });
   b.dataset.observation = option.key;
   if (option.custom) b.dataset.custom = '1';
@@ -510,6 +504,8 @@ const backupHubCopy = {
   source: { title: '恢复数据', subtitle: '选择要恢复的数据来源' },
   local: { title: '从本机文件恢复', subtitle: '从下载目录或其他位置导入数据' },
   server: { title: '从服务器恢复', subtitle: '选择一份备份恢复到本机' },
+  localManage: { title: '本机文件管理', subtitle: '下载目录中的备份与导出文件' },
+  serverManage: { title: '服务器备份', subtitle: '管理服务器上的加密备份' },
 };
 
 function isBackupHubOpen() {
@@ -545,7 +541,8 @@ function closeBackupHub() { closeSheetPanel('backupSyncBackdrop'); }
 
 function backupHubBack() {
   if (backupHubView === 'home') { closeBackupHub(); return; }
-  setBackupHubView(backupHubView === 'source' ? 'home' : 'source');
+  const parentView = ['source', 'localManage', 'serverManage'].includes(backupHubView) ? 'home' : 'source';
+  setBackupHubView(parentView);
 }
 
 window.openBackupHub = openBackupHub;
@@ -554,6 +551,8 @@ window.backupHubBack = backupHubBack;
 window.openBackupHubRestore = () => setBackupHubView('source');
 window.openBackupHubLocal = () => setBackupHubView('local');
 window.openBackupHubServer = () => setBackupHubView('server');
+window.openBackupHubLocalManage = () => setBackupHubView('localManage');
+window.openBackupHubServerManage = () => setBackupHubView('serverManage');
 window.isBackupHubOpen = isBackupHubOpen;
 
 /* #145：内容不足时不把详情滚动区强行撑满；内容超出时仅标记为可滚动。
@@ -955,10 +954,10 @@ async function runDataExport() {
       ]);
     });
   const csv = rows.map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const fname = await uniqueGuanjiFilename('plain', 'csv');
   // #102/#103：优先保存到公共 Downloads（MediaStore 原生桥，用户文件管理器直接可见）；失败降级 Share/剪贴板
   if (window.Capacitor && Capacitor.Plugins.GuanjiSave) {
     try {
-      const fname = 'guanji-export-' + fmtDateKey(new Date()) + '.csv';
       const res = await Capacitor.Plugins.GuanjiSave.saveToDownloads({ filename: fname, data: csv });
       toast('已保存到 下载/' + fname);
       return;
@@ -969,7 +968,6 @@ async function runDataExport() {
   }
   if (window.Capacitor && Capacitor.Plugins.Filesystem) {
     try {
-      const fname = 'guanji-export-' + fmtDateKey(new Date()) + '.csv';
       // 写 EXTERNAL（应用外部目录）——cache 的 FileProvider grant 在魅族上失败（SecurityException，面板不弹）
       const res = await Capacitor.Plugins.Filesystem.writeFile({ path: fname, data: csv, directory: 'EXTERNAL', encoding: 'UTF8' });
       await Capacitor.Plugins.Share.share({ title: '观己数据导出', files: [res.uri], dialogTitle: '保存或发送导出数据' });

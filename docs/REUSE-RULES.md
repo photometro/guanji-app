@@ -87,6 +87,8 @@
   - L3：`card`、`report-card`、`insight-module`、`ask-answer`；
   - L4：主按钮、选中 chips。
 - 玻璃结构复用现有受光层、边缘环、内高光和阴影栈；禁止为某张卡单独制作另一套“玻璃阴影”。
+- 备份与恢复任务卡片（`.backup-source-action`、`.backup-sync-switch`、`.primary-card`、`.history-list`）在液态玻璃模式复用 L3 内容卡配方；`.history-row` 保持透明内容行，固定 `.backup-panel-footer` 复用记录页 footer 的透明延续语义。经典态与 reduced-transparency 仍回退 `var(--card)`。
+- 只要组件的玻璃 `::before` / `::after` 受光层使用 `z-index: 2`，可读内容层必须显式使用 `position: relative; z-index: 3`；标题区、卡片内容和固定操作区按需提权，禁止把文字留在伪元素下方。备份/恢复面板已按此规则接入，后续新玻璃卡片优先复用该内容层规则。
 - 不把 `backdrop-filter` 放在持续移动元素上；系统要求减少透明度时回退 `var(--card)`。
 
 ### 1.4 响应式与无障碍是默认约束
@@ -127,7 +129,7 @@
 | 玻璃态 Tab 反馈 | `liquidTabPulse()` | `app.js` |
 
 - 标签数据必须存稳定 key，不存只会随文案变动的展示文字。`storage.js` 的 `observationKeyFromValue()`、`observationLabelFromValue()`、`normalizeObservationValues()` 负责新旧兼容与互斥规则。
-- `none` 与 `unsure` 是独占标签；新增标签不得绕过该归一化逻辑。
+- `unsure`（界面文案“原因不确定”）是可并存的不确定性标记；`none`（界面文案“没有明显情绪/诱因”）只与同一状态维度互斥，可与时段、环境和不确定性标记并存。新增标签不得绕过 `normalizeObservationValues()`。
 - 新的单选任务先判断是分段控件还是设置行，不把普通跳转按钮伪装成 seg 或下拉控件。
 
 ### 2.3 Sheet、弹窗与全屏页：按任务层级选择
@@ -255,6 +257,23 @@
 - “立即上传新备份”当前仅上传服务器；不擅自改成“本机加服务器双副本”。
 - 自动同步已有冷启动、回到前台、网络恢复、数据变化、去重与重试逻辑；只调整文案或入口时不得破坏触发条件。
 
+**v3.46 文件名与来源标识规则（#185）**
+
+- 新生成文件统一调用 `buildGuanjiFilename()` / `uniqueGuanjiFilename()`（`www/js/storage.js`），格式为 `guanji-类型-YYYY-MM-DD-HH-mm-ss.ext`。
+- `secure`、`plain`、`server`、`restore` 分别表示本机加密、本机明文导出、服务器备份和恢复前保护副本；同秒冲突追加 `-2`、`-3`。
+- 旧前缀只读兼容并继续出现在列表中；不得批量改名、删除或改变密文/CSV 内容。
+
+**v3.46 备份与恢复状态规则（#184）**
+
+- `backupSyncBackdrop` 是唯一父 Sheet；首页、本机管理、服务器管理、恢复来源和恢复详情通过 `setBackupHubView()` 切换。
+- 管理状态返回首页，恢复详情返回来源，来源返回首页；只有首页关闭才退出到“我的”。所有状态沿用 `transitionSheetHeight()`、固定 footer 和现有安全区。
+- 服务器管理在业务上独立，但不再创建第二个遮罩或平行一级 Sheet；入口与列表数据流继续复用 `loadWdManage()`、`backupPicker` 和已有 WebDAV 接口。
+
+**v3.46 观察维度规则（#186）**
+
+- `normalizeObservationValues()` 是所有记录入口的唯一归一化入口。普通观察可多选；`unsure` 可与任何普通事实并存；`none` 只清除同一 `state` 维度的标签。
+- 统计与 AI 聚合使用稳定 key，过滤自定义/旧原文；旧 CSV 的情绪、诱因列在统一观察列为空时回退映射。
+
 ---
 
 ## 5. 页面与原生能力复用
@@ -277,6 +296,16 @@
 - Web 层调用原生能力前先查现有 Capacitor 插件：安全存储、文件系统、分享、通知、App 生命周期，以及项目自定义的桌面小组件和计时实况通知插件。
 - 计时通知、魅族实况通知、Android Live Updates 的检测与降级必须共用已有能力链；不要仅按一个厂商或 Android 标准单独判断“是否支持”。
 - 原生功能改动需同时考虑 WebView 冷启动、前后台切换、App 被杀恢复、设备厂商差异与权限状态。
+
+### 5.3 跨平台品牌图标资源
+
+**来源**：`www/assets/guanji-icon-01c.svg`、`www/index.html`、`android/app/src/main/res/`
+
+- 01-C 的几何构图、玻璃切片层次和配色是跨平台视觉基准；Android 启动器继续使用自适应图标与各密度 PNG 管线。
+- WebView 内的“观己介绍”与 favicon 统一引用 `www/assets/guanji-icon-01c.svg`，不再各自维护内联 SVG。
+- Web 资源保留透明圆角安全区，不能直接把 Android `mipmap` 成品图当作 Web 图标；不得改变启动器安全区来适配网页小尺寸。
+- 适用：关于卡片品牌区、favicon 和其他需要 Web 品牌识别的静态入口。不适用：Android 自适应图标蒙版、通知图标或需要单色语义的系统图标。
+- 验证：浏览器检查资源与尺寸、390px 窄屏、浅/深主题、真机 WebView 截图；同时确认 Android 启动器资源未被 Web 资源替换。
 
 ---
 
@@ -306,12 +335,12 @@ backup-picker → secure → storage → records → stats → ai
 - 新弹层接入时必须声明其层级，并插入正确的关闭优先级。
 - 不新增“后台仍存在的隐藏遮罩”；每次关闭应清理对应状态、焦点、动画内联样式和必要的临时选择。
 
-**备份任务关闭规则（v3.45 已验证）**
+**备份任务关闭规则（v3.46 已验证）**
 
 - 调用入口：`handleBackButton()`（`www/js/app.js`）与 `backupHubBack()`（`www/js/ui-sheet.js`）。
-- 适用：备份与恢复的首页、恢复来源、本机恢复和服务器恢复；后退按“详情 → 来源 → 首页 → 关闭”逐级回退。独立的本机文件管理、服务器备份管理和导出数据则直接关闭各自 Sheet。
+- 适用：备份与恢复的首页、本机文件管理、服务器备份管理、恢复来源、本机恢复和服务器恢复；后退按“管理/来源 → 首页 → 关闭”或“详情 → 来源 → 首页 → 关闭”逐级回退。导出数据仍是独立任务。
 - 不适用：记录 Sheet、日历、确认 Dialog 与全屏计时；它们仍按自身已有关闭语义处理。
-- 验证方式：v3.45 真机 CDP 已覆盖恢复来源 → 本机/服务器恢复 → 返回来源、来源返回首页，以及独立管理页和导出页关闭。
+- 验证方式：v3.46 真机 CDP 已覆盖同一父 Sheet 内的本机/服务器管理、恢复来源 → 本机/服务器恢复、所有返回目标与无旧管理遮罩。
 
 ---
 
@@ -348,7 +377,7 @@ v3.44 的 #183 首次实现曾新增横向二级页、第二层遮罩和 `z-inde
   → 同一函数反向回到来源
 ```
 
-服务器备份管理保留独立一级 Sheet。详见 `IMPROVEMENTS.md` 的 #183。
+服务器备份管理保留业务上的独立状态，但复用 #184 的唯一父 Sheet，不再创建平行遮罩。详见 `IMPROVEMENTS.md` 的 #183/#184。
 
 ---
 
