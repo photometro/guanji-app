@@ -8,8 +8,8 @@ android {
         applicationId "com.guanji.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 74
-        versionName "3.53"
+        versionCode 101
+        versionName "3.87"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -21,6 +21,18 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // 正式签名只从环境变量读取，禁止把密钥提交进仓库。
+            def releaseStoreFile = System.getenv('GUANJI_RELEASE_KEYSTORE')
+            def releaseStorePassword = System.getenv('GUANJI_RELEASE_STORE_PASSWORD')
+            def releaseKeyAlias = System.getenv('GUANJI_RELEASE_KEY_ALIAS')
+            def releaseKeyPassword = System.getenv('GUANJI_RELEASE_KEY_PASSWORD')
+            if (releaseStoreFile && releaseStorePassword && releaseKeyAlias && releaseKeyPassword) {
+                signingConfig = signingConfigs.create('guanjiRelease')
+                signingConfig.storeFile = file(releaseStoreFile)
+                signingConfig.storePassword = releaseStorePassword
+                signingConfig.keyAlias = releaseKeyAlias
+                signingConfig.keyPassword = releaseKeyPassword
+            }
         }
     }
 }

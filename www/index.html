@@ -4,15 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>观己 · 个人行为与习惯觉察</title>
-<link rel="icon" type="image/svg+xml" href="assets/guanji-icon-01c.svg?v=147">
-<link rel="stylesheet" href="css/theme.css?v=149">
-<link rel="stylesheet" href="css/base.css?v=149">
-<link rel="stylesheet" href="css/components.css?v=149">
-<link rel="stylesheet" href="css/tabbar.css?v=149">
-<link rel="stylesheet" href="css/sheets.css?v=149">
-<link rel="stylesheet" href="css/screens.css?v=149">
-<link rel="stylesheet" href="css/responsive.css?v=149">
-<link rel="stylesheet" href="css/glass.css?v=149">
+<link rel="icon" type="image/svg+xml" href="assets/guanji-icon-01c.svg?v=153">
+<link rel="stylesheet" href="css/theme.css?v=180">
+<link rel="stylesheet" href="css/base.css?v=180">
+<link rel="stylesheet" href="css/components.css?v=180">
+<link rel="stylesheet" href="css/tabbar.css?v=180">
+<link rel="stylesheet" href="css/sheets.css?v=180">
+<link rel="stylesheet" href="css/screens.css?v=180">
+<link rel="stylesheet" href="css/responsive.css?v=180">
+<link rel="stylesheet" href="css/glass.css?v=180">
 <script src="vendor/anime.min.js"></script>   <!-- #72：anime v3.2（弹簧动画），缺失时 app.js 自动回退 CSS -->
 <script>
   /* 防闪烁：在渲染前根据 localStorage + 系统设置确定主题 + 玻璃效果开关（#72，默认 on） */
@@ -79,15 +79,15 @@
       <div class="stats-row">
         <div class="stat-cell">
           <p class="stat-num" id="weekCount">—</p>
-          <p class="stat-label">近 7 天</p>
+          <p class="stat-label">本周</p>
         </div>
         <div class="stat-cell">
-          <p class="stat-num down" id="weekDelta">—</p>
-          <p class="stat-label">较上 7 天</p>
+          <p class="stat-num plain" id="weekDelta">—</p>
+          <p class="stat-label">较上周</p>
         </div>
         <div class="stat-cell">
           <p class="stat-num plain" id="streakNum">—</p>
-          <p class="stat-label">连续天数</p>
+          <p class="stat-label">连续记录</p>
         </div>
       </div>
 
@@ -193,16 +193,16 @@
       <div class="card settings-card">
         <p class="card-title settings-card-title">外观</p>
         <!-- #124：外观单选 chips → seg 滑块（方案 C：单选=seg，与加密同款） -->
-        <div class="seg-row" id="themeSeg">
+        <div class="seg-row" id="themeSeg" role="radiogroup" aria-label="主题模式">
           <span class="seg-slide" id="themeSegSlide"></span>
-          <button class="seg active" data-theme-mode="system">跟随系统</button>
-          <button class="seg" data-theme-mode="light">浅色</button>
-          <button class="seg" data-theme-mode="dark">深色</button>
+          <button class="seg active" role="radio" aria-checked="true" data-theme-mode="system">跟随系统</button>
+          <button class="seg" role="radio" aria-checked="false" data-theme-mode="light">浅色</button>
+          <button class="seg" role="radio" aria-checked="false" data-theme-mode="dark">深色</button>
         </div>
         <!-- #125 修正：实验性标签在玻璃效果开关标题旁（不在外观大标题旁） -->
         <label class="switch-row settings-control-gap">
           <span>玻璃效果<span style="font-size:11px;color:var(--ink-3);font-weight:500;margin-left:6px">实验性</span></span>
-          <span class="switch" id="liquidGlassSwitch"><span class="knob"></span></span>
+          <span class="switch" id="liquidGlassSwitch" role="switch" tabindex="0" aria-checked="false"><span class="knob"></span></span>
         </label>
         <!-- #113：磨砂强度滑块（0-10px，默认 3，深浅共用；拖动实时预览；#125：开关关闭时保持常显） -->
         <div class="glass-blur-row settings-control-gap-sm">
@@ -217,17 +217,17 @@
         <p class="card-title settings-card-title">记录设置</p>
         <p class="settings-subtitle">记录方式</p>
         <!-- #124：记录方式单选 chips → seg 滑块（方案 C） -->
-        <div class="seg-row" id="recordModeSeg">
+        <div class="seg-row" id="recordModeSeg" role="radiogroup" aria-label="记录方式">
           <span class="seg-slide" id="recordModeSegSlide"></span>
-          <button class="seg active" data-record-mode="timer">计时记录</button>
-          <button class="seg" data-record-mode="quick">快速记录</button>
+          <button class="seg active" role="radio" aria-checked="true" data-record-mode="timer">计时记录</button>
+          <button class="seg" role="radio" aria-checked="false" data-record-mode="quick">快速记录</button>
         </div>
         <p class="disclaimer settings-description settings-description-compact">计时自动填入时长 · 快速记录直接填写</p>
 
         <p class="settings-subtitle">提醒与通知</p>
         <label class="switch-row">
           <span>每日温和提醒</span>
-          <span class="switch" id="reminderSwitch"><span class="knob"></span></span>
+          <span class="switch" id="reminderSwitch" role="switch" tabindex="0" aria-checked="false"><span class="knob"></span></span>
         </label>
         <div class="picker-row hidden" id="reminderTimeRow">
           <input type="time" id="reminderTime" value="21:00">
@@ -255,12 +255,12 @@
         <p class="settings-subtitle">反馈偏好</p>
         <label class="switch-row">
           <span>连续记录里程碑肯定<span class="row-sub">达到 7 / 30 天时，首页出现一句温和的肯定</span></span>
-          <span class="switch" id="positiveSwitch"><span class="knob"></span></span>
+          <span class="switch" id="positiveSwitch" role="switch" tabindex="0" aria-checked="false"><span class="knob"></span></span>
         </label>
 
         <label class="switch-row" id="aiDailyTipRow">
           <span>每日话语<span class="row-sub">AI 优先 · 未配置时使用本地话语</span></span>
-          <span class="switch" id="aiDailyTipSwitch"><span class="knob"></span></span>
+          <span class="switch" id="aiDailyTipSwitch" role="switch" tabindex="0" aria-checked="false"><span class="knob"></span></span>
         </label>
         <div class="ai-migration-prompt hidden" id="aiDailyTipMigration">
           <p>旧版本曾使用 AI 每日话语。现在会优先使用 AI，未配置时使用本地话语。</p>
@@ -275,11 +275,11 @@
         <p class="ai-optional-summary">AI 可选增强 · 不影响本地洞察</p>
         <p class="field-label">提供商</p>
         <!-- #124：AI 提供商单选 chips → seg 滑块（方案 C） -->
-        <div class="seg-row" id="providerSeg" style="margin-bottom:4px">
+        <div class="seg-row" id="providerSeg" role="radiogroup" aria-label="AI 提供商" style="margin-bottom:4px">
           <span class="seg-slide" id="providerSegSlide"></span>
-          <button class="seg active" data-provider="deepseek">DeepSeek</button>
-          <button class="seg" data-provider="openai">OpenAI</button>
-          <button class="seg" data-provider="custom">自定义</button>
+          <button class="seg active" role="radio" aria-checked="true" data-provider="deepseek">DeepSeek</button>
+          <button class="seg" role="radio" aria-checked="false" data-provider="openai">OpenAI</button>
+          <button class="seg" role="radio" aria-checked="false" data-provider="custom">自定义</button>
         </div>
         <div id="aiBaseUrlField" class="ai-base-url-field">
           <p class="field-label">Base URL</p>
@@ -315,10 +315,10 @@
         <p class="settings-subtitle">本地数据</p>
         <!-- 加密区块（#121：加密模式 seg 滑动切换——未加密/已加密） -->
         <p class="disclaimer settings-description-compact" id="secureStatus" style="margin-bottom:10px">正在检测…</p>
-        <div class="seg-row" id="secureModeSeg">
+        <div class="seg-row" id="secureModeSeg" role="radiogroup" aria-label="本地数据加密">
           <span class="seg-slide" id="secureModeSlide"></span>
-          <button class="seg active" data-sec-mode="plain">未加密</button>
-          <button class="seg" data-sec-mode="encrypted">已加密</button>
+          <button class="seg active" role="radio" aria-checked="true" data-sec-mode="plain">未加密</button>
+          <button class="seg" role="radio" aria-checked="false" data-sec-mode="encrypted">已加密</button>
         </div>
         <div class="hidden settings-control-action" id="secureActions">
           <button class="row-btn" id="secureChangeBtn">
@@ -357,10 +357,10 @@
       <!-- #68：隐私说明并入关于卡（数据相关操作后展示，强调本地存储） -->
       <div class="card settings-card about-card">
         <div class="logo-mark">
-          <img class="about-logo" src="assets/guanji-icon-01c.svg?v=147" alt="观己图标" width="52" height="52">
+          <img class="about-logo" src="assets/guanji-icon-01c.svg?v=153" alt="观己图标" width="52" height="52">
         </div>
         <p class="about-name">观己</p>
-          <p class="about-ver">v3.53 · 数据默认仅存本地</p>
+          <p class="about-ver">v3.87 · 数据默认仅存本地</p>
         <!-- #69：隐私条目直接跟随品牌区（无分割线/无标题，苹果页脚风格） -->
         <ul class="privacy-list about-privacy">
           <li><span class="dot"></span>记录默认只保存在这台设备上；WebDAV 备份由你自选，上传的是密文（仅你的口令可解）</li>
@@ -542,7 +542,7 @@
           <div class="sheet__header-copy backup-panel-header-copy"><p class="dialog-title" id="backupHubTitle">备份与恢复</p><p class="dialog-text" id="backupSyncStatus">正在检查备份状态…</p></div>
           <button class="backup-panel-close" id="backupHubClose" type="button" aria-label="关闭">×</button>
         </header>
-        <div class="sheet__body backup-panel-body" id="backupHubBody">
+        <div class="sheet__body app-scroll-region backup-panel-body" id="backupHubBody">
           <section class="backup-hub-view" data-backup-hub-view="home">
             <div class="section-label"><span>同步到服务器</span></div>
             <button class="backup-source-action" id="wdCfgBtn" type="button"><span class="backup-source-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><path d="M6.3 15.8h7.2a3.1 3.1 0 0 0 .4-6.2A4.5 4.5 0 0 0 5.2 8.3a3.8 3.8 0 0 0 1.1 7.5Z" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="backup-source-copy"><strong>服务器备份</strong><span class="row-sub" id="wdCfgSub">未配置</span></span><span class="backup-source-arrow">›</span></button>
@@ -605,7 +605,7 @@
     <div class="backdrop dialog-layer backdrop--sheet hidden" id="exportBackdrop">
       <div class="sheet sheet--task sheet--fixed-footer backup-dialog--export">
         <header class="sheet__header backup-panel-header"><div class="sheet__header-copy backup-panel-header-copy"><p class="dialog-title">导出数据</p><p class="dialog-text" id="exportDialogText">创建一个可在 App 外使用的数据副本</p></div><button class="backup-panel-close" id="exportCloseTop" type="button" aria-label="关闭">×</button></header>
-        <div class="sheet__body backup-panel-body"><div class="primary-card" id="exportChoiceCard"></div><p class="helper" id="exportDialogHint">服务器备份在“备份与恢复”中管理。</p></div>
+        <div class="sheet__body app-scroll-region backup-panel-body"><div class="primary-card" id="exportChoiceCard"></div><p class="helper" id="exportDialogHint">服务器备份在“备份与恢复”中管理。</p></div>
         <footer class="sheet__footer backup-panel-footer"><button class="btn-ghost" id="exportCancel" type="button">取消</button><button class="btn-primary" id="exportRunBtn" type="button">导出</button></footer>
       </div>
     </div>
@@ -689,19 +689,20 @@
   </defs>
 </svg>
 
-<script src="js/backup-picker.js?v=150"></script>
-<script src="js/secure.js?v=150"></script>
-<script src="js/storage.js?v=150"></script>
-<script src="js/records.js?v=150"></script>
-<script src="js/stats.js?v=150"></script>
-<script src="js/ai.js?v=150"></script>
-<script src="js/ui-home.js?v=150"></script>
-<script src="js/ui-timer.js?v=150"></script>
-<script src="js/ui-sheet.js?v=150"></script>
-<script src="js/ui-calendar.js?v=150"></script>
-<script src="js/liquid-glass.js?v=150"></script>
-<script src="js/webdav.js?v=150"></script>
-<script src="js/app.js?v=150"></script>
+<script src="js/native-capabilities.js?v=180"></script>
+<script src="js/backup-picker.js?v=180"></script>
+<script src="js/secure.js?v=180"></script>
+<script src="js/storage.js?v=180"></script>
+<script src="js/records.js?v=180"></script>
+<script src="js/stats.js?v=180"></script>
+<script src="js/ai.js?v=180"></script>
+<script src="js/ui-home.js?v=180"></script>
+<script src="js/ui-timer.js?v=180"></script>
+<script src="js/ui-sheet.js?v=180"></script>
+<script src="js/ui-calendar.js?v=180"></script>
+<script src="js/liquid-glass.js?v=180"></script>
+<script src="js/webdav.js?v=180"></script>
+<script src="js/app.js?v=180"></script>
 </body>
 </html>
 

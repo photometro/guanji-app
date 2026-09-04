@@ -53,7 +53,7 @@
     if (!list.length) {
       if (task === 'local' && opts.showEmptyPrimary) {
         const title = opts.historyTitle || '本机文件';
-        return `${renderPrimary(null, null, { ...opts, task })}<div class="section-label"><span>${escapeHtml(title)}</span><span>共 <strong>0</strong> 个</span></div><div class="history-list"><div class="backup-picker-empty"><span>暂无本机备份文件</span></div></div>`;
+        return `${renderPrimary(null, null, { ...opts, task })}<div class="section-label"><span>${escapeHtml(title)}</span><span>共 <strong>0</strong> 个</span></div><div class="history-list app-scroll-region"><div class="backup-picker-empty"><span>暂无本机备份文件</span></div></div>`;
       }
       return `<div class="backup-picker-empty"><span>${escapeHtml(opts.emptyText || '暂无备份文件')}</span></div>`;
     }
@@ -66,7 +66,7 @@
     const historyRows = history.map(({ file, index }) => renderHistory(file, index, { ...opts, task, selectedIndex })).join('');
     return `${renderPrimary(primaryFile, selectedIndex, { ...opts, task })}
       <div class="section-label"><span>${escapeHtml(title)}</span><span>共 <strong>${history.length}</strong> 个</span></div>
-      <div class="history-list">${historyRows}</div>`;
+      <div class="history-list app-scroll-region">${historyRows}</div>`;
   }
 
   window.backupPicker = { escapeHtml, icon, renderList, renderPrimary: defaultPrimary, renderHistory: defaultHistory };

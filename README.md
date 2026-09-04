@@ -1,5 +1,7 @@
 # 观己（Guanji）
 
+> 当前版本：v3.87（#219：日历当日明细滚动条真机样式优化）
+
 > 一个隐私优先、温和非评判的个人行为与习惯觉察 App。记录自己的节奏，看清自己的模式，不评判、不焦虑、不打卡式逼迫。
 
 「观己」帮助你记录与觉察自己的行为习惯（频率、时段、发生前情况），用温和的 AI 分析找出藏在数据里的模式。**数据只保存在你自己的手机里；AI 只看到聚合统计，永远看不到你的单条记录。**
@@ -9,7 +11,7 @@
 - **记录**：一键快速记录、完整记录面板（发生前情况 / 时长 / 备注）、补记历史日期、编辑与删除
 - **首页**：今日概览、时段分布环图、次数趋势（14 / 30 天）、本月对比、最近记录
 - **历史日历**：月历角标、选天明细、补记直达；**未来日期灰显禁用**，补记未来日期会被温和拦截（「未来的日期还没到哦，先记录今天吧」）
-- **个人洞察**：现有分析页回归六张旧版 AI 卡片（近 7 天概览、时段分布、发生前状况、共同出现、近期变化、可以试试）；先显示轻量本地事实，满足条件时进入页面或记录变更后自动生成一份聚合 AI 观察并分配到六张卡片，支持追问，不展示独立 AI 报告
+- **个人洞察**：现有分析页回归六张旧版 AI 卡片（近 7 天概览、时段分布、发生前状况、共同出现、近期变化、可以试试）；有可用 AI 报告时只显示 AI 观察，没有 AI 时显示完整本地洞察，支持追问，不展示独立 AI 报告
 - **AI 多提供商**：默认 DeepSeek，可选 OpenAI 或自定义（Base URL / 模型 / API 密钥**按提供商分别保存**，含连接测试）
 - **「就现在」计时记录**：像运动 App 一样开始/结束计时——**全屏沉浸式计时页**（主题蓝渐变 + 超大秒数 + 脉冲徽标），结束后同屏进入**汇总页**（发生前情况补选、上方内容可滚动、底部操作区固定、「继续计时」可反悔）；时长自动精准填入
 - **实况通知（Live Updates）**：计时时切出应用，通知栏/锁屏持续显示系统级秒数（Android 16+ 实况通知 / 魅族锁屏胶囊 / 其他常驻通知）；通知自带「结束并记录 / 取消」快捷按钮；息屏 AOD 显示「已计时 X 分钟」自动刷新；计时中 App 被杀也会自动恢复衔接
@@ -47,7 +49,7 @@
 
 ### 安装
 
-1. 构建或获取 `app-debug.apk`（见下方「从源码构建」，产物在 `android/app/build/outputs/apk/debug/`）
+1. 获取正式 `app-release.apk`（开发者见下方「从源码构建」）
 2. 把 APK 传到手机（数据线 / 微信 / 网盘均可）
 3. 手机上点击 APK 安装；若提示「未知来源」，在设置中允许本次安装（各厂商路径不同，一般为「设置 → 安全 → 允许安装未知应用」）
 4. 打开「观己」，桌面长按可添加 5 种 2x2 小组件
@@ -84,23 +86,28 @@
 
 ### 构建
 
+Windows 开发与真机验证统一使用项目内构建钩子。它会固定 JDK/Android/Gradle 用户目录，先做 Capacitor 同步和资源一致性检查，再离线构建、校验 APK 元数据与签名，并将日志和摘要写入 `debug/`。
+
 ```bash
 # 1. 安装依赖
 npm install
 
-# 2. 同步 Web 资源到安卓工程（首次 clone 后必须执行）
-npx cap sync android
+# 2. 日常真机调试：正式包名 + 稳定 Android Debug 签名
+npm run build:apk:debug
 
-# 3. 构建 APK
-cd android
-gradlew.bat assembleDebug        # Windows
-./gradlew assembleDebug           # macOS / Linux
+# 3. 构建并安装到首台在线设备（不清除应用数据）
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-apk.ps1 -Mode debug -Install
 
-# 4. 产物：android/app/build/outputs/apk/debug/app-debug.apk
-
-# 5. 安装到已连接设备
-adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+# 4. 正式包（必须先提供 GUANJI_RELEASE_* 签名环境变量）
+npm run build:apk:release
 ```
+
+构建产物：
+
+- debug：`android/app/build/outputs/apk/debug/app-debug.apk`（包名 `com.guanji.app`，稳定 Android Debug 签名）
+- release：`android/app/build/outputs/apk/release/app-release.apk`（包名 `com.guanji.app`，正式签名）
+
+构建日志和最后一次摘要位于 `debug/apk-build-*.log` 与 `debug/apk-build-summary.json`。不要直接调用 `gradlew assemble*` 作为发布或真机验证入口；这样容易丢失固定用户目录、资源同步、签名和 APK 新鲜度校验。
 
 ### 浏览器调试（仅前端开发，无需安卓环境）
 
@@ -124,13 +131,14 @@ guanji-app/
 │       └── Guanji*Widget.kt             # 5 个桌面小组件
 ├── assets/               # 应用图标源文件
 ├── debug/                # 真机验证脚本（WebView DevTools 驱动）
+├── tools/build-apk.ps1   # 统一 APK 构建/签名/安装钩子
 ├── IMPROVEMENTS.md       # 改进意见清单（需求 → 方案 → 实施记录）
 └── CHANGELOG.md          # 更新日志
 ```
 
 ## 版本历史
 
-见 [CHANGELOG.md](./CHANGELOG.md)——从 v1.0 到 v3.53，持续迭代更新。
+见 [CHANGELOG.md](./CHANGELOG.md)——从 v1.0 到 v3.85，持续迭代更新。
 
 ## 致谢
 

@@ -572,11 +572,12 @@ function initSecureUI() {
           records.push(r); added++;
         });
         if (normalizeOffsets) normalizeOffsets();
-        Storage.saveRecords(records);
-        afterRecordsChanged();
+        const statsSnapshot = typeof commitRecordChanges === 'function'
+          ? commitRecordChanges()
+          : (Storage.saveRecords(records), afterRecordsChanged());
         if (typeof window.closeBackupHub === 'function') window.closeBackupHub();
         toast(`已导入 ${added} 条 CSV 记录${skipped ? '（跳过 ' + skipped + ' 条重复）' : ''}`);
-        renderHome();
+        renderHome(statsSnapshot);
         return;
       }
       const pkg = JSON.parse(text);
@@ -589,8 +590,9 @@ function initSecureUI() {
       records.forEach((r) => byId.set(r.id, r));
       list.forEach((r) => { if (r && r.id) byId.set(r.id, r); });
       records = [...byId.values()];
-      Storage.saveRecords(records);
-      afterRecordsChanged();
+      const statsSnapshot = typeof commitRecordChanges === 'function'
+        ? commitRecordChanges()
+        : (Storage.saveRecords(records), afterRecordsChanged());
       if (typeof window.closeBackupHub === 'function') window.closeBackupHub();
       // #111：明文态导入加密包 → 数据解密后明文落盘，如实提示
       if (secureMode() !== 'encrypted') {
@@ -598,7 +600,7 @@ function initSecureUI() {
       } else {
         toast(`已导入并合并 ${list.length} 条备份记录`);
       }
-      renderHome();
+      renderHome(statsSnapshot);
     } catch (e) {
       info.textContent = '导入失败：' + ((e && e.message) || '口令错误或数据损坏');
     }

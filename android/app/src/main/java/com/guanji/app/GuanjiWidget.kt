@@ -32,10 +32,12 @@ class GuanjiWidget : AppWidgetProvider() {
 
     private fun bindStats(context: Context, views: RemoteViews) {
         val stats = WidgetStatsHelper.loadStats(context)
-        val today = stats?.todayCount ?: 0
+        val stale = WidgetStatsHelper.isStaleForToday(stats)
+        val today = WidgetStatsHelper.todayCountForDisplay(stats)
         views.setTextViewText(
             R.id.widget_today_status,
-            if (today > 0) context.getString(R.string.widget_today_status, today)
+            if (stale) context.getString(R.string.widget_today_stale)
+            else if (today > 0) context.getString(R.string.widget_today_status, today)
             else context.getString(R.string.widget_today_default)
         )
     }

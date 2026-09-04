@@ -105,18 +105,23 @@ function saveTimedSummary() {
     dateKey: fmtDateKey(now),
     offset: 0,
     time: fmtTime(now),
+    occurredAtMs: now.getTime(),
+    zoneId: systemTimeZone(),
+    localDateKey: fmtDateKey(now),
+    timePrecision: 'minute',
+    source: 'now',
+    createdAtMs: now.getTime(),
+    updatedAtMs: now.getTime(),
     duration: summaryDuration,
     observations,
     observation: observation || null,
     moods: [], triggers: [], media, note: '',
   });
-  Storage.saveRecords(records);
-  afterRecordsChanged();
+  const statsSnapshot = commitRecordChanges();   // #211 N4：与普通详情页共用提交/刷新入口
   summaryStartTime = null;
   hideTimerScreen();
   closeSheet();
   toast('已记录 ✓');
-  renderHome();
 }
 
 /* 放弃本次计时结果（不保存） */

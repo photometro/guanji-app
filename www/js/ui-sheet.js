@@ -1,8 +1,46 @@
 // 观己 App · ui-sheet（P1 搬移式拆分，2026-08-09——函数原样搬移，零逻辑改动）
-/* ---------- #29：弹层退场动画 + 小横杠拖拽关闭（通用） ---------- */
+/* ---------- #29/#199：统一 Sheet 生命周期与可中断拖拽 ---------- */
 
-/* 打开时重置内联样式（清除拖拽/退场残留），让 sheetUp 动画重播 */
+const sheetMotionStates = new WeakMap();
+let sheetOpenAnim = null; // 兼容旧调用点；真实状态按 Sheet 隔离
+
+/* #199：所有根级 Sheet 共享记录页的空间方向与运动节奏。
+   .sheet--task 仍只负责布局/固定 footer，不再决定根动画。 */
+const ROOT_SHEET_MOTION = Object.freeze({
+  openDuration: 550,
+  closeDuration: 300,
+  openFromY: '100%',
+  openFromScale: 0.98,
+  closeToY: '100%',
+  closeToScale: 0.98,
+  openAnimeEasing: 'cubicBezier(0.34,1.56,0.64,1)',
+  openCssEasing: 'cubic-bezier(0.34,1.56,0.64,1)',
+  closeCssEasing: 'cubic-bezier(0.33,1,0.68,1)',
+});
+
+function sheetMotionState(sheetEl) {
+  let state = sheetMotionStates.get(sheetEl);
+  if (!state) {
+    state = { openAnim: null, closeTimer: null, heightTimer: null, heightSeq: 0, motionSeq: 0 };
+    sheetMotionStates.set(sheetEl, state);
+  }
+  return state;
+}
+
+function stopSheetOpen(sheetEl) {
+  const state = sheetMotionState(sheetEl);
+  if (state.openAnim && typeof state.openAnim.pause === 'function') state.openAnim.pause();
+  if (sheetOpenAnim === state.openAnim) sheetOpenAnim = null;
+  state.openAnim = null;
+  state.motionSeq += 1;
+}
+
 function resetSheetStyle(sheetEl) {
+  if (!sheetEl) return;
+  const state = sheetMotionState(sheetEl);
+  stopSheetOpen(sheetEl);
+  if (state.closeTimer) { clearTimeout(state.closeTimer); state.closeTimer = null; }
+  state.motionSeq += 1;
   sheetEl.style.transition = '';
   sheetEl.style.transform = '';
   sheetEl.style.opacity = '';
@@ -12,69 +50,149 @@ function resetSheetStyle(sheetEl) {
   sheetEl.style.background = '';            // #44：恢复 CSS 半透明玻璃背景
 }
 
-/* 退场：遮罩与卡片同步平滑退出（#49：统一 easeOutCubic 曲线 + 同速淡出 + 微缩放，一体感） */
+function reducedMotionEnabled() {
+  return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+
+/* #199：所有根级 Sheet 沿统一的记录页空间路径退场。 */
 function animateSheetClose(sheetEl, backdropEl, doHide) {
-  // #72：若弹出弹簧仍在播放，先暂停（避免 anime 每帧重写 transform 与退场过渡冲突）
-  if (sheetOpenAnim) { sheetOpenAnim.pause(); sheetOpenAnim = null; }
-  // #44：退场转不透明 + 关闭毛玻璃
+  if (!sheetEl || !backdropEl) return;
+  const state = sheetMotionState(sheetEl);
+  stopSheetOpen(sheetEl);
+  if (state.closeTimer) clearTimeout(state.closeTimer);
+  const token = ++state.motionSeq;
+  const reduced = reducedMotionEnabled();
+  // #44：退场转不透明 + 关闭毛玻璃（保留既有残影 workaround）
   sheetEl.style.backdropFilter = 'none';
   sheetEl.style.webkitBackdropFilter = 'none';
   sheetEl.style.background = 'var(--card)';
-  const CURVE = 'cubic-bezier(0.33, 1, 0.68, 1)';
-  // 下滑 + 微缩 + 同步淡出（两属性同曲线同速——此前「先透明卡顿」根因是曲线不同步）
-  sheetEl.style.transition = `transform 0.3s ${CURVE}, opacity 0.3s ${CURVE}`;
-  sheetEl.style.transform = 'translateY(100%) scale(0.98)';
+  const duration = reduced ? 0.01 : ROOT_SHEET_MOTION.closeDuration / 1000;
+  const curve = reduced ? 'linear' : ROOT_SHEET_MOTION.closeCssEasing;
+  sheetEl.style.transition = `transform ${duration}s ${curve}, opacity ${duration}s ${curve}`;
+  sheetEl.style.transform = reduced
+    ? ''
+    : `translateY(${ROOT_SHEET_MOTION.closeToY}) scale(${ROOT_SHEET_MOTION.closeToScale})`;
   sheetEl.style.opacity = '0';
-  backdropEl.style.transition = `opacity 0.3s ${CURVE}`;
+  backdropEl.style.transition = `opacity ${duration}s ${curve}`;
   backdropEl.style.opacity = '0';
-  setTimeout(() => {
+  state.closeTimer = setTimeout(() => {
+    if (state.motionSeq !== token) return;
+    state.closeTimer = null;
     doHide();
     resetSheetStyle(sheetEl);
     backdropEl.style.transition = '';
     backdropEl.style.opacity = '';
-  }, 320);
+  }, reduced ? 20 : ROOT_SHEET_MOTION.closeDuration + 20);
 }
 
-/* 拖拽热区：Pointer Events 统一鼠标/触摸，超过阈值关闭，否则回弹 */
+/* #199：所有根级 Sheet 共享记录页的下方进入 + 微缩放入场。
+   #216：日历可在同一生命周期内请求旧版无超调参数，不改变其他 Sheet 默认值。 */
+function playSheetOpen(sheet = $('recordSheet'), options = {}) {
+  if (!sheet) return;
+  const state = sheetMotionState(sheet);
+  if (state.closeTimer) { clearTimeout(state.closeTimer); state.closeTimer = null; }
+  stopSheetOpen(sheet);
+  const token = ++state.motionSeq;
+  const reduced = reducedMotionEnabled();
+  const noBounce = options && options.noBounce === true;
+  const openDuration = noBounce ? 320 : ROOT_SHEET_MOTION.openDuration;
+  const openFromScale = noBounce ? 1 : ROOT_SHEET_MOTION.openFromScale;
+  // 复用 theme.css 的 --ease-spring 实值，保证日历入场不越过终点。
+  const openAnimeEasing = noBounce
+    ? 'cubicBezier(0.22,1,0.36,1)'
+    : ROOT_SHEET_MOTION.openAnimeEasing;
+  const openCssEasing = noBounce
+    ? 'cubic-bezier(0.22,1,0.36,1)'
+    : ROOT_SHEET_MOTION.openCssEasing;
+  sheet.style.animation = 'none';
+  if (reduced) {
+    sheet.style.transform = '';
+    sheet.style.opacity = '';
+    return;
+  }
+  const start = `translateY(${ROOT_SHEET_MOTION.openFromY}) scale(${openFromScale})`;
+  const duration = openDuration;
+  sheet.style.transform = start;
+  if (!window.anime) {
+    requestAnimationFrame(() => {
+      if (state.motionSeq !== token) return;
+      sheet.style.transition = `transform ${duration}ms ${openCssEasing}`;
+      sheet.style.transform = '';
+      state.openAnim = { pause: () => {} };
+      setTimeout(() => {
+        if (state.motionSeq !== token) return;
+        state.openAnim = null;
+        sheet.style.transition = '';
+        sheet.style.transform = '';
+      }, duration + 20);
+    });
+    return;
+  }
+  const animation = anime({
+    targets: sheet,
+    translateY: [ROOT_SHEET_MOTION.openFromY, '0%'],
+    scale: [openFromScale, 1],
+    easing: openAnimeEasing,
+    duration,
+    complete: () => {
+      if (state.motionSeq !== token) return;
+      state.openAnim = null;
+      if (sheetOpenAnim === animation) sheetOpenAnim = null;
+      sheet.style.transform = '';
+    },
+  });
+  state.openAnim = animation;
+  sheetOpenAnim = animation;
+}
+
+/* 拖拽热区：Pointer Events 统一鼠标/触摸；距离 + 速度判定，支持中断接续。 */
 function initSheetDrag(grabId, sheetEl, backdropEl, closeFn) {
   const grab = $(grabId);
-  let startY = 0, dragging = false, currentDy = 0;
+  if (!grab || !sheetEl || !backdropEl) return;
+  let startY = 0, lastY = 0, lastTime = 0, dragging = false, currentDy = 0, velocity = 0;
 
   grab.addEventListener('pointerdown', (e) => {
     if (sheetEl.classList.contains('hidden')) return;
+    stopSheetOpen(sheetEl);
     dragging = true;
-    startY = e.clientY;
+    startY = lastY = e.clientY;
+    lastTime = performance.now();
     currentDy = 0;
-    sheetEl.style.animation = 'none';   // 让位给 inline transform
+    velocity = 0;
+    sheetEl.style.animation = 'none';
     sheetEl.style.transition = 'none';
     try { grab.setPointerCapture(e.pointerId); } catch { /* 忽略捕获失败 */ }
   });
 
   grab.addEventListener('pointermove', (e) => {
     if (!dragging) return;
-    const dy = e.clientY - startY;
+    const now = performance.now();
+    const dy = Math.max(0, e.clientY - startY);
+    const dt = Math.max(1, now - lastTime);
+    velocity = Math.max(0, (e.clientY - lastY) / dt);
     currentDy = dy;
-    if (dy > 0) {
-      sheetEl.style.transform = `translateY(${dy}px)`;
-      backdropEl.style.opacity = String(Math.max(0, 1 - dy / 500));
-    }
+    lastY = e.clientY;
+    lastTime = now;
+    sheetEl.style.transform = `translateY(${dy}px)`;
+    backdropEl.style.opacity = String(Math.max(0, 1 - dy / 500));
   });
 
   const endDrag = () => {
     if (!dragging) return;
     dragging = false;
-    if (currentDy > 90) {
-      closeFn();   // 超过阈值：走退场动画关闭
-    } else {
-      sheetEl.style.transition = 'transform 0.3s var(--ease-spring)';
-      sheetEl.style.transform = '';
-      backdropEl.style.transition = 'opacity 0.3s ease';
-      backdropEl.style.opacity = '';
-      setTimeout(() => {
-        sheetEl.style.transition = '';
-        backdropEl.style.transition = '';
-      }, 330);
+    const shouldClose = currentDy >= 90 || (currentDy >= 32 && velocity >= 0.6);
+    if (shouldClose) {
+      closeFn();
+      return;
     }
+    sheetEl.style.transition = 'transform 0.22s var(--ease-spring)';
+    sheetEl.style.transform = '';
+    backdropEl.style.transition = 'opacity 0.22s var(--ease-spring)';
+    backdropEl.style.opacity = '';
+    setTimeout(() => {
+      sheetEl.style.transition = '';
+      backdropEl.style.transition = '';
+    }, 240);
   };
 
   grab.addEventListener('pointerup', endDrag);
@@ -128,7 +246,7 @@ function openSheet(mode, presetDate) {
   if (mode !== 'edit') editingId = null;   // 新增/补记重置编辑目标
   // #48：面板打开时清除触发按钮焦点（触摸聚焦按钮，拖拽退出路径不转移焦点会残留高亮）
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-  resetSheetStyle($('recordSheet'));   // #29：清除退场/拖拽残留，sheetUp 重播
+  resetSheetStyle($('recordSheet'));   // #29/#199：清除退场/拖拽残留，统一根级动效重播
   $('recordSheet').classList.remove('details-active');
   renderObservationChips([], $('observationChips'));
   $('sheetContentScroll').scrollTop = 0;
@@ -167,34 +285,8 @@ function openSheet(mode, presetDate) {
 
   $('sheetBackdrop').classList.remove('hidden');
   $('recordSheet').classList.remove('hidden');
-  playSheetOpen();   // #72：anime 弹簧弹出（vendor 缺失/减弱动效时回退 CSS sheetUp）
+  playSheetOpen();   // #199：记录页基准根级动效（vendor 缺失时回退同规格 CSS transition）
   initSegSlide('timeSegRow', 'timeSegSlide');   // #22：面板显示后滑块定位到当前选中
-}
-
-/* #72：面板弹出回弹动画试点——anime v3.2（vendor 缺失/减弱动效回退 CSS sheetUp）。
-   easeOutBack(1.4) 实现克制的 overshoot 回弹（CSS cubic-bezier 无法回弹）：
-   v3 的 spring easing 时长被固定 ~1s 不可调（源码无条件覆盖 duration），对弹出太拖沓，
-   故用 easeOutBack + 550ms（回弹幅度 ~7%）。只动画 transform，不碰布局属性（#66 教训） */
-let sheetOpenAnim = null;
-
-function playSheetOpen(sheet = $('recordSheet')) {
-  if (!sheet) return;
-  if (sheetOpenAnim) { sheetOpenAnim.pause(); sheetOpenAnim = null; }
-  if (!window.anime || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  sheet.style.animation = 'none';               // 关闭 CSS sheetUp，避免与 anime 双动画
-  sheet.style.transform = 'translateY(100%)';
-  sheetOpenAnim = anime({
-    targets: sheet,
-    translateY: ['100%', '0%'],
-    easing: 'easeOutBack(1.4)',
-    duration: 550,
-    changeComplete: () => {
-      sheetOpenAnim = null;
-      sheet.style.transform = '';
-      // animation 保持 'none' 不回恢复——恢复会让 CSS sheetUp 重新播放（实测弹完再滑一次）；
-      // 下次 openSheet 的 resetSheetStyle 会清空该内联值
-    }
-  });
 }
 
 function closeSheet() {
@@ -226,32 +318,41 @@ function dayDiff(a, b) {
 
 /* ---------- #28：记录面板两步切换高度过渡动画 ---------- */
 
-let sheetHeightTimer = null;
-
 /* #66：步骤切换高度过渡（from = 切换前高度，调用方先测）。
    修复前：to 误取 step 自身高度（不含 grab/标题/按钮区 chrome ≈188px）→
    过渡反向收缩 + 400ms 固定定时器在动画尾段清 inline →「弹一部分卡一下显示完整」；
    修复后：目标 = 切换后 sheet 自然全高，清理改 transitionend（兜底定时器防 display:none 场景） */
 function transitionSheetHeight(sheet, from, afterTransition) {
   if (!sheet) return;
-  clearTimeout(sheetHeightTimer);
+  const state = sheetMotionState(sheet);
+  if (state.heightTimer) clearTimeout(state.heightTimer);
+  state.heightSeq += 1;
+  const sequence = state.heightSeq;
   const to = sheet.getBoundingClientRect().height;   // 步骤已切换完，此为自然全高（含 chrome）
   if (Math.abs(from - to) < 1) return;
+  const previousTransition = sheet.style.transition;
+  const previousOverflow = sheet.style.overflow;
   sheet.style.height = from + 'px';   // 先设高度再装过渡——before-change 样式无过渡，此赋值不触发动画
-  sheet.style.transition = 'height 0.22s cubic-bezier(0.33, 1, 0.68, 1)';
+  sheet.style.transition = previousTransition
+    ? `${previousTransition}, height 0.22s cubic-bezier(0.33, 1, 0.68, 1)`
+    : 'height 0.22s cubic-bezier(0.33, 1, 0.68, 1)';
   sheet.style.overflow = 'hidden';
-  requestAnimationFrame(() => { sheet.style.height = to + 'px'; });
+  requestAnimationFrame(() => {
+    if (state.heightSeq === sequence) sheet.style.height = to + 'px';
+  });
   const cleanup = () => {
-    clearTimeout(sheetHeightTimer);
+    if (state.heightSeq !== sequence) return;
+    clearTimeout(state.heightTimer);
+    state.heightTimer = null;
     sheet.style.height = '';
-    sheet.style.transition = '';
-    sheet.style.overflow = '';
+    sheet.style.transition = previousTransition;
+    sheet.style.overflow = previousOverflow;
     sheet.removeEventListener('transitionend', onEnd);
     if (afterTransition) requestAnimationFrame(afterTransition);
   };
   const onEnd = (e) => { if (e.target === sheet && e.propertyName === 'height') cleanup(); };
   sheet.addEventListener('transitionend', onEnd);
-  sheetHeightTimer = setTimeout(cleanup, 600);   // 兜底（关闭面板/display:none 时 transitionend 不触发）
+  state.heightTimer = setTimeout(cleanup, 600);   // 兜底（关闭面板/display:none 时 transitionend 不触发）
 }
 
 /* #51：步骤切换（计时态下「下一步」= 开始/结束计时） */
@@ -459,32 +560,21 @@ function renderObservationChips(selectText, box = $('observationChips')) {
   });
 }
 
-/* #181：任务 Sheet 与记录 Sheet 复用同一套样式复位和开关动画。 */
+/* #181/#199：任务 Sheet 与记录 Sheet 复用同一套样式复位和根级开关动画。 */
 function taskPanel(backdropId) {
   const backdrop = $(backdropId);
   const panel = backdrop && backdrop.querySelector('.sheet--task');
   return { backdrop, panel };
 }
 
-function openSheetPanel(backdropId, { presentation = 'root' } = {}) {
+function openSheetPanel(backdropId, _options = {}) {
   const { backdrop, panel } = taskPanel(backdropId);
   if (!backdrop || !panel) return;
   resetSheetStyle(panel);
   backdrop.classList.remove('hidden');
   panel.classList.remove('hidden');
-  if (presentation === 'detail') {
-    panel.style.animation = 'none';
-    panel.style.transform = 'translateX(24px)';
-    panel.style.opacity = '0';
-    requestAnimationFrame(() => {
-      panel.style.transition = 'transform .24s cubic-bezier(.33,1,.68,1), opacity .20s ease';
-      panel.style.transform = '';
-      panel.style.opacity = '';
-      setTimeout(() => { panel.style.transition = ''; panel.style.animation = 'none'; }, 280);
-    });
-  } else {
-    playSheetOpen(panel);
-  }
+  /* 兼容旧入口传入 presentation:'detail'：根级 Sheet 不再切换横向动效。 */
+  playSheetOpen(panel);
 }
 
 function closeSheetPanel(backdropId, afterClose) {
@@ -507,6 +597,17 @@ const backupHubCopy = {
   localManage: { title: '本机文件管理', subtitle: '下载目录中的备份与导出文件' },
   serverManage: { title: '服务器备份', subtitle: '管理服务器上的加密备份' },
 };
+/* #211 N7：显式声明备份中心的导航树。恢复来源是 home 的子页，
+   本机/服务器恢复是 source 的子页；两个管理页则直接从 home 进入。
+   统一由这一张 Sheet 承载，避免入口被误当作同级页面而丢失返回路径。 */
+const BACKUP_HUB_PARENT = Object.freeze({
+  home: null,
+  source: 'home',
+  local: 'source',
+  server: 'source',
+  localManage: 'home',
+  serverManage: 'home',
+});
 
 function isBackupHubOpen() {
   const backdrop = $('backupSyncBackdrop');
@@ -522,9 +623,15 @@ function setBackupHubView(view, { animate = true } = {}) {
   backdrop.dataset.backupHubView = view;
   document.querySelectorAll('[data-backup-hub-view]').forEach((section) => {
     if (section === backdrop) return;
-    section.classList.toggle('hidden', section.dataset.backupHubView !== view);
+    const active = section.dataset.backupHubView === view;
+    section.classList.toggle('hidden', !active);
+    section.setAttribute('aria-hidden', active ? 'false' : 'true');
   });
-  document.querySelectorAll('[data-backup-hub-footer]').forEach((footer) => footer.classList.toggle('hidden', footer.dataset.backupHubFooter !== view));
+  document.querySelectorAll('[data-backup-hub-footer]').forEach((footer) => {
+    const active = footer.dataset.backupHubFooter === view;
+    footer.classList.toggle('hidden', !active);
+    footer.setAttribute('aria-hidden', active ? 'false' : 'true');
+  });
   $('backupHubTitle').textContent = backupHubCopy[view].title;
   if (backupHubCopy[view].subtitle) $('backupSyncStatus').textContent = backupHubCopy[view].subtitle;
   else if (typeof wdRender === 'function') wdRender();
@@ -541,7 +648,7 @@ function closeBackupHub() { closeSheetPanel('backupSyncBackdrop'); }
 
 function backupHubBack() {
   if (backupHubView === 'home') { closeBackupHub(); return; }
-  const parentView = ['source', 'localManage', 'serverManage'].includes(backupHubView) ? 'home' : 'source';
+  const parentView = BACKUP_HUB_PARENT[backupHubView] || 'home';
   setBackupHubView(parentView);
 }
 
@@ -713,11 +820,8 @@ function switchProvider(provider) {
   aiStore.active = provider;
   saveAIStore();
   syncActiveConfig();
-  const p = aiStore.providers[provider];
-  $('aiBaseUrlInput').value = p.baseUrl || '';
-  $('aiModelInput').value = p.model || '';
-  $('apiKeyInput').value = p.apiKey || '';
-  syncAIInputPlaceholders(provider);
+  clearAISettingsInputEdits();
+  syncAISettingsInputs({ force: true });
   aiKeyEditing = false;
   renderAISettingsUI();
 }
@@ -735,10 +839,43 @@ function setProviderSeg(provider) {
 
 let aiKeyEditing = false;
 
+// #212：SecureStorage 的恢复是异步的，统一把恢复后的配置安全地回填到编辑字段。
+// 用户正在输入或主动清空的值不被后台 hydrate/render 覆盖，切换提供商时才强制刷新整组字段。
+function markAISettingsInputEdited(event) {
+  if (event && event.currentTarget) event.currentTarget.dataset.userEdited = '1';
+}
+
+function clearAISettingsInputEdits() {
+  ['aiBaseUrlInput', 'aiModelInput', 'apiKeyInput'].forEach((id) => {
+    const input = $(id);
+    if (input) delete input.dataset.userEdited;
+  });
+}
+
+function syncAISettingsInputs(options = {}) {
+  const provider = aiStore.active;
+  const p = aiStore.providers[provider] || {};
+  const force = !!options.force;
+  const values = {
+    aiBaseUrlInput: p.baseUrl || '',
+    aiModelInput: p.model || '',
+    apiKeyInput: p.apiKey || '',
+  };
+  Object.entries(values).forEach(([id, value]) => {
+    const input = $(id);
+    if (!input) return;
+    const focused = document.activeElement === input;
+    const userEdited = input.dataset.userEdited === '1';
+    if (force || (!focused && !userEdited)) input.value = value;
+  });
+  syncAIInputPlaceholders(provider);
+}
+
 /* #163/#167/#168/#169：AI 设置标题表达整体状态；保存态只显示提供商+模型摘要，编辑态恢复完整字段。 */
 function renderAISettingsUI(statusOverride) {
   const provider = aiStore.active;
   const p = aiStore.providers[provider] || {};
+  syncAISettingsInputs();
   const hasKey = !!p.apiKey;
   const showEditableConfig = !hasKey || aiKeyEditing;
   const baseField = $('aiBaseUrlField');
@@ -786,10 +923,16 @@ function renderAISettingsUI(statusOverride) {
   $('aiBaseUrlInput').value = p.baseUrl || '';
   $('aiModelInput').value = p.model || '';
   $('apiKeyInput').value = p.apiKey || '';
+  clearAISettingsInputEdits();
   syncAIInputPlaceholders(aiStore.active);
   renderAISettingsUI();
   if (typeof renderAIDailyTipSetting === 'function') renderAIDailyTipSetting();
 })();
+
+['aiBaseUrlInput', 'aiModelInput', 'apiKeyInput'].forEach((id) => {
+  const input = $(id);
+  if (input) input.addEventListener('input', markAISettingsInputEdited);
+});
 
 // 提供商切换 → 回显该提供商配置（#43/#124：seg 滑块）
 $('providerSeg').addEventListener('click', (e) => {
@@ -807,6 +950,7 @@ $('apiKeySave').addEventListener('click', () => {
   aiConfig = { ...cfg };
   saveAIConfig(aiConfig);
   aiKeyEditing = false;
+  clearAISettingsInputEdits();
   renderAISettingsUI('ready');
   $('aiTestStatus').textContent = '尚未测试连接';
   renderAIDailyTipSetting();
@@ -1048,11 +1192,13 @@ $('dialogConfirm').addEventListener('click', async () => {
     }
   }
   records = [];
+  // #202：清空整套记录后，旧数据集的 AI 洞察不可继续复用。
+  if (typeof invalidateInsightCache === 'function') invalidateInsightCache();
   Storage.saveRecords(records);
-  afterRecordsChanged();
+  const statsSnapshot = afterRecordsChanged();
   $('dialogBackdrop').classList.add('hidden');
   toast(secureMode() === 'encrypted' ? '已清除全部数据（密文存储）' : '已清除全部数据');
-  renderHome();
+  renderHome(statsSnapshot);
   $('analysisResult').classList.add('hidden');
   $('askSection').classList.add('hidden');
   $('analysisEmpty').classList.remove('hidden');
@@ -1062,10 +1208,12 @@ $('dialogConfirm').addEventListener('click', async () => {
 
 $('restoreBtn').addEventListener('click', () => {
   records = buildDemoRecords();
+  // #202：演示数据替换当前数据集，旧洞察必须失效。
+  if (typeof invalidateInsightCache === 'function') invalidateInsightCache();
   Storage.saveRecords(records);
-  afterRecordsChanged();
+  const statsSnapshot = afterRecordsChanged();
   toast(secureMode() === 'encrypted' ? '已恢复演示数据（加密存储）' : '已恢复演示数据');
-  renderHome();
+  renderHome(statsSnapshot);
   $('analysisResult').classList.add('hidden');
   $('askSection').classList.add('hidden');
   $('analysisEmpty').classList.remove('hidden');

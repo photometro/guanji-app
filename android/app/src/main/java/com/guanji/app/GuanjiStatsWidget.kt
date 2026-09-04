@@ -6,7 +6,7 @@ import android.content.Context
 import android.widget.RemoteViews
 
 /**
- * 数据看板小组件（2x2，#33）：本周次数（大数字）+ 较上周环比 + 今日 + 连续天数
+ * 数据看板小组件（2x2，#33/#196）：自然周次数（大数字）+ 同周期环比 + 今日 + 连续记录
  */
 class GuanjiStatsWidget : AppWidgetProvider() {
 
@@ -28,12 +28,17 @@ class GuanjiStatsWidget : AppWidgetProvider() {
     private fun bindStats(context: Context, views: RemoteViews) {
         val stats = WidgetStatsHelper.loadStats(context)
         val weekCount = stats?.weekCount ?: 0
-        val today = stats?.todayCount ?: 0
+        val stale = WidgetStatsHelper.isStaleForToday(stats)
+        val today = WidgetStatsHelper.todayCountForDisplay(stats)
         val streak = stats?.streak ?: 0
         val delta = stats?.weekDelta
 
         views.setTextViewText(R.id.stats_week_num, weekCount.toString())
-        views.setTextViewText(R.id.stats_today, context.getString(R.string.stats_today, today))
+        views.setTextViewText(
+            R.id.stats_today,
+            if (stale) context.getString(R.string.widget_today_stale)
+            else context.getString(R.string.stats_today, today)
+        )
         views.setTextViewText(R.id.stats_streak, context.getString(R.string.stats_streak, streak))
         views.setTextViewText(
             R.id.stats_delta,

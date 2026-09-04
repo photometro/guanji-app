@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>观己 · 开屏衔接原型</title>
+  <style>
+    :root {
+      --bg: #f2f2f7;
+      --card: rgba(255,255,255,.82);
+      --ink: #102033;
+      --ink-2: #718095;
+      --accent: #1689ee;
+      --accent-2: #6fd1ff;
+      --line: rgba(24,55,86,.12);
+      --ease: cubic-bezier(.22,1,.36,1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      display: grid;
+      place-items: center;
+      padding: 28px 16px 102px;
+      background: linear-gradient(145deg, #edf5fd 0%, var(--bg) 44%, #eef1f7 100%);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .prototype-note {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #607086;
+      font-size: 11px;
+      letter-spacing: .06em;
+      white-space: nowrap;
+    }
+    .phone {
+      position: relative;
+      width: min(390px, 100%);
+      min-height: 760px;
+      overflow: hidden;
+      border: 8px solid #132940;
+      border-radius: 42px;
+      background: var(--bg);
+      box-shadow: 0 28px 70px rgba(24,53,83,.22), 0 3px 10px rgba(20,49,77,.12);
+    }
+    .statusbar {
+      position: absolute;
+      z-index: 10;
+      inset: 0 0 auto;
+      display: flex;
+      justify-content: space-between;
+      padding: 14px 19px 0;
+      color: #152235;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .status-icons { display: flex; gap: 8px; align-items: center; }
+    .status-icons span { display: block; width: 8px; height: 8px; border-radius: 50%; background: #152235; opacity: .82; }
+    .status-icons span:last-child { width: 18px; border-radius: 4px; }
+    .scene { position: relative; min-height: 744px; isolation: isolate; }
+    .splash, .home { position: absolute; inset: 0; }
+    .splash { z-index: 2; display: grid; place-items: center; background: var(--bg); transition: opacity .18s ease; }
+    .home { z-index: 1; padding: 62px 21px 30px; opacity: 1; }
+    .home-header { display: flex; justify-content: space-between; align-items: start; }
+    .eyebrow { margin: 0 0 7px; color: var(--ink-2); font-size: 11px; letter-spacing: .12em; }
+    .home h1 { margin: 0; font-size: 22px; letter-spacing: -.02em; line-height: 1.2; }
+    .backfill { width: 32px; height: 32px; border: 0; border-radius: 50%; background: rgba(255,255,255,.7); color: var(--ink-2); }
+    .focus-row { display: flex; align-items: end; justify-content: space-between; margin-top: 36px; }
+    .focus-num { font-size: 62px; font-weight: 800; letter-spacing: -.06em; line-height: .92; }
+    .focus-num small { margin-left: 4px; color: var(--ink-2); font-size: 14px; font-weight: 600; letter-spacing: 0; }
+    .record-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 42px; padding: 0 16px; border: 0; border-radius: 14px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 700; box-shadow: 0 8px 16px rgba(22,137,238,.2); }
+    .focus-meta { margin-top: 13px; }
+    .focus-meta p { margin: 0; }
+    .focus-status { color: var(--ink-2); font-size: 12px; }
+    .focus-sub { margin-top: 4px !important; color: #9aa6b5; font-size: 11px; }
+    .rule { height: 1px; margin: 28px 0 20px; border: 0; background: var(--line); }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); margin-bottom: 22px; }
+    .stat { text-align: center; border-right: 1px solid var(--line); }
+    .stat:last-child { border-right: 0; }
+    .stat strong { display: block; font-size: 21px; }
+    .stat span { display: block; margin-top: 4px; color: var(--ink-2); font-size: 10px; }
+    .trend-card { padding: 17px; border: 1px solid rgba(255,255,255,.86); border-radius: 19px; background: var(--card); box-shadow: 0 8px 22px rgba(54,82,110,.07); }
+    .card-head { display: flex; justify-content: space-between; align-items: baseline; }
+    .card-title { margin: 0; font-size: 14px; font-weight: 750; }
+    .card-sub { margin: 0; color: var(--ink-2); font-size: 10px; }
+    .mini-chart { display: flex; align-items: end; gap: 7px; height: 108px; margin-top: 20px; padding: 9px 7px 5px; border-bottom: 1px solid var(--line); }
+    .mini-chart i { flex: 1; min-height: 14px; border-radius: 6px 6px 3px 3px; background: linear-gradient(180deg, var(--accent-2), var(--accent)); opacity: .86; }
+    .mini-chart i:nth-child(1) { height: 26%; opacity: .35; }
+    .mini-chart i:nth-child(2) { height: 45%; opacity: .45; }
+    .mini-chart i:nth-child(3) { height: 35%; opacity: .4; }
+    .mini-chart i:nth-child(4) { height: 64%; }
+    .mini-chart i:nth-child(5) { height: 54%; opacity: .7; }
+    .mini-chart i:nth-child(6) { height: 82%; }
+    .mini-chart i:nth-child(7) { height: 70%; opacity: .78; }
+    .home-enter { opacity: 0; transform: translateY(5px); }
+
+    /* Variant A — focus ring */
+    .a-mark { position: relative; width: 146px; height: 146px; }
+    .a-mark::before, .a-mark::after { content: ""; position: absolute; inset: 9px; border-radius: 50%; }
+    .a-mark::before { border: 1px solid rgba(22,137,238,.18); box-shadow: 0 0 0 16px rgba(111,209,255,.08), inset 0 0 30px rgba(111,209,255,.13); }
+    .a-mark::after { inset: 29px; border: 2px solid rgba(22,137,238,.74); border-top-color: rgba(111,209,255,.9); transform: rotate(-32deg); }
+    .a-dot { position: absolute; inset: 0; width: 22px; height: 22px; margin: auto; border-radius: 50%; background: linear-gradient(145deg, #7ddaff, #1689ee); box-shadow: 0 0 0 10px rgba(22,137,238,.08), 0 9px 22px rgba(22,137,238,.28); }
+    .variant-a .a-mark { animation: aFloat 2s ease-in-out infinite; }
+    .variant-a.is-playing .a-mark::after { animation: ringDraw .62s var(--ease) both; }
+    .variant-a.is-playing .a-dot { animation: dotPulse .62s var(--ease) both; }
+
+    /* Variant B — timeline */
+    .b-mark { position: relative; width: 128px; height: 180px; }
+    .b-line { position: absolute; top: 13px; bottom: 13px; left: 50%; width: 2px; transform: translateX(-50%); background: linear-gradient(var(--accent-2), rgba(22,137,238,.2)); }
+    .b-node { position: absolute; left: 50%; width: 22px; height: 22px; margin-left: -11px; border: 5px solid var(--bg); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px rgba(22,137,238,.2); }
+    .b-node:nth-child(2) { top: 5px; }
+    .b-node:nth-child(3) { top: 79px; width: 30px; height: 30px; margin-left: -15px; border-width: 7px; background: var(--accent-2); box-shadow: 0 0 0 8px rgba(111,209,255,.16); }
+    .b-node:nth-child(4) { bottom: 5px; background: rgba(22,137,238,.28); }
+    .variant-b.is-playing .b-line { animation: lineGrow .6s var(--ease) both; transform-origin: top; }
+    .variant-b.is-playing .b-node { animation: nodeIn .45s var(--ease) both; }
+    .variant-b.is-playing .b-node:nth-child(3) { animation-delay: .13s; }
+    .variant-b.is-playing .b-node:nth-child(4) { animation-delay: .24s; }
+
+    /* Variant C — glass lens */
+    .c-mark { position: relative; width: 182px; height: 122px; transform: rotate(-8deg); }
+    .c-pane { position: absolute; width: 128px; height: 70px; border: 1px solid rgba(255,255,255,.85); border-radius: 25px; background: linear-gradient(135deg, rgba(255,255,255,.62), rgba(111,209,255,.2)); box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 17px 30px rgba(22,137,238,.14); backdrop-filter: blur(8px); }
+    .c-pane:first-child { top: 1px; left: 4px; transform: rotate(-10deg); }
+    .c-pane:last-child { right: 4px; bottom: 1px; transform: rotate(-10deg); background: linear-gradient(135deg, rgba(111,209,255,.48), rgba(22,137,238,.22)); }
+    .c-glint { position: absolute; top: 24px; left: 22px; width: 80px; height: 3px; border-radius: 4px; background: rgba(255,255,255,.68); transform: rotate(-10deg); }
+    .variant-c.is-playing .c-pane:first-child { animation: paneIn .65s var(--ease) both; }
+    .variant-c.is-playing .c-pane:last-child { animation: paneIn .65s .1s var(--ease) both; }
+    .variant-c.is-playing .c-glint { animation: glint .72s .14s var(--ease) both; }
+
+    .variant-home-note { position: absolute; left: 22px; right: 22px; bottom: 18px; display: flex; align-items: center; justify-content: space-between; color: var(--ink-2); font-size: 10px; }
+    .variant-home-note b { color: var(--accent); font-size: 11px; }
+    .home--A .home-enter { animation: homeIn .35s .48s var(--ease) both; }
+    .home--B .home-enter { animation: homeIn .35s .50s var(--ease) both; }
+    .home--C .home-enter { animation: homeIn .35s .54s var(--ease) both; }
+    .replay { position: absolute; z-index: 8; right: 18px; bottom: 18px; min-height: 32px; padding: 0 11px; border: 0; border-radius: 999px; background: rgba(255,255,255,.76); color: var(--ink-2); font-size: 10px; box-shadow: 0 4px 12px rgba(29,55,83,.1); }
+    .replay:active { transform: scale(.97); }
+    .reduced .splash { opacity: .98; }
+    .reduced .a-mark, .reduced .a-mark::after, .reduced .a-dot, .reduced .b-line, .reduced .b-node, .reduced .c-pane, .reduced .c-glint { animation: none !important; }
+    .reduced .home-enter { animation: none !important; opacity: 1; transform: none; }
+
+    @keyframes aFloat { 50% { transform: translateY(-2px); } }
+    @keyframes ringDraw { from { transform: rotate(-32deg) scale(.68); opacity: .1; } to { transform: rotate(328deg) scale(1); opacity: 1; } }
+    @keyframes dotPulse { 0% { transform: scale(.55); } 65% { transform: scale(1.12); } 100% { transform: scale(1); } }
+    @keyframes lineGrow { from { transform: translateX(-50%) scaleY(.08); opacity: .2; } to { transform: translateX(-50%) scaleY(1); opacity: 1; } }
+    @keyframes nodeIn { from { transform: scale(.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @keyframes paneIn { from { opacity: 0; transform: translateX(-14px) rotate(-10deg); } to { opacity: 1; transform: translateX(0) rotate(-10deg); } }
+    @keyframes glint { from { opacity: 0; transform: translateX(-20px) rotate(-10deg); } to { opacity: 1; transform: translateX(52px) rotate(-10deg); } }
+    @keyframes homeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 430px) { body { padding: 35px 8px 100px; } .phone { border-width: 6px; border-radius: 35px; } }
+
+    .switcher { position: fixed; z-index: 30; left: 50%; bottom: 22px; display: flex; align-items: center; gap: 10px; transform: translateX(-50%); padding: 8px 10px; border: 1px solid rgba(255,255,255,.86); border-radius: 999px; background: rgba(22,41,62,.94); color: #fff; box-shadow: 0 10px 26px rgba(14,35,57,.24); }
+    .switcher button { display: grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; font-size: 16px; cursor: pointer; }
+    .switcher button:hover { background: rgba(255,255,255,.2); }
+    .switcher-label { min-width: 188px; text-align: center; font-size: 11px; letter-spacing: .02em; }
+    .switcher-label b { color: #8ddcff; }
+  </style>
+</head>
+<body>
+  <div class="prototype-note">PROTOTYPE · 开屏与首页衔接评估</div>
+  <main class="phone" id="phone">
+    <div class="statusbar"><span>10:24</span><span class="status-icons"><span></span><span></span><span></span></span></div>
+    <section class="scene" id="scene"></section>
+  </main>
+  <nav class="switcher" aria-label="原型方案切换">
+    <button type="button" id="prev" aria-label="上一个方案">‹</button>
+    <span class="switcher-label" id="variantLabel"></span>
+    <button type="button" id="next" aria-label="下一个方案">›</button>
+  </nav>
+
+  <script>
+    // Three radically different splash-to-home compositions, switchable via ?variant=A|B|C.
+    const variants = {
+      A: { name: '观察焦点环', desc: '记录点 → 观察环 → 今日焦点区' },
+      B: { name: '记录时间线', desc: '时间节点 → 统计行 → 首页数据' },
+      C: { name: '玻璃透镜', desc: '玻璃层 → 趋势卡片 → 首页看板' }
+    };
+    const keys = Object.keys(variants);
+    const params = new URLSearchParams(location.search);
+    let current = (params.get('variant') || 'A').toUpperCase();
+    if (!variants[current]) current = 'A';
+
+    function home(key) {
+      return `<div class="home home--${key}">
+        <header class="home-header home-enter"><div><p class="eyebrow">8月30日 · 周日</p><h1>今天，感觉如何？</h1></div><button class="backfill" aria-label="补记">＋</button></header>
+        <div class="focus-row home-enter"><span class="focus-num">2<small>次</small></span><button class="record-btn">＋ 记录</button></div>
+        <div class="focus-meta home-enter"><p class="focus-status">今天 · 已记录 2 次</p><p class="focus-sub">记录本身就是觉察</p></div>
+        <hr class="rule home-enter">
+        <div class="stats home-enter"><div class="stat"><strong>6</strong><span>本周</span></div><div class="stat"><strong>18</strong><span>本月</span></div><div class="stat"><strong>4</strong><span>连续记录</span></div></div>
+        <div class="trend-card home-enter"><div class="card-head"><p class="card-title">次数趋势</p><p class="card-sub">每天次数</p></div><div class="mini-chart"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="variant-home-note home-enter"><span>首页首帧已就绪</span><b>进入记录</b></div>
+      </div>`;
+    }
+
+    function splash(key) {
+      if (key === 'A') return `<div class="splash variant-a is-playing"><div class="a-mark" aria-label="观察焦点环"><span class="a-dot"></span></div><button class="replay" type="button">重新播放</button></div>`;
+      if (key === 'B') return `<div class="splash variant-b is-playing"><div class="b-mark" aria-label="记录时间线"><span class="b-line"></span><span class="b-node"></span><span class="b-node"></span><span class="b-node"></span></div><button class="replay" type="button">重新播放</button></div>`;
+      return `<div class="splash variant-c is-playing"><div class="c-mark" aria-label="玻璃透镜"><span class="c-pane"></span><span class="c-pane"></span><span class="c-glint"></span></div><button class="replay" type="button">重新播放</button></div>`;
+    }
+
+    function render(key, replay = false) {
+      const scene = document.getElementById('scene');
+      scene.innerHTML = splash(key) + home(key);
+      document.getElementById('variantLabel').innerHTML = `<b>${key}</b> · ${variants[key].name}`;
+      if (replay) document.querySelector('.splash').classList.add('is-playing');
+      document.querySelector('.replay').addEventListener('click', () => render(current, true));
+    }
+
+    function setVariant(key) {
+      current = key;
+      const nextUrl = new URL(location.href);
+      nextUrl.searchParams.set('variant', key);
+      history.replaceState(null, '', nextUrl);
+      render(current, true);
+    }
+    document.getElementById('prev').addEventListener('click', () => setVariant(keys[(keys.indexOf(current) + keys.length - 1) % keys.length]));
+    document.getElementById('next').addEventListener('click', () => setVariant(keys[(keys.indexOf(current) + 1) % keys.length]));
+    document.addEventListener('keydown', (event) => {
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable) return;
+      if (event.key === 'ArrowLeft') document.getElementById('prev').click();
+      if (event.key === 'ArrowRight') document.getElementById('next').click();
+    });
+    render(current);
+  </script>
+</body>
+</html>

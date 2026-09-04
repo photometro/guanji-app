@@ -1,17 +1,66 @@
 // 观己 App · ui-home（P1 搬移式拆分，2026-08-09——函数原样搬移，零逻辑改动）
 /* ---------- 数字滚动（count-up） ---------- */
 
-function countUp(el, to, dur = 500) {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = to; return; }
+const countUpJobs = new WeakMap();
+
+function cancelCountUp(el) {
+  if (!el) return;
+  const job = countUpJobs.get(el);
+  if (job) cancelAnimationFrame(job.frame);
+  countUpJobs.delete(el);
+}
+
+function countUp(el, to, dur = 500, format = (value) => String(value)) {
+  if (!el) return;
+  cancelCountUp(el);
+  const target = Number(to);
+  if (!Number.isFinite(target)) { el.textContent = format(to); return; }
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = format(target); return; }
   const t0 = performance.now();
+  const job = { frame: 0 };
+  countUpJobs.set(el, job);
   function tick(t) {
+    if (countUpJobs.get(el) !== job) return;
     const p = Math.min((t - t0) / dur, 1);
     const e = 1 - Math.pow(1 - p, 3);
-    el.textContent = Math.round(to * e);
-    if (p < 1) requestAnimationFrame(tick);
-    else el.textContent = to;
+    el.textContent = format(Math.round(target * e));
+    if (p < 1) job.frame = requestAnimationFrame(tick);
+    else {
+      el.textContent = format(target);
+      countUpJobs.delete(el);
+    }
   }
-  requestAnimationFrame(tick);
+  job.frame = requestAnimationFrame(tick);
+}
+
+function formatWeekDelta(delta) {
+  if (delta === null || delta === undefined || !Number.isFinite(Number(delta))) return '—';
+  const value = Number(delta);
+  return `${value > 0 ? '+' : ''}${value}%`;
+}
+
+function weekDeltaState(delta) {
+  if (delta === null || delta === undefined || !Number.isFinite(Number(delta))) return 'plain';
+  const value = Number(delta);
+  if (value < 0) return 'down';
+  if (value > 0) return 'up';
+  return 'plain';
+}
+
+function renderWeekDelta(snapshot) {
+  const el = $('weekDelta');
+  if (!el) return;
+  const delta = snapshot && snapshot.weekDelta;
+  const state = weekDeltaState(delta);
+  el.classList.remove('down', 'up', 'plain');
+  el.classList.add(state);
+  el.dataset.deltaState = state;
+  if (delta === null || delta === undefined || !Number.isFinite(Number(delta))) {
+    cancelCountUp(el);
+    el.textContent = '—';
+    return;
+  }
+  countUp(el, Number(delta), 500, formatWeekDelta);
 }
 
 /* ---------- 渲染：首页 ---------- */
@@ -19,63 +68,70 @@ function countUp(el, to, dur = 500) {
 let chartDays = 14;   // 面积图/热力图范围：近 14 / 30 天
 let chartView = 'curve';   // #88：次数趋势视图（curve 面积图 / heat 热力图）
 
-function renderHome() {
+function renderHome(snapshot = null) {
   checkDayRollover();   // v3.6.1：App 驻留跨天时归一化记录日期
   const today = new Date();
   $('todayLabel').textContent =
     `${today.getMonth() + 1}月${today.getDate()}日 · ${WEEKDAYS[today.getDay()]}`;
 
-  const todayCount = countRange(0, 0);
+  const statsSnapshot = snapshot || buildStatsSnapshot();
+  const todayCount = statsSnapshot.todayCount;
   $('todayStatus').textContent = todayCount ? `今天 · 已记录 ${todayCount} 次` : '今天 · 尚未记录';
 
   // 温和正向反馈（#17）：达到 7 / 30 天里程碑时替换副文案；开关关闭时恢复原逻辑
   let sub = todayCount ? '记录本身就是觉察' : '一切如常，无需评判';
   if (positiveEnabled()) {
-    const m = milestoneText(countStreak());
+    const m = milestoneText(countStreak(statsSnapshot));
     if (m) sub = m;
   }
   $('todaySub').textContent = sub;
   countUp($('todayNumVal'), todayCount);
-  renderGreeting();
+  renderGreeting(statsSnapshot);
 
-  const cur = countRange(-6, 0);
-  const prev = countRange(-13, -7);
-  countUp($('weekCount'), cur);
-  const deltaEl = $('weekDelta');
-  if (prev > 0) {
-    const delta = Math.round((cur - prev) / prev * 100);
-    deltaEl.textContent = (delta > 0 ? '+' : '') + delta + '%';
-    deltaEl.classList.remove('plain');
-    deltaEl.classList.toggle('down', delta <= 0);
+  const weekCount = Number(statsSnapshot.weekCount);
+  const isConsistent = Number.isFinite(weekCount) && Number.isFinite(Number(todayCount)) && Number(todayCount) <= weekCount;
+  if (isConsistent) {
+    countUp($('weekCount'), weekCount);
+    renderWeekDelta(statsSnapshot);
   } else {
-    deltaEl.textContent = '—';
-    deltaEl.classList.remove('down');
-    deltaEl.classList.add('plain');
+    console.warn('[home] inconsistent stats snapshot; hiding conflicting week metrics', { todayCount, weekCount });
+    cancelCountUp($('weekCount'));
+    cancelCountUp($('weekDelta'));
+    if ($('weekCount')) $('weekCount').textContent = '—';
+    if ($('weekDelta')) {
+      $('weekDelta').classList.remove('down', 'up');
+      $('weekDelta').classList.add('plain');
+      $('weekDelta').dataset.deltaState = 'plain';
+      $('weekDelta').textContent = '—';
+    }
   }
-  countUp($('streakNum'), countStreak());
+  countUp($('streakNum'), statsSnapshot.streak);
 
-  renderChart(chartDays);
-  renderMonthSummary();
-  renderRingDist();
-  renderRecentRecords();
+  renderChart(chartDays, statsSnapshot);
+  renderMonthSummary(statsSnapshot);
+  renderRingDist(statsSnapshot);
+  renderRecentRecords(statsSnapshot);
+  return statsSnapshot;
 }
 
 /* #88：次数趋势视图分发（曲线 / 热力图） */
-function renderChart(days) {
-  if (chartView === 'heat') renderHeatmap(days);
-  else renderAreaChart(days);
+function renderChart(days, snapshot = null) {
+  const statsSnapshot = snapshot || buildStatsSnapshot();
+  if (chartView === 'heat') renderHeatmap(days, statsSnapshot);
+  else renderAreaChart(days, statsSnapshot);
 }
 
 /* #88：热力图（固定行数网格——14 天恒 2 行、30 天恒 5 行；连续天数排列，蓝系色阶） */
-function renderHeatmap(days) {
+function renderHeatmap(days, snapshot = null) {
+  const statsSnapshot = snapshot || buildStatsSnapshot();
   const now = new Date();
   const rows = Math.ceil(days / 7);   // 固定行数：不按自然周切行，避免起始日导致多出空行
   // 最近 days 天（旧→新，行主序：每 rows*7 格）
   let cells = '';
   for (let i = days - 1; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
-    const off = dayDiff(date, now);
-    const cnt = countRange(off, off);
+    const dateKey = dateKeyFromDate(date);
+    const cnt = countDateKey(dateKey, statsSnapshot.generatedAtMs, statsSnapshot.timezone, statsSnapshot.__statsContext);
     const level = cnt <= 0 ? 0 : cnt <= 2 ? 1 : cnt <= 5 ? 2 : 3;
     const label = `${date.getMonth() + 1}月${date.getDate()}日`;
     cells += `<span class="heat-cell heat-${level}" title="${label} · ${cnt} 次"></span>`;
@@ -107,15 +163,16 @@ function smoothPath(pts) {
   return d;
 }
 
-function renderAreaChart(days) {
+function renderAreaChart(days, snapshot = null) {
   const W = 336, H = 112, TOP = 14, BOT = 16, TOP_PAD = 16;
-  const counts = [];
-  let max = 0;
-  for (let i = 0; i < days; i++) {
-    const c = countRange(i - (days - 1), i - (days - 1));
-    counts.push(c);
-    if (c > max) max = c;
+  const statsSnapshot = snapshot || buildStatsSnapshot();
+  const counts = days === 14 ? statsSnapshot.rolling14 : days === 30 ? statsSnapshot.rolling30 : [];
+  let max = counts.reduce((value, count) => Math.max(value, count), 0);
+  if (!counts.length) {
+    for (let i = 0; i < days; i += 1) counts.push(countDateKey(dateKeyFromDate(dateWithOffset(i - (days - 1)))));
+    max = counts.reduce((value, count) => Math.max(value, count), 0);
   }
+  if (max === 0) max = 1;
   const pts = counts.map((c, i) => {
     const x = 4 + i * ((W - 8) / (days - 1));
     const y = c > 0 ? TOP + (1 - c / max) * (H - TOP - BOT) : H - BOT;
@@ -160,30 +217,27 @@ function renderAreaChart(days) {
   });
 }
 
-/* ---------- 月度汇总（#15）：本月 vs 上月（次数 / 日均 / 环比） ---------- */
+/* ---------- 月度汇总（#15/#209）：本月次数与上月同期环比 ---------- */
 
-function renderMonthSummary() {
-  const now = new Date();
-  const firstOff = dayDiff(new Date(now.getFullYear(), now.getMonth(), 1), now);   // 本月 1 号 offset（≤0）
-  const prevFirst = dayDiff(new Date(now.getFullYear(), now.getMonth() - 1, 1), now);
-  const prevLast = dayDiff(new Date(now.getFullYear(), now.getMonth(), 0), now);    // 上月最后一天 offset
+function renderMonthSummary(snapshot = null) {
+  const statsSnapshot = snapshot || buildStatsSnapshot();
+  const curCount = statsSnapshot.monthCount;
+  const prevCount = statsSnapshot.previousMonthCount;
 
-  const curCount = countRange(firstOff, 0);
-  const prevCount = countRange(prevFirst, prevLast);
-  const daysElapsed = 1 - firstOff;   // 本月已过天数（含今天）
-  const daily = curCount ? curCount / daysElapsed : 0;
-
-  let deltaText = '—';
+  let deltaText = '';
   let deltaClass = 'plain';
-  if (prevCount > 0) {
-    const delta = Math.round((curCount - prevCount) / prevCount * 100);
-    deltaText = (delta > 0 ? '+' : '') + delta + '%';
-    deltaClass = delta <= 0 ? 'down' : 'up';   // 次数减少 → 绿色（与周环比同语义）
+  if (statsSnapshot.monthDelta !== null) {
+    if (statsSnapshot.monthDelta === 0) {
+      deltaText = '持平';
+    } else {
+      deltaText = (statsSnapshot.monthDelta > 0 ? '↑' : '↓') + Math.abs(statsSnapshot.monthDelta) + '%';
+      deltaClass = statsSnapshot.monthDelta < 0 ? 'down' : 'up';
+    }
   }
 
   $('monthSummary').innerHTML = `
     <span class="ms-item">本月 <b>${curCount}</b> 次</span>
-    <span class="ms-item ms-delta ${deltaClass}">${deltaText}</span>`;
+    ${prevCount > 0 ? `<span class="ms-item ms-delta ${deltaClass}">${deltaText}</span>` : ''}`;
 }
 
 // 面积图范围切换（#21：滑块跟随）
@@ -193,8 +247,9 @@ $('chartSeg').addEventListener('click', (e) => {
   chartDays = parseInt(btn.dataset.days, 10);
   document.querySelectorAll('#chartSeg .seg').forEach((s) => s.classList.toggle('active', s === btn));
   moveSegSlide($('chartSeg'), $('chartSegSlide'), btn);
-  renderChart(chartDays);
-  renderMonthSummary();
+  const statsSnapshot = buildStatsSnapshot();
+  renderChart(chartDays, statsSnapshot);
+  renderMonthSummary(statsSnapshot);
 });
 
 // #88：次数趋势视图切换（曲线 / 热力图）
@@ -204,7 +259,7 @@ $('chartViewSeg').addEventListener('click', (e) => {
   chartView = btn.dataset.view;
   document.querySelectorAll('#chartViewSeg .seg').forEach((s) => s.classList.toggle('active', s === btn));
   moveSegSlide($('chartViewSeg'), $('chartViewSlide'), btn);
-  renderChart(chartDays);
+  renderChart(chartDays, buildStatsSnapshot());
 });
 
 /* ---------- 通用 seg 滑块（#21/#22）：初始化定位 + 切换跟随 ---------- */
@@ -214,7 +269,34 @@ function moveSegSlide(rowEl, slideEl, segEl) {
   const s = segEl.getBoundingClientRect();
   slideEl.style.left = (s.left - r.left) + 'px';
   slideEl.style.width = s.width + 'px';
+  syncSegmentA11y(rowEl);
 }
+
+/* #211 N6：分段控件是单选组，不是下拉菜单；滑块移动时同步语义状态。 */
+function syncSegmentA11y(rowEl) {
+  if (!rowEl || rowEl.getAttribute('role') !== 'radiogroup') return;
+  rowEl.querySelectorAll('.seg[role="radio"]').forEach((button) => {
+    button.setAttribute('aria-checked', String(button.classList.contains('active')));
+  });
+}
+
+/* #211 N6：开关的视觉 on 状态与 aria-checked 保持一致，兼容异步权限回写。 */
+function syncSwitchA11y(switchEl) {
+  if (!switchEl || switchEl.getAttribute('role') !== 'switch') return;
+  switchEl.setAttribute('aria-checked', String(switchEl.classList.contains('on')));
+}
+document.querySelectorAll('.switch[role="switch"]').forEach((switchEl) => {
+  syncSwitchA11y(switchEl);
+  new MutationObserver(() => syncSwitchA11y(switchEl)).observe(switchEl, { attributes: true, attributeFilter: ['class'] });
+});
+document.addEventListener('keydown', (event) => {
+  const switchEl = event.target.closest?.('.switch[role="switch"]');
+  if (!switchEl || switchEl.id === 'timerNotificationSwitch') return;
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    switchEl.click();
+  }
+});
 
 function initSegSlide(rowId, slideId) {
   const row = $(rowId), slide = $(slideId);
@@ -235,13 +317,18 @@ function ringColors() {
   return [1, 2, 3, 4, 5].map((i) => cssVar('--ring-' + i));
 }
 
-function renderRingDist() {
+function renderRingDist(snapshot = null) {
   const buckets = BUCKETS.map((b) => ({ key: b.key, n: 0 }));
-  records.forEach((r) => {
+  const statsSnapshot = snapshot || buildStatsSnapshot();
+  const context = statsSnapshot.__statsContext;
+  const validRecords = context
+    ? context.valid.map((item) => item.record)
+    : statsSourceRecords().filter((item) => item.dateKey).map((item) => item.record);
+  validRecords.forEach((r) => {
     const h = hourOf(r);
     BUCKETS.forEach((b, i) => { if (b.test(h)) buckets[i].n++; });
   });
-  const total = records.length;
+  const total = validRecords.length;
   const hot = [...buckets].sort((a, b) => b.n - a.n)[0].key;
   const hotPct = total ? Math.round((buckets.find((b) => b.key === hot).n / total) * 100) : 0;
   const COLORS = ringColors();
@@ -301,9 +388,16 @@ function renderRingDist() {
 
 /* ---------- 最近记录 ---------- */
 
-function renderRecentRecords() {
+function renderRecentRecords(snapshot = null) {
+  const sourceByRecord = snapshot && snapshot.__statsContext
+    ? new Map(snapshot.__statsContext.source.map((item) => [item.record, item]))
+    : null;
+  const dateKeyFor = (record) => sourceByRecord ? (sourceByRecord.get(record)?.dateKey || '') : recordDateKeyForStats(record);
   const recent = [...records]
-    .sort((a, b) => (b.offset - a.offset) || b.time.localeCompare(a.time))
+    .filter((record) => !!dateKeyFor(record))
+    .sort((a, b) => (Number(b.occurredAtMs || 0) - Number(a.occurredAtMs || 0))
+      || String(dateKeyFor(b)).localeCompare(String(dateKeyFor(a)))
+      || String(b.time || '').localeCompare(String(a.time || '')))
     .slice(0, 7);
 
   if (!recent.length) {
@@ -315,7 +409,7 @@ function renderRecentRecords() {
   $('recentList').innerHTML = recent.map((r) => `
     <div class="recent-item">
       <div class="recent-main">
-        <p class="recent-time">${fmtDateShort(r.offset)} ${r.time}</p>
+        <p class="recent-time">${(() => { const p = String(dateKeyFor(r)).split('-'); return p.length === 3 ? `${Number(p[1])}月${Number(p[2])}日` : fmtDateShort(r.offset); })()} ${r.time}</p>
         <p class="recent-tags">${displayRecordTags(r).join(' · ')}${r.duration ? ` · ${r.duration} 分钟` : ''}</p>
       </div>
       <div class="recent-actions">

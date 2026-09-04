@@ -7,4 +7,7 @@
     <color name="widget_ink3">#6E6E73</color>
     <color name="widget_accent">#0A84FF</color>
     <color name="widget_bar">#2C3A4A</color>
+    <!-- #203：与 Web 深色首页基础背景同源。 -->
+    <color name="splash_background">#121212</color>
+    <color name="splash_wordmark">#B7C5D6</color>
 </resources>

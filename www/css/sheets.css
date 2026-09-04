@@ -43,7 +43,7 @@ body.keyboard-up .backdrop.dialog-layer {
   overflow-y: auto;
   scrollbar-width: none;
   box-shadow: 0 22px 55px rgba(0, 0, 0, 0.20), 0 6px 18px rgba(0, 0, 0, 0.10);   /* #74：增强悬浮阴影 */
-  animation: sheetUp 0.32s var(--ease-spring) both;
+  animation: sheetUp 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;   /* #199：与记录 Sheet 根级入场统一 */
 }
 .sheet::-webkit-scrollbar { display: none; }
 .sheet.hidden { display: none; }
@@ -82,12 +82,26 @@ body.keyboard-up .backdrop.dialog-layer {
   flex: 0 0 auto;
   margin-top: 12px;
   padding-top: 8px;
+  padding-bottom: max(0px, var(--safe-bottom));
+}
+
+/* #211 N4：记录详情与计时汇总采用相同的“内容可滚动、操作不滚动”边界。
+   min-height:0 允许 WebView flex 子项真正收缩，safe-area 不会把保存按钮推出屏幕。 */
+#recordSheet.details-active .sheet-content-scroll,
+#timerSummaryView .summary-scroll {
+  min-height: 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+#recordSheet.details-active .sheet-actions,
+#timerSummaryView .summary-actions {
+  flex-shrink: 0;
 }
 
 /* 渐变边框环（#72 玻璃态专用，由 html.liquid-glass 覆盖层启用）——见文件尾部 */
 
 @keyframes sheetUp {
-  from { transform: translateY(100%); }
+  from { transform: translateY(100%) scale(.98); }
   to { transform: translateY(0); }
 }
 
@@ -574,9 +588,23 @@ textarea:focus { outline: 2px solid var(--accent-deep); outline-offset: 0; borde
 .backup-panel-close:active { transform: scale(.96); }
 .backup-panel-dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: var(--sage); box-shadow: 0 0 0 4px var(--sage-soft); }
 .backup-panel-dot.blue { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
-.sheet__body { min-height: 0; flex: 1 1 auto; overflow: auto; padding: 0 20px 18px; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--ink-3) transparent; }
-.sheet__body::-webkit-scrollbar, .history-list::-webkit-scrollbar { width: 5px; }
-.sheet__body::-webkit-scrollbar-thumb, .history-list::-webkit-scrollbar-thumb { border-radius: 9px; background: var(--ink-3); }
+/* #219：所有局部滚动区域共用一套轻量滚动条，保留原生触摸滚动与 WebView 回退。 */
+.app-scroll-region {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+  scrollbar-gutter: stable;
+}
+.app-scroll-region::-webkit-scrollbar { width: 5px; height: 5px; }
+.app-scroll-region::-webkit-scrollbar-track { background: transparent; }
+.app-scroll-region::-webkit-scrollbar-thumb {
+  min-height: 24px;
+  border-radius: 999px;
+  background: var(--scroll-thumb);
+}
+.app-scroll-region::-webkit-scrollbar-thumb:hover,
+.app-scroll-region::-webkit-scrollbar-thumb:active { background: var(--scroll-thumb-active); }
+.app-scroll-region::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+.sheet__body { min-height: 0; flex: 1 1 auto; overflow: auto; padding: 0 20px 18px; overscroll-behavior: contain; }
 .section-label { display: flex; align-items: center; justify-content: space-between; margin: 14px 2px 9px; color: var(--ink-2); font-size: 10px; }
 .section-label strong { color: var(--ink); font-weight: 650; }
 .primary-card { padding: 15px; border: 1px solid rgba(0, 0, 0, .05); border-radius: 16px; background: var(--card); box-shadow: 0 4px 14px rgba(25, 28, 40, .045); }
@@ -607,6 +635,16 @@ textarea:focus { outline: 2px solid var(--accent-deep); outline-offset: 0; borde
 .sheet__body .chips .chip.active { border-color: transparent; background: var(--accent-soft); color: var(--accent); font-weight: 650; }
 .sheet__body .password { width: 100%; margin-top: 10px; padding: 11px 12px; outline: none; border: 1px solid var(--line); border-radius: 9px; background: var(--bg-elev); font-size: 10px; }
 .sheet__body .password:focus { border-color: var(--accent); }
+/* #211 N7：备份列表是内容滚动区，页脚始终由 .sheet__footer 固定在底部。
+   min-height:0 允许 flex 子项真正收缩，避免条数过多把操作按钮推出可视区。 */
+.backup-panel-body .backup-list-host {
+  min-height: 0;
+  max-height: min(38vh, 280px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.backup-panel-body .backup-list-host:empty { display: none; }
 .sheet__footer { flex: 0 0 auto; display: flex; gap: 10px; padding: 14px 20px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: color-mix(in srgb, var(--card) 98%, transparent); }
 .sheet__footer button { min-height: 40px; flex: 1; border-radius: 11px; font-size: 12px; }
 .sheet__footer .btn-ghost { background: var(--bg-elev); color: var(--ink); }

@@ -5,11 +5,10 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.util.TypedValue
 import android.widget.RemoteViews
-import java.util.Calendar
 
 /**
- * 本周节奏小组件（2x2，#34）：周一~周日 7 根柱状图（setMinimumHeight 动态柱高）
- * 柱数据 = 近 7 天（6天前 → 今天），标签按当天星期动态对齐
+ * 本周节奏小组件（2x2，#34/#196）：自然周周一~周日 7 根柱状图
+ * 柱数据与首页统一，当前周未到日期显示为 0，今天位置由快照标记
  */
 class GuanjiWeekWidget : AppWidgetProvider() {
 
@@ -57,23 +56,22 @@ class GuanjiWeekWidget : AppWidgetProvider() {
         var max = 0
         for (c in week) max = maxOf(max, c)
         if (max == 0) max = 1
+        val todayIndex = stats?.weekDayIndex?.coerceIn(0, 6) ?: 6
 
         for (i in 0 until 7) {
             val count = if (i < week.size) week[i] else 0
             val heightDp = if (count > 0) minBar + (count.toFloat() / max) * (maxBar - minBar) else 0f
             // RemoteViews 不能动态设置 layout_height（反射限制），用 setMinimumHeight + wrap_content
             views.setInt(BAR_IDS[i], "setMinimumHeight", px(heightDp))
-            // 今天（第 7 根，i==6）用强调色，其余用浅色
-            val color = if (i == 6) R.color.widget_accent else R.color.widget_bar
+            // 自然周中今天所在位置用强调色，其余用浅色
+            val color = if (i == todayIndex) R.color.widget_accent else R.color.widget_bar
             views.setInt(BAR_IDS[i], "setBackgroundResource", color)
         }
 
-        // 星期标签：左→右 = 6天前→今天，按真实星期动态对齐（Calendar 周日=1 → 周一=0）
-        val todayIdx = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7
+        // 星期标签固定为自然周：周一→周日
         for (i in 0 until 7) {
-            val dow = ((todayIdx + (i - 6)) % 7 + 7) % 7
-            views.setTextViewText(LABEL_IDS[i], context.getString(DAY_RES[dow]))
+            views.setTextViewText(LABEL_IDS[i], context.getString(DAY_RES[i]))
         }
-        views.setTextColor(LABEL_IDS[6], context.getColor(R.color.widget_accent))
+        for (i in 0 until 7) views.setTextColor(LABEL_IDS[i], context.getColor(if (i == todayIndex) R.color.widget_accent else R.color.widget_ink2))
     }
 }

@@ -75,6 +75,15 @@
 - 设置卡遵守低密度原则：单卡内容明显超过 6 个独立元素时，优先按用户任务拆分。
 - 所有可操作元素应保持明确文字/图标语义和约 `44px` 的可触达区域。
 
+#### 1.2.1 共享视觉节奏 token（#211 N3）
+
+**职责**：为跨页面迁移提供统一的间距、卡片容器和文字层级参数，避免同一视觉语义在业务 CSS 中重复写死。
+
+- **调用入口**：`www/css/theme.css` 的 `--space-1` 至 `--space-6`、`--type-card-title`、`--type-card-sub`、`--type-meta`、`--card-padding`、`--card-radius`、`--card-shadow`；组件 CSS 使用 `var(...)` 引用。
+- **适用边界**：常规内容卡、首页统计/趋势和设置代表卡片等共享层级；经典与液态玻璃均沿用这些几何 token，玻璃材质仍只能由 `glass.css` 覆盖。
+- **不适用边界**：计时全屏、品牌图标、特殊任务 Sheet 或经过原型明确指定的独立尺寸；不得为了单页微调扩展同名 token。
+- **验证方式**：浏览器 390px 视口和魅族真机 CDP 检查 token 解析值、卡片 padding/圆角与无重叠；主题切换只验证材质覆盖不改变几何 token。
+
 ### 1.3 液态玻璃：横切层，不是新组件
 
 **来源**：`www/css/glass.css`、`www/js/liquid-glass.js`
@@ -157,6 +166,16 @@
 - 详情态须先调用 `updateDetailsScrollState()`，由真实 `scrollHeight/clientHeight` 决定是否可滚动；不以标签数量等猜测。
 - 不为了固定按钮新增另一个容器、绝对定位或独立底部规则。
 
+### 2.4.1 局部滚动条视觉规则（v3.87，#219）
+
+**来源**：`www/css/sheets.css` 的 `.app-scroll-region`，由 `theme.css` / `glass.css` 提供主题变量。
+
+- `.app-scroll-region` 是局部滚动区域的统一滚动条入口：透明轨道、4–5px 胶囊滑块、隐藏 WebKit 箭头、稳定滚动槽；保留原生触摸滚动和 WebView 回退。
+- 滑块颜色必须使用 `--scroll-thumb` / `--scroll-thumb-active`，经典、液态玻璃和深色模式由主题变量适配；蓝色只用于主操作和数据强调，不用于滚动条。
+- 适用：日历明细、Sheet 内容、备份历史等需要局部滚动的区域。内容短时应关闭溢出或自然收紧，避免显示多余滚动条。
+- 不适用：整页 `.screen` 和需要隐藏系统滚动条的根级容器；不得为单个页面复制独立 scrollbar 规则或自绘 JavaScript 滚动条。
+- 验证：至少覆盖 0/1/2/3+ 条记录、长文本、经典/玻璃/深色主题、Android WebView 与桌面浏览器，确认滚动条不遮挡操作区且不造成布局跳动。
+
 ---
 
 ## 3. 动画与手势复用规则
@@ -176,6 +195,17 @@
 - `playSheetOpen()` 使用 `anime` 时从底部进入并带克制回弹；缺少库或系统减少动效时由 CSS 回退处理。
 - `animateSheetClose()` 负责关闭时的动画与状态清理；隐藏 DOM 应在其回调中完成。
 - 任何新任务 Sheet 都应先尝试接入 `openSheetPanel()` / `closeSheetPanel()`，而非复制 CSS keyframes。
+
+### 3.1.1 根级 Sheet 统一动效（v3.62，#199；替代 #197 的任务专用分支）
+
+**来源**：`openSheetPanel()`、`playSheetOpen()`、`animateSheetClose()`（`www/js/ui-sheet.js`）。
+
+- 记录、日历、备份与恢复、服务器备份管理和导出等根级 Sheet 统一从下方 `translateY(100%) scale(.98)` 进入，550ms 克制缓出；关闭沿同一路径反向下滑并淡出，300ms 无回弹。
+- `ROOT_SHEET_MOTION` 是唯一根级参数源；anime 与 CSS fallback 使用同一起点、终点、时长和缓出曲线，`.sheet--task` 仅承担布局/固定 footer 职责，不再决定动画。
+- 动画状态以 Sheet 为粒度通过 `WeakMap` 与序号/token 隔离；重开、关闭和高度过渡的旧回调不得清理新一轮状态。
+- 备份/恢复继续使用唯一父 Sheet、固定 footer 和 `transitionSheetHeight()`；二级恢复状态不新建遮罩或横向过渡，服务器备份管理保持独立业务状态但复用根级生命周期。
+- 不适用：全屏计时、确认 Dialog、独立横向页面及没有现成拖拽入口的任务 Sheet；不新增遮罩、z-index 或平行动画系统。
+- 验证：v3.62 浏览器与 Android 真机 CDP 实测记录/日历/备份根级进退场、二级返回、关闭清理和无控制台错误。
 
 ### 3.2 同一 Sheet 的“步骤 → 详情”动画
 
@@ -239,6 +269,56 @@
 - AI 文案保持中性、非羞耻化，不能做露骨内容、心理/医疗诊断或确定性因果判断。
 - 每日话语遵循现有“AI 可选增强、本地话语回退”链路，不能因为洞察页调整而破坏首页回退。
 
+### 4.3.1 统一 StatsSnapshot（v3.60，#196）
+
+**来源**：`buildStatsSnapshot()`（`www/js/stats.js`）、`syncWidgetStats()`（`www/js/records.js`）、`WidgetStatsPlugin`（Android）。
+
+- 首页、趋势、洞悉、AI 与小组件只消费同一统计快照；自然周固定周一至周日，自然月按本地月份，趋势使用滚动 14/30 天。
+- 日期边界通过可信时间戳、IANA 时区和严格 `YYYY-MM-DD` 校验生成；未来或异常日期不进入统计，旧值保留并可回滚。
+- 小组件接收版本化 JSON 快照，按 `revision` 拒绝旧数据，采用临时值→正式值原子提交；解析失败保留 last-known-good，不回退为全零。
+- 不适用：在单个页面或卡片内重新实现周期算法，或把原始记录直接同步到小组件；完整原生记录数据库另行规划。
+- 验证：v3.60 统计边界测试、浏览器首页标签回归、Android 真机冷启动与小组件协议编译验证。
+
+### 4.3.2 统计性能与快照复用（v3.61，#198）
+
+**来源**：`createStatsContext()` / `buildStatsSnapshot()`（`www/js/stats.js`）、`afterRecordsChanged()` / `syncWidgetStats()`（`www/js/records.js`）、`renderHome()`（`www/js/ui-home.js`）。
+
+- 一次用户动作先建立一个 `StatsContext`/`StatsSnapshot`；日期格式化器按统计时区缓存，日期计数从上下文 Map 查询，禁止在每个日期格或每个页面重新扫描全量记录。
+- 首页、洞悉、AI 聚合、每日话语、图表/月度汇总/时段分布和小组件同步优先接收同一快照；快照内部 context 用不可枚举字段传递，不能进入原生小组件或 AI JSON。
+- 保存、恢复、导入、删除、计时和快速记录先完成页面反馈，再异步同步原生小组件；洞悉页不可见时只保留进入页面时的既有刷新与 AI 触发语义。
+- 不适用：改变自然周/自然月/滚动趋势/连续记录统计口径、上传原始记录、增加启动加载 UI，或为某个页面另建统计服务。
+- 验证：浏览器恢复演示数据无错误；Android 真机操作无 ANR，快照与首页/洞悉/小组件核心数值一致；离线 APK 构建通过。
+
+### 4.3.3 小组件快照新鲜度与传输边界（v3.63，#200）
+
+**来源**：`syncWidgetStats()`（`www/js/records.js`）、`appStateChange`/跨午夜调度（`www/js/app.js`）、`WidgetStats.parseJson()` 与 `WidgetStatsHelper`（Android）。
+
+- 快照协议的变化率字段只按可表示的整数校验，不能复用 UI 文案的百分比范围；自然月基数较小时的合法高变化率不得让整份快照失效。
+- 小组件按 `todayKey` 和快照生成时的 IANA `timezone` 判断今日新鲜度；带日期的旧快照只在显示层将今日次数替换为“今天尚未同步”，不修改或删除原始缓存。旧 v1 管道无 `todayKey`，按兼容规则继续展示。
+- App 冷启动、回到前台、驻留跨过午夜均复用 `buildStatsSnapshot()` → `syncWidgetStats()`；原生桥失败最多重试一次，不能阻塞记录保存、首屏渲染或后台自动备份。
+- 不适用：在小组件内另算自然周/自然月、把过期缓存静默当作“今天 0 次”、或为某个小组件复制一套同步协议；历史快照仍由 last-known-good 原子提交规则保护。
+- 验证：覆盖 `monthDelta=5600`、跨日旧缓存、冷启动、前台恢复和新增记录；确认今日类小组件显示一致，离线 APK 构建与真机日志无 `reason:"invalid"`、崩溃或 ANR。
+
+### 4.3.4 AI 洞察缓存生命周期（v3.64，#202）
+
+**来源**：`insightCache*()`、`renderAIReport()`、`reportStale()`（`www/js/ai.js`）、记录替换入口（`www/js/ui-sheet.js`、`www/js/webdav.js`）。
+
+- 只缓存最近一次通过 `normalizeInsightAIData()`、`validateInsightAIData()` 和 `violatesAIOutputBoundary()` 的结构化结果；缓存必须绑定完整数据指纹、窗口、时区、统计规则版本、服务商和模型。
+- 加密模式复用 `secure.js` 的 DEK/AES-GCM，明文模式使用本地存储；读取时再次校验结构与安全边界，并兼容两种存储模式迁移。缓存不得包含单条记录、备注、API Key 或完整提示词。
+- 启动只异步恢复缓存，不因缓存存在或过期主动请求 AI；数据替换、清空或服务器覆盖恢复必须调用统一失效函数。过期结果继续沿用 `ready-stale` 和现有刷新入口。
+- 不适用：另建报告渲染/状态体系、仅按 `records.length` 判断新鲜度、把原始记录写入缓存，或让缓存恢复阻塞首页、小组件、WebDAV 和每日话语。
+- 验证：浏览器无网重启恢复、记录变更标记过期、加密读写、损坏回退、模型/时区/规则变化，以及 Android 真机无崩溃/ANR。
+
+### 4.3.5 洞察页 AI/local 单态与变化视觉状态（v3.84，#213/#214）
+
+**来源**：`renderInsightLocal()`、`insightCardBodyHTML()`、`insightSuggestionsHTML()`、`renderWeekDelta()`（`www/js/ai.js`、`www/js/ui-home.js`）。
+
+- 洞察页沿用同一组六张 `report-card`：有可用 AI 报告时只渲染对应 AI 正文；无 AI 报告时才渲染完整本地事实、图表、标签、比较和本地建议。首次生成没有旧报告时保持本地内容，有旧报告刷新失败时保持旧 AI 单态并标记过期。
+- AI 建议模式只使用 AI 返回的最多 3 条建议；字段为空时显示中性占位，禁止把本地建议悄悄混入 AI 卡片。页面级生成入口、免责声明、缓存和聚合隐私边界继续复用既有链路。
+- 首页“较上周”变化只通过 `down` / `up` / `plain` 互斥类表达方向；不改变 `StatsSnapshot`、自然周算法或文案。渲染异常/不可比较时必须清理旧方向类。
+- 不适用：另建 AI 报告页、在 AI 模式重复渲染本地证据、在单卡片重新计算统计、用颜色表达好坏评价，或新增第二套变化状态机。
+- 验证：AI ready/stale/loading、无 Key/无旧报告、建议为空、浏览器与真机经典/玻璃/深色/窄屏/大字号，以及周变化负数、正数、零值、空值状态。
+
 ### 4.4 AI 设置与提供商配置
 
 **来源**：`www/js/ui-sheet.js`、`www/js/ai.js`
@@ -246,6 +326,8 @@
 - 提供商配置按提供商分别保存与回显；DeepSeek、OpenAI 和自定义都可展示 Base URL，默认值由既有配置提供。
 - 连接测试与保存是不同动作，不能把“测试成功”当作已保存。
 - 保存态遵循既有“AI 已配置 / 编辑”收纳语义，不为某一个提供商单独造一套字段显示规则。
+- SecureStorage 的异步回填必须通过统一字段同步入口完成；只在字段未聚焦且未被用户编辑时回填，切换提供商才强制刷新。读取失败不得用空值覆盖已有配置，旧明文迁移必须在安全写入成功后才清理。
+- 不适用：在多个事件处理器各自写入字段、异步 hydration 自动聚焦/滚动页面，或把 API Key 写回原生 localStorage、导出文件和日志。
 
 ### 4.5 加密、导入导出与 WebDAV
 
@@ -326,6 +408,20 @@ backup-picker → secure → storage → records → stats → ai
 - 新代码优先进入职责已有的文件；不要仅因方便把业务逻辑都放进 `app.js`。
 - `app.js` 负责绑定、键盘与启动编排；它不是新业务逻辑的默认落点。
 
+### 6.1.1 系统启动保护层与 WebView 稳定首帧（v3.72，#201/#203/#204/#205/#206/#207/#208）
+
+**来源**：`MainActivity`、`StartupReadyPlugin`（`android/app/src/main/java/com/guanji/app/`）、`www/js/app.js`、`Theme.SplashScreen`（`android/app/src/main/res/values/styles.xml`）。
+
+- Android 只使用系统 `Theme.SplashScreen` 作为必要启动保护层，背景必须与首页同源；产品层不展示独立品牌图形、字标或切片动画，透明占位 drawable 仅用于满足 Android 12+ 的启动图标要求。
+- 系统 `Theme.SplashScreen` 只做有上限的首帧保护：WebView 首帧通过 `StartupReady.ready()` 后退出，异常或慢加载最多由约 1200ms watchdog 放行；根窗口、根布局和 WebView 必须使用同源背景，避免退出后出现白底。不得等待业务、AI、WebDAV 或小组件。
+- 首页启动应直接使用真实 `#screen-home` 的最终状态：首次 `renderHome()` 后不追加产品层显现动画，首页主体、统计、按钮和卡片保持首帧稳定。不得新建独立 HTML 开屏、复制首页 DOM 或让后续 `renderHome()`/Tab 切换触发启动动画。
+- 产品层不再维护问候文案转场时间线；从后台返回、Tab 切换和首页重绘均不播放开屏动画。系统减少动态效果时直接呈现最终首页。
+- 禁止恢复 #204 的切片、高光、字标和原生退出淡出，禁止在 `MainActivity` 对启动图标叠加平移/缩放，禁止 WebView 追加第二套启动过渡。
+- 文案继续来自 `getGreeting()`/`getDailyTip()`，不在启动链路等待网络；`prefers-reduced-motion` 无需额外处理，因为产品层没有启动动画。
+- `StartupReady.ready()` 仅用于结束系统 Splash 首帧保护；不得再派发 `splashExit`、直接 JS 回调或待发标记，也不得把每日话语、AI、WebDAV 或小组件同步接入启动等待链。
+- 不适用：把 Android 自适应 launcher 成品直接当 Web/开屏素材、设置固定长等待、加入网络加载进度或在多个模块重复维护启动状态。
+- 验证：浅/深主题、不同密度和 Android 版本的冷启动、进程恢复、后台返回、低性能设备与 reduced-motion；确认启动层与 WebView 同源背景、首页显现可见、首页统计和小组件同步不被阻塞且无 ANR。
+
 ### 6.2 Android 返回键与遮罩关闭顺序
 
 **来源**：`handleBackButton()`（`www/js/app.js`）
@@ -354,6 +450,21 @@ backup-picker → secure → storage → records → stats → ai
 - 真机优先走现有 CDP 链：`adb forward` → WebView DevTools → WebSocket 脚本做 DOM 级检查；截图以 `adb shell screencap` 后 `adb pull` 保存，避免 PowerShell 二进制重定向。
 - UI 变更至少验证：浅/深主题、窄屏、安全区、长内容、键盘、返回键、动效降级和不影响现有数据。
 - 发布时复用既有 Capacitor 同步、Gradle JDK 21 构建、覆盖安装和版本/cache 参数更新流程。
+
+### 7.1.1 统一 APK 构建钩子（v3.65 起）
+
+**实现**：`tools/build-apk.ps1`；npm 入口为 `build:apk:debug`、`build:apk:release`。
+
+- **职责**：固定 `ANDROID_HOME`、JDK 21、`GRADLE_USER_HOME`、`JAVA_TOOL_OPTIONS=-Duser.home=C:\Users\43124` 与 `ANDROID_USER_HOME=C:\Users\43124\.android`，避免生成第二份 debug.keystore；检查依赖、写权限和同项目并发进程。
+- **同步**：默认执行 `cap sync android`，仅在捕获到已知 `uv_os_get_passwd` 环境错误时进行一次本地 CLI shim 重试；随后比较关键 Web 资源与 Android assets 的 SHA-256，禁止带着旧资源构建。
+- **构建**：使用 Gradle wrapper 的 `--offline --build-cache`，保留 daemon 以缩短增量构建时间；日常 `debug` 直接使用 `:app:assembleDebug`，保持正式包名 `com.guanji.app` 与固定 Android Debug 签名，不创建额外 QA flavor，确保可覆盖既有调试安装。
+- **发布签名**：`release` 只接受 `GUANJI_RELEASE_KEYSTORE`、`GUANJI_RELEASE_STORE_PASSWORD`、`GUANJI_RELEASE_KEY_ALIAS`、`GUANJI_RELEASE_KEY_PASSWORD`，变量缺失即阻断，不生成“看似正式”的错误签名包。
+- **产物校验**：使用 `aapt` 读取包名/版本，使用 `apksigner` 读取签名指纹和 SHA-256；Gradle 报告 `UP-TO-DATE/FROM-CACHE` 时允许安全复用已存在产物，否则拒绝使用构建前旧 APK。
+- **真机安装**：只有显式传 `-Install` 才操作设备；安装前读取设备中同包名 APK 的签名指纹，发现不一致立即阻断，避免 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`；成功后启动并记录设备状态。
+- **收尾**：无论成功或失败都删除临时 APK、释放构建锁、写入 `debug/apk-build-*.log` 与 `debug/apk-build-summary.json`，供后续诊断和发布复核。
+- **适用**：所有 APK 构建、真机安装、发布前产物准备。
+- **不适用**：纯前端浏览器开发；不得替换为直接执行 `gradlew assemble*` 或手工 `adb install`。
+- **验证**：至少执行一次 `powershell -NoProfile -ExecutionPolicy Bypass -File tools\build-apk.ps1 -Mode debug -SkipSync`；真机回归使用 `-Install`，正式发布使用 `-Mode release` 并核对摘要中的签名指纹。
 
 ### 7.2 版本与缓存纪律
 

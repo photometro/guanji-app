@@ -3,11 +3,21 @@ package com.guanji.app;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.SystemClock;
+import android.view.View;
 import android.webkit.WebView;
 
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.Plugin;
+
+import androidx.core.splashscreen.SplashScreen;
+import androidx.core.splashscreen.SplashScreenViewProvider;
 
 public class MainActivity extends BridgeActivity {
+
+    private volatile boolean startupReady = false;
+    private volatile long startupStartedAt;
+    private SplashScreen splashScreen;
 
     /** 桌面小组件点击标记：打开 App 后弹出记录面板 */
     public static final String EXTRA_GUANJI_RECORD = "guanji_record";
@@ -20,7 +30,18 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        /* #201：必须在 super.onCreate 前安装兼容 API 的原生首帧。 */
+        splashScreen = SplashScreen.installSplashScreen(this);
+        /* #206：系统层只做首帧保护；WebView 首帧信号优先，1200ms watchdog 防止异常加载阻塞启动。 */
+        startupStartedAt = SystemClock.uptimeMillis();
+        splashScreen.setKeepOnScreenCondition(() ->
+                !startupReady && SystemClock.uptimeMillis() - startupStartedAt < 1200L);
+        /* #206：保护层退出后由真实首页问候文案承担唯一产品层微转场。 */
+        splashScreen.setOnExitAnimationListener(this::removeSplashImmediately);
         super.onCreate(savedInstanceState);
+        /* #205：WebView 首次绘制前也使用同源背景，避免系统启动层退出后回落纯白。 */
+        final WebView contentView = bridge != null ? bridge.getWebView() : null;
+        if (contentView != null) contentView.setBackgroundColor(getColor(R.color.splash_background));
         handleWidgetIntent(getIntent());
         handleTimerIntent(getIntent());
         handleTimerDismissFlag();
@@ -29,11 +50,45 @@ public class MainActivity extends BridgeActivity {
     /* 自定义插件注册必须在 bridge 创建（super.load）之前 */
     @Override
     public void load() {
-        registerPlugin(WidgetStatsPlugin.class);   // #32-#36：小组件统计同步
-        registerPlugin(TimerLiveUpdatePlugin.class);   // #51：计时实况通知
-        registerPlugin(SaveToDownloadsPlugin.class);   // #102：导出保存到公共 Downloads
-        registerPlugin(GuanjiDavPlugin.class);   // #115：WebDAV 原生通道（绕 WebView CORS）
+        /*
+         * Kotlin 插件与 Java 主 Activity 位于同一 app module。AGP/Kotlin 2.x
+         * 在干净构建中不会把同模块 Kotlin 输出稳定地暴露给 Java 编译快照，
+         * 因此这里按插件全限定名运行时注册，保持现有 Capacitor 插件入口，
+         * 同时避免为单个节点注入一套脆弱的 JavaCompile classpath 规则。
+         */
+        registerPluginByName("com.guanji.app.WidgetStatsPlugin");
+        registerPluginByName("com.guanji.app.TimerLiveUpdatePlugin");
+        registerPluginByName("com.guanji.app.SaveToDownloadsPlugin");
+        registerPluginByName("com.guanji.app.GuanjiDavPlugin");
+        registerPluginByName("com.guanji.app.StartupReadyPlugin");
+        registerPluginByName("com.guanji.app.NativeHomeSnapshotPlugin");
         super.load();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void registerPluginByName(String className) {
+        try {
+            Class<?> pluginType = Class.forName(className);
+            if (!Plugin.class.isAssignableFrom(pluginType)) {
+                throw new IllegalStateException(className + " is not a Capacitor Plugin");
+            }
+            registerPlugin((Class<? extends Plugin>) pluginType);
+        } catch (ClassNotFoundException error) {
+            throw new IllegalStateException("Required Capacitor plugin missing: " + className, error);
+        }
+    }
+
+    /** #201/#206：WebView 首帧信号只结束有上限的系统保护层，不等待业务、AI 或网络。 */
+    public void markStartupReady() {
+        if (startupReady) return;
+        startupReady = true;
+    }
+
+    private void removeSplashImmediately(SplashScreenViewProvider provider) {
+        /* 背景已与首页同源，先隐藏再移除，避免系统层与首页显现叠加第二段淡出。 */
+        final View splash = provider.getView();
+        splash.setAlpha(0f);
+        provider.remove();
     }
 
     @Override
@@ -59,9 +114,13 @@ public class MainActivity extends BridgeActivity {
 
     /* #51：计时通知被划掉 → 读标记后清掉，通知 JS 温和提示一次 */
     private void handleTimerDismissFlag() {
-        SharedPreferences prefs = getSharedPreferences(TimerLiveUpdatePlugin.PREFS, MODE_PRIVATE);
-        if (prefs.getBoolean(TimerLiveUpdatePlugin.KEY_DISMISSED, false)) {
-            prefs.edit().remove(TimerLiveUpdatePlugin.KEY_DISMISSED).apply();
+        /* 与 TimerLiveUpdatePlugin.Companion 保持同一持久化键，避免 Java 编译时
+           依赖同模块 Kotlin 类型；键名是跨版本数据契约，不能随意变更。 */
+        final String timerPrefs = "guanji_timer_flags";
+        final String dismissedKey = "notif_dismissed";
+        SharedPreferences prefs = getSharedPreferences(timerPrefs, MODE_PRIVATE);
+        if (prefs.getBoolean(dismissedKey, false)) {
+            prefs.edit().remove(dismissedKey).apply();
             runWhenReady("window.__guanjiTimerDismissed ? (window.__guanjiTimerDismissed(), 'ok') : 'pending'");
         }
     }

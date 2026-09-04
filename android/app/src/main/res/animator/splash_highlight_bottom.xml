@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- #204：下方高光与切片聚焦保持同一节奏。 -->
+<objectAnimator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="180"
+    android:startOffset="108"
+    android:interpolator="@android:interpolator/linear_out_slow_in"
+    android:propertyName="alpha"
+    android:valueFrom="0.30"
+    android:valueTo="1"
+    android:valueType="floatType" />

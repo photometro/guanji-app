@@ -571,6 +571,8 @@ async function initWebDAVUI() {
             await Capacitor.Plugins.GuanjiSave.saveToDownloads({ filename: await uniqueGuanjiFilename('restore', 'json'), data: cur });
           } catch (e) { /* 本机备份失败不阻断恢复 */ }
         }
+        // #202：覆盖恢复替换整套数据，旧数据集的 AI 洞察不可继续复用。
+        if (typeof invalidateInsightCache === 'function') invalidateInsightCache();
         records = list;
       } else if (wdRestoreMode === 'new') {
         const existing = new Set(records.map((r) => r.id));
@@ -582,11 +584,12 @@ async function initWebDAVUI() {
         records = [...byId.values()];
       }
       if (typeof normalizeOffsets === 'function') normalizeOffsets();
-      Storage.saveRecords(records);
-      afterRecordsChanged();
+      const statsSnapshot = typeof commitRecordChanges === 'function'
+        ? commitRecordChanges()
+        : (Storage.saveRecords(records), afterRecordsChanged());
       if (typeof window.closeBackupHub === 'function') window.closeBackupHub();
       toast('已从服务器恢复 ' + list.length + ' 条记录');
-      renderHome();
+      renderHome(statsSnapshot);
       wdRender();
     } catch (e) {
       info.textContent = '恢复失败：' + ((e && e.message) || '口令错误或数据损坏');

@@ -1,27 +1,147 @@
-// 观己 App · stats（P1 搬移式拆分，2026-08-09——函数原样搬移，零逻辑改动）
-/* ---------- 统计工具 ---------- */
+// 观己 App · stats（v3.60：统一统计快照与自然周期）
+/*
+ * 统计事实统一从这里产生：首页、洞悉、AI 和 Android 小组件都消费同一份
+ * StatsSnapshot。旧的 offset/dateKey 读取仍保留兼容，新的统计优先使用可信
+ * occurredAtMs，并对异常日期进行隔离。
+ */
 
-function dateWithOffset(off) {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + off);
+function dateWithOffset(off, base = new Date()) {
+  const d = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+  d.setDate(d.getDate() + Number(off || 0));
   return d;
 }
 
-function countRange(a, b) {
-  return records.filter((r) => r.offset >= a && r.offset <= b).length;
+function dateKeyParts(key) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key || ''));
+  return m ? { year: Number(m[1]), month: Number(m[2]), day: Number(m[3]) } : null;
 }
 
-function hourOf(r) { return parseInt(r.time.split(':')[0], 10); }
+function dateKeyFromParts(year, month, day) {
+  const key = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  return isValidDateKey(key) ? key : '';
+}
 
-function countStreak() {
-  let s = 0;
-  for (let off = 0; ; off--) {
-    if (off === 0) { if (countRange(0, 0) > 0) { s++; continue; } continue; }
-    if (countRange(off, off) > 0) s++;
-    else break;
+function dateKeyDiff(a, b) {
+  const pa = dateKeyParts(a), pb = dateKeyParts(b);
+  if (!pa || !pb) return null;
+  const da = Date.UTC(pa.year, pa.month - 1, pa.day);
+  const db = Date.UTC(pb.year, pb.month - 1, pb.day);
+  return Math.round((da - db) / 864e5);
+}
+
+function shiftDateKey(key, amount) {
+  const p = dateKeyParts(key);
+  if (!p) return '';
+  const d = new Date(Date.UTC(p.year, p.month - 1, p.day + Number(amount || 0)));
+  return dateKeyFromParts(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+}
+
+function shiftMonthKey(key, amount) {
+  const p = dateKeyParts(key);
+  if (!p) return '';
+  const d = new Date(Date.UTC(p.year, p.month - 1 + Number(amount || 0), 1));
+  return dateKeyFromParts(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
+}
+
+function daysInMonthKey(key) {
+  const p = dateKeyParts(key);
+  if (!p) return 0;
+  return new Date(Date.UTC(p.year, p.month, 0)).getUTCDate();
+}
+
+function localDateKeyForStats(date = new Date()) {
+  return dateKeyFromParts(date.getFullYear(), date.getMonth() + 1, date.getDate());
+}
+
+function recordDateKeyForStats(record, zoneId = preferredStatsTimeZone()) {
+  if (!record || typeof record !== 'object') return '';
+  const timestamp = Number(record.occurredAtMs);
+  if (Number.isFinite(timestamp)) {
+    const key = dateKeyFromTimestamp(timestamp, zoneId);
+    if (key) return key;
   }
-  return s;
+  const local = String(record.localDateKey || '');
+  if (isValidDateKey(local)) return local;
+  const legacy = String(record.dateKey || '');
+  return isValidDateKey(legacy) ? legacy : '';
+}
+
+function statsRecordOffset(record, nowMs = Date.now(), zoneId = preferredStatsTimeZone(), todayKey = '', recordDateKey = '') {
+  const currentKey = todayKey || dateKeyFromTimestamp(nowMs, zoneId);
+  const key = recordDateKey || recordDateKeyForStats(record, zoneId);
+  const diff = key && currentKey ? dateKeyDiff(key, currentKey) : null;
+  if (Number.isFinite(diff)) return diff;
+  const oldOffset = Number(record && record.offset);
+  return Number.isFinite(oldOffset) ? oldOffset : null;
+}
+
+function statsSourceRecords(nowMs = Date.now(), zoneId = preferredStatsTimeZone()) {
+  const safeNow = Number.isFinite(Number(nowMs)) ? Number(nowMs) : Date.now();
+  const todayKey = dateKeyFromTimestamp(safeNow, zoneId);
+  return (Array.isArray(records) ? records : []).map((record) => {
+    const dateKey = recordDateKeyForStats(record, zoneId);
+    return { record, dateKey, offset: statsRecordOffset(record, safeNow, zoneId, todayKey, dateKey) };
+  });
+}
+
+/* #198：一次性建立统计上下文，后续日期计数只读 Map，不重复扫描 records。 */
+function createStatsContext({ nowMs = Date.now(), zoneId = preferredStatsTimeZone() } = {}) {
+  const safeNow = Number.isFinite(Number(nowMs)) ? Number(nowMs) : Date.now();
+  const safeZone = zoneId || preferredStatsTimeZone();
+  const todayKey = dateKeyFromTimestamp(safeNow, safeZone) || localDateKeyForStats(new Date(safeNow));
+  const source = statsSourceRecords(safeNow, safeZone);
+  const valid = source.filter((item) => !!item.dateKey && item.dateKey <= todayKey);
+  const dateCounts = new Map();
+  valid.forEach((item) => dateCounts.set(item.dateKey, (dateCounts.get(item.dateKey) || 0) + 1));
+  return {
+    nowMs: safeNow,
+    zoneId: safeZone,
+    todayKey,
+    source,
+    valid,
+    dateCounts,
+    dateSet: new Set(valid.map((item) => item.dateKey)),
+  };
+}
+
+function countDateKey(key, nowMs = Date.now(), zoneId = preferredStatsTimeZone(), context = null) {
+  if (!isValidDateKey(key)) return 0;
+  const ctx = context || createStatsContext({ nowMs, zoneId });
+  const todayKey = ctx.todayKey;
+  if (todayKey && key > todayKey) return 0;
+  return ctx.dateCounts.get(key) || 0;
+}
+
+function countDateRange(startKey, endKey, nowMs = Date.now(), zoneId = preferredStatsTimeZone(), context = null) {
+  if (!isValidDateKey(startKey) || !isValidDateKey(endKey)) return 0;
+  const ctx = context || createStatsContext({ nowMs, zoneId });
+  const todayKey = ctx.todayKey;
+  const boundedEnd = todayKey && endKey > todayKey ? todayKey : endKey;
+  if (boundedEnd < startKey) return 0;
+  let total = 0;
+  for (const [key, count] of ctx.dateCounts) {
+    if (key >= startKey && key <= boundedEnd) total += count;
+  }
+  return total;
+}
+
+/* 旧调用兼容：日历和旧入口仍使用 offset，但日期优先按统一统计时区推导。 */
+function countRange(a, b) {
+  const min = Number(a), max = Number(b);
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return 0;
+  const nowMs = Date.now();
+  const zoneId = preferredStatsTimeZone();
+  return statsSourceRecords(nowMs, zoneId)
+    .filter((item) => !!item.dateKey && Number.isFinite(item.offset) && item.offset >= min && item.offset <= max)
+    .length;
+}
+
+function hourOf(record) {
+  const value = record && record.time;
+  const parsed = parseInt(String(value || '').split(':')[0], 10);
+  if (Number.isFinite(parsed)) return Math.max(0, Math.min(23, parsed));
+  const timestamp = Number(record && record.occurredAtMs);
+  return Number.isFinite(timestamp) ? new Date(timestamp).getHours() : 0;
 }
 
 function fmtDateShort(off) {
@@ -29,14 +149,155 @@ function fmtDateShort(off) {
   return `${d.getMonth() + 1}月${d.getDate()}日`;
 }
 
-/* ---------- #133：个人洞察统一事实快照 ----------
-   本地只计算可核对的事实；AI 和洞察 UI 均消费同一份 snapshot，避免各处统计口径漂移。 */
+function validStatsDateSet(nowMs = Date.now(), zoneId = preferredStatsTimeZone()) {
+  return createStatsContext({ nowMs, zoneId }).dateSet;
+}
 
-function insightWindowRecords(minOffset, maxOffset) {
-  return records.filter((r) => {
-    const off = Number(r && r.offset);
-    return Number.isFinite(off) && off >= minOffset && off <= maxOffset;
+function countStreakForDateSet(dateSet, todayKey) {
+  if (!todayKey) return 0;
+  let cursor = todayKey;
+  /* 今天尚未结束且没有记录时，不提前清零；从昨天开始判断。 */
+  if (!dateSet.has(cursor)) cursor = shiftDateKey(cursor, -1);
+  let streak = 0;
+  while (cursor && dateSet.has(cursor)) {
+    streak += 1;
+    cursor = shiftDateKey(cursor, -1);
+  }
+  return streak;
+}
+
+function countStreak(snapshot = null) {
+  if (snapshot && Number.isFinite(Number(snapshot.streak))) return Number(snapshot.streak);
+  const nowMs = Date.now();
+  const zoneId = preferredStatsTimeZone();
+  const todayKey = dateKeyFromTimestamp(nowMs, zoneId);
+  return countStreakForDateSet(validStatsDateSet(nowMs, zoneId), todayKey);
+}
+
+function mondayOfWeek(todayKey) {
+  const p = dateKeyParts(todayKey);
+  if (!p) return '';
+  const day = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay();
+  return shiftDateKey(todayKey, -(day === 0 ? 6 : day - 1));
+}
+
+function snapshotSignature(nowMs, zoneId, todayKey, context = null) {
+  const sourceRecords = context ? context.source : statsSourceRecords(nowMs, zoneId);
+  const items = sourceRecords
+    .map((item) => {
+      const r = item.record || {};
+      return `${r.id || ''}:${item.dateKey || ''}:${r.time || ''}:${r.updatedAtMs || r.occurredAtMs || ''}`;
+    })
+    .sort()
+    .join('|');
+  let hash = 2166136261;
+  const signatureSource = `${zoneId}|${todayKey}|${items}`;
+  for (let i = 0; i < signatureSource.length; i += 1) {
+    hash ^= signatureSource.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+function nextStatsRevision(signature) {
+  let state = null;
+  try { state = JSON.parse(localStorage.getItem(STATS_REVISION_KEY) || 'null'); } catch { state = null; }
+  if (state && state.signature === signature && Number.isFinite(Number(state.revision))) return Number(state.revision);
+  const previous = state && Number.isFinite(Number(state.revision)) ? Number(state.revision) : 0;
+  const revision = Math.max(Date.now(), previous + 1);
+  try { localStorage.setItem(STATS_REVISION_KEY, JSON.stringify({ signature, revision })); } catch { /* 只读环境 */ }
+  return revision;
+}
+
+function buildStatsSnapshot({ nowMs = Date.now(), zoneId = preferredStatsTimeZone(), context = null } = {}) {
+  const ctx = context || createStatsContext({ nowMs, zoneId });
+  const safeNow = ctx.nowMs;
+  const safeZone = ctx.zoneId;
+  const todayKey = ctx.todayKey;
+  const weekStartKey = mondayOfWeek(todayKey);
+  const monthStartKey = `${todayKey.slice(0, 7)}-01`;
+  const source = ctx.source;
+  const valid = ctx.valid;
+  /* 未来日期会留在数据源中但不参与当前周期；这里只统计真正无法归类的
+     异常记录，避免把用户误填的未来记录冒充成 3.6.1 异常日期。 */
+  const excludedInvalidRecords = source.filter((item) => !item.dateKey).length;
+  const weekDayIndex = Math.max(0, Math.min(6, dateKeyDiff(todayKey, weekStartKey) || 0));
+  const weekEndKey = shiftDateKey(weekStartKey, 6);
+  const weekCounts = Array.from({ length: 7 }, (_, index) => countDateKey(shiftDateKey(weekStartKey, index), safeNow, safeZone, ctx));
+  const weekCount = weekCounts.reduce((sum, value) => sum + value, 0);
+
+  const previousWeekStartKey = shiftDateKey(weekStartKey, -7);
+  const previousWeekEndKey = shiftDateKey(previousWeekStartKey, weekDayIndex);
+  const previousWeekCount = countDateRange(previousWeekStartKey, previousWeekEndKey, safeNow, safeZone, ctx);
+
+  const monthDayIndex = Math.max(0, (dateKeyParts(todayKey) || {}).day - 1);
+  const monthCount = countDateRange(monthStartKey, todayKey, safeNow, safeZone, ctx);
+  const previousMonthStartKey = shiftMonthKey(monthStartKey, -1);
+  const previousMonthDays = daysInMonthKey(previousMonthStartKey);
+  const previousMonthEndKey = shiftDateKey(previousMonthStartKey, Math.min(monthDayIndex, previousMonthDays - 1));
+  const previousMonthCount = countDateRange(previousMonthStartKey, previousMonthEndKey, safeNow, safeZone, ctx);
+
+  const rolling = {};
+  [7, 14, 30].forEach((days) => {
+    const startKey = shiftDateKey(todayKey, -(days - 1));
+    rolling[days] = Array.from({ length: days }, (_, index) => countDateKey(shiftDateKey(startKey, index), safeNow, safeZone, ctx));
   });
+  const dateSet = ctx.dateSet;
+  const signature = snapshotSignature(safeNow, safeZone, todayKey, ctx);
+  const revision = nextStatsRevision(signature);
+
+  const snapshot = {
+    schemaVersion: STATS_SCHEMA_VERSION,
+    statsRuleVersion: STATS_RULE_VERSION,
+    generationId: `${todayKey}:${safeZone}:${revision}`,
+    revision,
+    generatedAtMs: safeNow,
+    timezone: safeZone,
+    todayKey,
+    weekStartKey,
+    weekEndKey,
+    monthStartKey,
+    todayCount: countDateKey(todayKey, safeNow, safeZone, ctx),
+    weekCount,
+    weekCounts,
+    weekDayIndex,
+    weekDelta: previousWeekCount > 0 ? Math.round((weekCount - previousWeekCount) / previousWeekCount * 100) : null,
+    previousWeekCount,
+    monthCount,
+    monthDelta: previousMonthCount > 0 ? Math.round((monthCount - previousMonthCount) / previousMonthCount * 100) : null,
+    previousMonthCount,
+    streak: countStreakForDateSet(dateSet, todayKey),
+    rolling7Count: rolling[7].reduce((sum, value) => sum + value, 0),
+    rolling14: rolling[14],
+    rolling30: rolling[30],
+    freshness: 'fresh',
+    excludedInvalidRecords,
+  };
+  /* 内部调用可共享源数据；不可枚举，避免污染 WidgetStats/AI JSON 协议。 */
+  Object.defineProperty(snapshot, '__statsContext', { value: ctx, enumerable: false });
+  return snapshot;
+}
+
+function recentCount(days = 7, options = {}) {
+  const safeDays = Math.max(1, Math.min(90, Number(days) || 7));
+  const snapshot = options.statsSnapshot || buildStatsSnapshot(options);
+  if (safeDays === 7) return snapshot.rolling7Count;
+  if (snapshot[`rolling${safeDays}`]) return snapshot[`rolling${safeDays}`].reduce((sum, value) => sum + value, 0);
+  const nowMs = options.nowMs || Date.now();
+  const zoneId = options.zoneId || preferredStatsTimeZone();
+  const todayKey = dateKeyFromTimestamp(nowMs, zoneId);
+  return countDateRange(shiftDateKey(todayKey, -(safeDays - 1)), todayKey, nowMs, zoneId);
+}
+
+/* ---------- 个人洞察统一事实快照 ---------- */
+
+function insightWindowRecords(minOffset, maxOffset, context = {}) {
+  const nowMs = Number.isFinite(Number(context.nowMs)) ? Number(context.nowMs) : Date.now();
+  const zoneId = context.zoneId || preferredStatsTimeZone();
+  const source = context.statsContext && Array.isArray(context.statsContext.source)
+    ? context.statsContext.source
+    : statsSourceRecords(nowMs, zoneId);
+  return source.filter((item) => !!item.dateKey && Number.isFinite(item.offset) && item.offset >= minOffset && item.offset <= maxOffset);
 }
 
 function insightLabelMeta(key) {
@@ -51,8 +312,8 @@ function insightMeaningfulValues(record) {
     .filter((key) => key && key !== 'none' && key !== 'unsure');
 }
 
-function buildInsightWindow(minOffset, maxOffset) {
-  const list = insightWindowRecords(minOffset, maxOffset);
+function buildInsightWindow(minOffset, maxOffset, context = {}) {
+  const list = insightWindowRecords(minOffset, maxOffset, context);
   const timeBuckets = Object.fromEntries(BUCKETS.map((b) => [b.key, 0]));
   const labelCounts = {};
   const comboCounts = {};
@@ -62,13 +323,12 @@ function buildInsightWindow(minOffset, maxOffset) {
   let unsureCount = 0;
   let missingCount = 0;
 
-  list.forEach((record) => {
-    const off = Number(record.offset);
-    coverage.add(off);
+  list.forEach((item) => {
+    const record = item.record;
+    const dateKey = item.dateKey;
+    if (dateKey) coverage.add(dateKey);
     const hour = hourOf(record);
-    BUCKETS.forEach((bucket) => {
-      if (bucket.test(hour)) timeBuckets[bucket.key] += 1;
-    });
+    BUCKETS.forEach((bucket) => { if (bucket.test(hour)) timeBuckets[bucket.key] += 1; });
 
     const allValues = [...new Set(recordObservationValues(record))];
     if (!allValues.length) missingCount += 1;
@@ -165,12 +425,16 @@ function insightClarity(current, previous, days) {
   return { stage, label, reasons, stableTop };
 }
 
-function buildInsightSnapshot({ days = 7, now = new Date() } = {}) {
-  // `now` 保留在接口中，便于边界测试；当前记录已经通过 offset 归一化到今天。
-  void now;
+function buildInsightSnapshot({ days = 7, now = new Date(), zoneId = preferredStatsTimeZone(), statsSnapshot = null, context = null } = {}) {
   const safeDays = Math.max(1, Math.min(90, Number(days) || 7));
-  const current = buildInsightWindow(-(safeDays - 1), 0);
-  const previous = buildInsightWindow(-(safeDays * 2 - 1), -safeDays);
+  const nowMs = statsSnapshot && Number.isFinite(Number(statsSnapshot.generatedAtMs))
+    ? Number(statsSnapshot.generatedAtMs)
+    : (now instanceof Date ? now.getTime() : Number(now));
+  const safeStats = statsSnapshot || buildStatsSnapshot({ nowMs, zoneId, context });
+  const statsContext = context || safeStats.__statsContext || { nowMs, zoneId: safeStats.timezone };
+  const windowContext = { nowMs: statsContext.nowMs, zoneId: statsContext.zoneId, statsContext };
+  const current = buildInsightWindow(-(safeDays - 1), 0, windowContext);
+  const previous = buildInsightWindow(-(safeDays * 2 - 1), -safeDays, windowContext);
   const currentTopTime = insightTopEntry(current.timeBuckets);
   const previousTopTime = insightTopEntry(previous.timeBuckets);
   const currentTopLabel = current.labels[0] || null;
@@ -187,6 +451,11 @@ function buildInsightSnapshot({ days = 7, now = new Date() } = {}) {
   }));
 
   return {
+    schemaVersion: safeStats.schemaVersion,
+    statsRuleVersion: safeStats.statsRuleVersion,
+    generationId: safeStats.generationId,
+    revision: safeStats.revision,
+    timezone: safeStats.timezone,
     days: safeDays,
     recordCount: current.recordCount,
     coverageDays: current.coverageDays,
@@ -211,10 +480,15 @@ function buildInsightSnapshot({ days = 7, now = new Date() } = {}) {
       timeChanges,
       currentTopTime: currentTopTime ? { key: currentTopTime[0], count: currentTopTime[1] } : null,
       previousTopTime: previousTopTime ? { key: previousTopTime[0], count: previousTopTime[1] } : null,
-      currentTopLabel,
-      previousTopLabel,
     },
+    currentTopLabel,
+    previousTopLabel,
     clarity,
+    stats: safeStats,
   };
 }
 
+window.buildStatsSnapshot = buildStatsSnapshot;
+window.recordDateKeyForStats = recordDateKeyForStats;
+window.countDateKey = countDateKey;
+window.recentCount = recentCount;

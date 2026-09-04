@@ -22,6 +22,19 @@
 
 .rule { border: none; border-top: 1px solid var(--line); margin: 0 0 20px; }
 
+/* #210：首页焦点区上下采用同一节奏；仅作用于首页，不改变其他页面的同名规则 */
+#screen-home .focus-meta {
+  padding-bottom: 0;
+  margin-bottom: 16px;
+}
+#screen-home .focus-status,
+#screen-home .focus-sub {
+  line-height: 18px;
+}
+#screen-home > .rule {
+  margin: 0 0 16px;
+}
+
 /* ============ 统计行（无卡片 + 竖分割线） ============ */
 
 .stats-row {
@@ -30,9 +43,11 @@
   margin-bottom: 24px;
 }
 .stat-cell { flex: 1; text-align: center; padding: 4px 0; }
+#screen-home .stats-row .stat-cell { padding-top: 0; padding-bottom: 0; }
 .stat-cell + .stat-cell { border-left: 1px solid var(--line); }
 .stat-num { font-size: 26px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.1; }
 .stat-num.down { color: var(--sage); }
+.stat-num.up { color: var(--ink); }
 .stat-num.plain { color: var(--ink); }
 .stat-label { font-size: 11px; color: var(--ink-2); margin-top: 4px; letter-spacing: 0.04em; }
 
@@ -54,6 +69,21 @@
 .card-head > .seg-row.mini { flex-shrink: 0; }
 .card-title { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; }
 .card-sub { font-size: 12px; color: var(--ink-2); letter-spacing: 0.02em; }
+
+/* #211 N3：共享视觉 token 的增量迁移；先覆盖首页与一个设置代表卡片 */
+#screen-home .card,
+#screen-me #aiSettingsCard {
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: var(--card-padding);
+  margin-bottom: var(--space-4);
+}
+#screen-home .card-head { margin-bottom: var(--space-4); }
+#screen-home .card-title,
+#screen-me #aiSettingsCard .card-title { font-size: var(--type-card-title); }
+#screen-home .card-sub,
+#screen-me #aiSettingsCard .card-sub { font-size: var(--type-card-sub); }
+#screen-home .stat-label { font-size: var(--type-meta); }
 
 
 /* ============ 按钮 ============ */

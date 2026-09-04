@@ -33,6 +33,31 @@ function liquidTabPulse() {
   requestAnimationFrame(frame);
 }
 
+/* #218：统一 Tab 焦点来源，避免 OEM 手势返回把触摸焦点误判为 focus-visible。 */
+function markTabFocusOrigin(tab, origin) {
+  if (tab && tab.classList.contains('tab')) tab.dataset.focusOrigin = origin;
+}
+
+function clearTransientTabFocus(force = false) {
+  const active = document.activeElement;
+  if (!active || !active.classList || !active.classList.contains('tab')) return;
+  if (force || active.dataset.focusOrigin !== 'keyboard') active.blur();
+}
+
+let lastInputModality = 'keyboard';
+function setInputModality(origin) {
+  lastInputModality = origin;
+}
+document.addEventListener('pointerdown', () => setInputModality('pointer'), true);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab' || e.key === 'Enter' || e.key === ' ') setInputModality('keyboard');
+}, true);
+document.addEventListener('focusin', (e) => {
+  if (e.target && e.target.classList && e.target.classList.contains('tab')) {
+    markTabFocusOrigin(e.target, lastInputModality);
+  }
+}, true);
+
 // Tab 切换
 document.querySelectorAll('.tab').forEach((tab) => {
   tab.addEventListener('click', () => {
@@ -45,9 +70,16 @@ document.querySelectorAll('.tab').forEach((tab) => {
       // #147：进入洞察页时恢复旧版自动检查；满足 Key + 近 7 天 ≥3 条且报告缺失/过期才请求。
       maybeAutoGenerate();
     }
-    if (tab.dataset.screen === 'me' && typeof refreshMeSegs === 'function') refreshMeSegs();   // #121/#124：我的页全部 seg 滑块重定位（页面从隐藏变为可见）
+    if (tab.dataset.screen === 'me') {
+      if (typeof syncAISettingsInputs === 'function') syncAISettingsInputs();
+      if (typeof refreshMeSegs === 'function') refreshMeSegs();   // #121/#124：我的页全部 seg 滑块重定位（页面从隐藏变为可见）
+    }
     moveTabSlide(tab, $('tabSlide'));
     liquidTabPulse();
+    // 触摸点击只改变选中态，不保留按钮焦点；键盘操作仍保留 :focus-visible。
+    if (tab.dataset.focusOrigin === 'pointer') {
+      requestAnimationFrame(() => { if (document.activeElement === tab) tab.blur(); });
+    }
   });
 });
 
@@ -155,15 +187,29 @@ if (window.visualViewport) {
 
 /* ---------- 启动 ---------- */
 
+/* #208：首帧就绪只负责结束系统 Splash，不叠加产品层开屏动画。 */
+function notifyStartupReady() {
+  try {
+    const plugin = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.StartupReady;
+    if (plugin && typeof plugin.ready === 'function') {
+      plugin.ready();
+      return true;
+    }
+  } catch (e) { /* 浏览器预览或旧桥接版本没有 StartupReady 时静默降级 */ }
+  return false;
+}
+
 // #93：记录加载异步化（加密模式需 Web Crypto 解密），其余初始化在解密后继续
 (async () => {
-records = await Storage.loadRecords();
+records = await (window.GuanjiDataStore?.records?.load ? GuanjiDataStore.records.load() : Storage.loadRecords());
 normalizeOffsets();   // v3.6.1：启动即恢复旧记录绝对日期（id 时间戳）并重算 offset
 localStorage.setItem(LAST_DATE_KEY, fmtDateKey(new Date()));   // 初始化跨天检测基准
 // 密钥回显由 initAIUI 按 active 提供商负责（#43 per-provider），这里保持配置同步
 if (typeof hydrateAISecureKeys === 'function') await hydrateAISecureKeys();
 syncActiveConfig();
 if (typeof renderAISettingsUI === 'function') renderAISettingsUI();
+/* #202：报告缓存只做本地异步恢复，不阻塞首页、每日话语或小组件首屏。 */
+if (typeof restoreInsightCache === 'function') insightCacheRestorePromise = restoreInsightCache();
 initTheme();                       // 深色模式初始化（head 内联脚本已做初值，这里同步 UI）
 initLiquidGlass();                 // #72：液态玻璃实验开关同步 UI（head 内联脚本已应用类）
 initReminderUI();                  // 提醒设置回显（#13）
@@ -183,45 +229,103 @@ renderObservationChips();                    // #132/#137/#138：统一发生前
 initSheetDrag('recordGrab', $('recordSheet'), $('sheetBackdrop'), closeSheet);
 initSheetDrag('calendarGrab', $('calendarSheet'), $('sheetBackdrop'), closeCalendar);
 
-syncWidgetStats();   // #32：启动时同步小组件统计
-
-renderHome();
+/* #198：先完成首页首轮渲染，再把同一快照交给原生小组件，避免启动统计阻塞首屏。 */
+const initialStatsSnapshot = renderHome();
+setTimeout(() => syncWidgetStats(initialStatsSnapshot), 0);
+setTimeout(async () => {
+  /* 原生快照只在 revision 与当前 WebView 数据一致时回显，避免旧缓存覆盖新记录。 */
+  try {
+    const bridge = window.GuanjiNative?.homeSnapshot;
+    if (!bridge || typeof bridge.read !== 'function') return;
+    const result = await bridge.read();
+    const nativeSnapshot = result && result.snapshot ? JSON.parse(result.snapshot) : null;
+    const current = buildStatsSnapshot();
+    if (nativeSnapshot && nativeSnapshot.revision === current.revision && nativeSnapshot.schemaVersion === current.schemaVersion) {
+      renderHome(nativeSnapshot);
+    }
+  } catch { /* 原生快照不可用时保留 WebView 首次渲染 */ }
+  syncNativeHomeSnapshot(initialStatsSnapshot);
+}, 0);
+/* 双 RAF 确保首页完成首帧布局后再结束系统 Splash；不启动任何产品层动画。 */
+requestAnimationFrame(() => requestAnimationFrame(notifyStartupReady));
 
 /* #87：Android 返回键/侧滑兜底——分层关闭浮层（弹窗→日历→全屏计时→记录面板），全部关闭后二次确认退出 */
 let backPressedAt = 0;
 function handleBackButton() {
-  const isHidden = (id) => { const el = $(id); return !el || el.classList.contains('hidden'); };
-  // 1. 自定义词弹窗（最上层优先）
-  if (!isHidden('addBackdrop')) { closeAddDialog(); return; }
-  // 1.5 AI 数据范围说明（#163）
-  if (!isHidden('aiDataScopeBackdrop')) { $('aiDataScopeBackdrop').classList.add('hidden'); return; }
-  // 2. 删除确认弹窗
-  if (!isHidden('delBackdrop')) { closeDeleteDialog(); return; }
-  // 3. 数据管理确认弹窗
-  if (!isHidden('dialogBackdrop')) { $('dialogBackdrop').classList.add('hidden'); return; }
-  // 3.5 数据保护任务：管理/恢复状态均由同一父 Sheet 逐级返回；导出仍是独立任务。
-  if (!isHidden('exportBackdrop')) { closeSheetPanel('exportBackdrop'); return; }
-  // #187：WebDAV 配置是父 Sheet 之上的临时表单，返回时沿用取消路径回到备份与恢复首页。
-  if (!isHidden('wdCfgBackdrop')) { if (typeof window.closeWdConfigAndReturn === 'function') window.closeWdConfigAndReturn(); else $('wdCfgBackdrop').classList.add('hidden'); return; }
-  if (!isHidden('backupSyncBackdrop')) { if (typeof window.backupHubBack === 'function') window.backupHubBack(); else closeSheetPanel('backupSyncBackdrop'); return; }
-  // 4. 日历弹层
-  if (!isHidden('calendarSheet')) { closeCalendar(); return; }
-  // 5. 全屏计时/汇总页（#51/#54：全屏覆盖在面板之上，返回 = 取消计时）
-  if (!isHidden('timerScreen')) { cancelFromTimerScreen(); return; }
-  // 6. 记录面板（#51：计时中关闭面板 = 取消计时，closeSheet 已处理）
-  if (!isHidden('recordSheet')) { closeSheet(); return; }
-  // 7. 首页：二次确认退出（2 秒窗口，温和提示）
-  const now = Date.now();
-  if (now - backPressedAt < 2000) {
-    if (window.Capacitor && Capacitor.Plugins.App) Capacitor.Plugins.App.exitApp();
-    return;
+  try {
+    const isHidden = (id) => { const el = $(id); return !el || el.classList.contains('hidden'); };
+    // 1. 自定义词弹窗（最上层优先）
+    if (!isHidden('addBackdrop')) { closeAddDialog(); return; }
+    // 1.5 AI 数据范围说明（#163）
+    if (!isHidden('aiDataScopeBackdrop')) { $('aiDataScopeBackdrop').classList.add('hidden'); return; }
+    // 2. 删除确认弹窗
+    if (!isHidden('delBackdrop')) { closeDeleteDialog(); return; }
+    // 3. 数据管理确认弹窗
+    if (!isHidden('dialogBackdrop')) { $('dialogBackdrop').classList.add('hidden'); return; }
+    // 3.5 数据保护任务：管理/恢复状态均由同一父 Sheet 逐级返回；导出仍是独立任务。
+    if (!isHidden('exportBackdrop')) { closeSheetPanel('exportBackdrop'); return; }
+    // #187：WebDAV 配置是父 Sheet 之上的临时表单，返回时沿用取消路径回到备份与恢复首页。
+    if (!isHidden('wdCfgBackdrop')) { if (typeof window.closeWdConfigAndReturn === 'function') window.closeWdConfigAndReturn(); else $('wdCfgBackdrop').classList.add('hidden'); return; }
+    if (!isHidden('backupSyncBackdrop')) { if (typeof window.backupHubBack === 'function') window.backupHubBack(); else closeSheetPanel('backupSyncBackdrop'); return; }
+    // 4. 日历弹层
+    if (!isHidden('calendarSheet')) { closeCalendar(); return; }
+    // 5. 全屏计时/汇总页（#51/#54：全屏覆盖在面板之上，返回 = 取消计时）
+    if (!isHidden('timerScreen')) { cancelFromTimerScreen(); return; }
+    // 6. 记录面板（#51：计时中关闭面板 = 取消计时，closeSheet 已处理）
+    if (!isHidden('recordSheet')) { closeSheet(); return; }
+    // 7. 首页：二次确认退出（2 秒窗口，温和提示）
+    const now = Date.now();
+    if (now - backPressedAt < 2000) {
+      if (window.Capacitor && Capacitor.Plugins.App) Capacitor.Plugins.App.exitApp();
+      return;
+    }
+    backPressedAt = now;
+    toast('再按一次退出');
+  } finally {
+    // #218：系统返回无论命中哪一层，都不把 Tab 按钮留在焦点状态。
+    clearTransientTabFocus(true);
   }
-  backPressedAt = now;
-  toast('再按一次退出');
 }
+
+/* #218：WebView 从后台/系统界面恢复时，清理 OEM 留下的触摸 Tab 焦点。 */
+function clearTabFocusOnResume() {
+  requestAnimationFrame(() => clearTransientTabFocus());
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) clearTabFocusOnResume();
+});
+window.addEventListener('pageshow', clearTabFocusOnResume);
+
 if (window.Capacitor && Capacitor.Plugins.App) {
   Capacitor.Plugins.App.addListener('backButton', handleBackButton);
+  /* #200：回到前台时复用同一 StatsSnapshot，修正后台期间跨天或同步失败的缓存。 */
+  try {
+    Capacitor.Plugins.App.addListener('appStateChange', (state) => {
+      if (!state || !state.isActive) return;
+      clearTabFocusOnResume();
+      if (typeof checkDayRollover === 'function') checkDayRollover();
+      const snapshot = buildStatsSnapshot();
+      syncWidgetStats(snapshot);
+    });
+  } catch (e) { /* 旧 Capacitor 无 appStateChange 时保留冷启动同步 */ }
 }
+
+/* #200：App 驻留跨过本地午夜时主动刷新一次；被系统挂起/杀进程时由冷启动或前台事件兜底。 */
+let widgetRolloverTimer = null;
+function scheduleWidgetRolloverSync() {
+  clearTimeout(widgetRolloverTimer);
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(24, 0, 5, 0);
+  const delay = Math.max(1000, next.getTime() - now.getTime());
+  widgetRolloverTimer = setTimeout(() => {
+    if (typeof checkDayRollover === 'function') checkDayRollover();
+    const snapshot = buildStatsSnapshot();
+    syncWidgetStats(snapshot);
+    scheduleWidgetRolloverSync();
+  }, delay);
+}
+scheduleWidgetRolloverSync();
 
 initSecureUI();   // #93：数据加密卡 UI（开启/修改口令/关闭/密文导出导入）
 initWebDAVUI();   // #115：WebDAV 备份卡 UI（配置/备份/恢复/管理/切后台自动备份）

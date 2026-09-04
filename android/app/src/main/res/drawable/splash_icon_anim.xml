@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- #204：01-C 切片聚焦动画；品牌字标随同一 vector 从首帧可见。 -->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/splash_icon">
+    <target
+        android:name="sliceTop"
+        android:animation="@animator/splash_slice_top" />
+    <target
+        android:name="sliceBottom"
+        android:animation="@animator/splash_slice_bottom" />
+    <target
+        android:name="sliceTopHighlight"
+        android:animation="@animator/splash_highlight_top" />
+    <target
+        android:name="sliceBottomHighlight"
+        android:animation="@animator/splash_highlight_bottom" />
+</animated-vector>

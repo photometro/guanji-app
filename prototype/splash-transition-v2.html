@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>观己 · 开屏形式原型 v2</title>
+  <style>
+    :root {
+      --canvas: #eaf3fb;
+      --phone: #f3f7fb;
+      --surface: rgba(255, 255, 255, .78);
+      --surface-strong: rgba(255, 255, 255, .92);
+      --ink: #11263d;
+      --muted: #71839a;
+      --faint: #aab8c6;
+      --blue: #178be9;
+      --blue-soft: #89d8ff;
+      --line: rgba(21, 65, 104, .11);
+      --ease-out: cubic-bezier(.16, 1, .3, 1);
+      --ease-standard: cubic-bezier(.2, .8, .2, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; margin: 0; }
+    body {
+      display: grid;
+      place-items: center;
+      padding: 26px 14px 106px;
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background:
+        radial-gradient(circle at 18% 12%, rgba(255,255,255,.9), transparent 34%),
+        linear-gradient(145deg, #e4f2fe 0%, var(--canvas) 46%, #e7eef7 100%);
+    }
+    .prototype-note {
+      position: fixed;
+      top: 13px;
+      left: 50%;
+      z-index: 50;
+      transform: translateX(-50%);
+      color: #65798e;
+      font-size: 11px;
+      letter-spacing: .07em;
+      white-space: nowrap;
+    }
+    .phone {
+      position: relative;
+      width: min(390px, 100%);
+      min-height: 770px;
+      overflow: hidden;
+      border: 8px solid #142c45;
+      border-radius: 42px;
+      background: var(--phone);
+      box-shadow: 0 28px 76px rgba(35, 69, 101, .2), 0 3px 12px rgba(20, 48, 78, .14);
+    }
+    .statusbar {
+      position: absolute;
+      inset: 0 0 auto;
+      z-index: 20;
+      display: flex;
+      justify-content: space-between;
+      padding: 14px 19px 0;
+      color: #173049;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .status-icons { display: flex; align-items: center; gap: 8px; }
+    .status-icons i { display: block; width: 8px; height: 8px; border-radius: 50%; background: #173049; opacity: .78; }
+    .status-icons i:last-child { width: 18px; border-radius: 4px; }
+    .scene { position: relative; min-height: 754px; isolation: isolate; background: var(--phone); }
+    .home { position: absolute; inset: 0; padding: 64px 21px 36px; overflow: hidden; }
+    .home-top { display: flex; align-items: flex-start; justify-content: space-between; }
+    .eyebrow { margin: 0 0 7px; color: var(--muted); font-size: 11px; letter-spacing: .12em; }
+    .home h1 { margin: 0; font-size: 22px; line-height: 1.2; letter-spacing: -.02em; }
+    .ghost-button { width: 32px; height: 32px; border: 0; border-radius: 50%; background: rgba(255,255,255,.78); color: var(--muted); font-size: 19px; }
+    .focus-row { display: flex; align-items: flex-end; justify-content: space-between; margin-top: 37px; }
+    .focus-value { font-size: 62px; font-weight: 800; line-height: .92; letter-spacing: -.06em; }
+    .focus-value small { margin-left: 5px; color: var(--muted); font-size: 14px; font-weight: 600; letter-spacing: 0; }
+    .record-button { display: inline-flex; align-items: center; gap: 6px; min-height: 42px; padding: 0 16px; border: 0; border-radius: 14px; background: var(--blue); color: #fff; font-size: 13px; font-weight: 700; box-shadow: 0 8px 18px rgba(23,139,233,.23); }
+    .focus-meta { margin-top: 13px; }
+    .focus-meta p { margin: 0; }
+    .focus-status { color: var(--muted); font-size: 12px; }
+    .focus-sub { margin-top: 4px !important; color: #96a6b7; font-size: 11px; }
+    .rule { height: 1px; margin: 28px 0 20px; border: 0; background: var(--line); }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); margin-bottom: 22px; }
+    .stat { text-align: center; border-right: 1px solid var(--line); }
+    .stat:last-child { border-right: 0; }
+    .stat strong { display: block; font-size: 21px; }
+    .stat span { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; }
+    .trend { padding: 17px; border: 1px solid rgba(255,255,255,.88); border-radius: 19px; background: var(--surface); box-shadow: 0 8px 22px rgba(54,82,110,.07); backdrop-filter: blur(14px); }
+    .card-head { display: flex; justify-content: space-between; align-items: baseline; }
+    .card-title { margin: 0; font-size: 14px; font-weight: 750; }
+    .card-sub { margin: 0; color: var(--muted); font-size: 10px; }
+    .chart { display: flex; align-items: end; gap: 7px; height: 112px; margin-top: 20px; padding: 9px 7px 5px; border-bottom: 1px solid var(--line); }
+    .chart i { flex: 1; min-height: 14px; border-radius: 6px 6px 3px 3px; background: linear-gradient(180deg, var(--blue-soft), var(--blue)); opacity: .82; }
+    .chart i:nth-child(1) { height: 24%; opacity: .32; }
+    .chart i:nth-child(2) { height: 44%; opacity: .43; }
+    .chart i:nth-child(3) { height: 34%; opacity: .38; }
+    .chart i:nth-child(4) { height: 63%; }
+    .chart i:nth-child(5) { height: 53%; opacity: .66; }
+    .chart i:nth-child(6) { height: 82%; }
+    .chart i:nth-child(7) { height: 69%; opacity: .72; }
+    .home-bottom { position: absolute; right: 22px; bottom: 18px; left: 22px; display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; }
+    .home-bottom b { color: var(--blue); font-size: 11px; }
+
+    /* A — 首屏连续显现：开屏只是首页首帧的低透明度状态。 */
+    /* A 的第一帧不是空白：先给出首页的安静骨架，再用同一条节奏让内容稳定。 */
+    .variant-a .home > * { opacity: .3; transform: translateY(4px); }
+    .variant-a .home-top { opacity: .76; transform: none; }
+    .variant-a .trend { opacity: .2; transform: translateY(5px) scale(.995); transform-origin: 50% 0; }
+    .variant-a.playing .home > * { animation: a-content-in .32s var(--ease-out) both; }
+    .variant-a.playing .home-top { animation-delay: .04s; }
+    .variant-a.playing .focus-row { animation-delay: .09s; }
+    .variant-a.playing .focus-meta { animation-delay: .14s; }
+    .variant-a.playing .rule { animation-delay: .18s; }
+    .variant-a.playing .stats { animation-delay: .22s; }
+    .variant-a.playing .trend { animation-delay: .27s; }
+    .variant-a.playing .home-bottom { animation-delay: .34s; }
+    .variant-a .soft-veil { position: absolute; inset: 0; z-index: 5; pointer-events: none; background: linear-gradient(180deg, rgba(243,247,251,.72) 0%, rgba(243,247,251,.32) 38%, rgba(243,247,251,0) 78%); animation: veil-away .42s .02s var(--ease-out) both; }
+
+    /* B — 观察焦点扫描：焦点扫过首页，完成一次从模糊到清晰。 */
+    .variant-b .home > * { opacity: .12; filter: blur(4px); transform: translateY(4px); }
+    .variant-b.playing .home > * { animation: focus-reveal .65s .08s var(--ease-out) both; }
+    .variant-b.playing .home-top { animation-delay: .12s; }
+    .variant-b.playing .focus-row { animation-delay: .18s; }
+    .variant-b.playing .focus-meta { animation-delay: .23s; }
+    .variant-b.playing .rule { animation-delay: .28s; }
+    .variant-b.playing .stats { animation-delay: .33s; }
+    .variant-b.playing .trend { animation-delay: .38s; }
+    .variant-b.playing .home-bottom { animation-delay: .45s; }
+    .scan-track { position: absolute; inset: 0; z-index: 7; pointer-events: none; overflow: hidden; }
+    .scan-beam { position: absolute; top: -13%; left: -18%; width: 136%; height: 22%; opacity: .0; transform: translateY(-20%); background: linear-gradient(180deg, transparent 0%, rgba(137,216,255,.04) 28%, rgba(255,255,255,.72) 48%, rgba(137,216,255,.12) 63%, transparent 100%); filter: blur(4px); }
+    .variant-b.playing .scan-beam { animation: scan .84s .06s var(--ease-standard) both; }
+
+    /* C — 记录轨迹生成：节点与连线最后汇入首页趋势图。 */
+    .variant-c .home > * { opacity: .1; transform: translateY(10px); }
+    .variant-c.playing .home > * { animation: trace-home-in .38s .57s var(--ease-out) both; }
+    .variant-c.playing .home-top { animation-delay: .55s; }
+    .variant-c.playing .focus-row { animation-delay: .60s; }
+    .variant-c.playing .focus-meta { animation-delay: .64s; }
+    .variant-c.playing .rule { animation-delay: .68s; }
+    .variant-c.playing .stats { animation-delay: .72s; }
+    .variant-c.playing .trend { animation-delay: .76s; }
+    .variant-c.playing .home-bottom { animation-delay: .83s; }
+    .trace-layer { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
+    .variant-c.playing .trace-layer { animation: trace-dismiss 1.28s .02s ease both; }
+    .trace-axis { position: absolute; top: 204px; left: 51px; width: 262px; height: 1px; transform: scaleX(0); transform-origin: left; background: linear-gradient(90deg, rgba(137,216,255,.3), var(--blue), rgba(23,139,233,.1)); }
+    .trace-node { position: absolute; width: 11px; height: 11px; border: 3px solid var(--phone); border-radius: 50%; background: var(--blue); opacity: 0; box-shadow: 0 0 0 7px rgba(23,139,233,.1); }
+    .trace-node.n1 { top: 198px; left: 82px; }
+    .trace-node.n2 { top: 198px; left: 177px; }
+    .trace-node.n3 { top: 198px; left: 279px; background: var(--blue-soft); }
+    .variant-c.playing .trace-axis { animation: trace-line .45s .10s var(--ease-out) both; }
+    .variant-c.playing .trace-node { animation: trace-node-in .25s var(--ease-out) both; }
+    .variant-c.playing .trace-node.n1 { animation-delay: .18s; }
+    .variant-c.playing .trace-node.n2 { animation-delay: .31s; }
+    .variant-c.playing .trace-node.n3 { animation-delay: .44s; }
+    .trace-caption { position: absolute; top: 220px; left: 0; width: 100%; color: rgba(113,131,154,.68); text-align: center; font-size: 10px; letter-spacing: .08em; opacity: 0; }
+    .variant-c.playing .trace-caption { animation: caption-in .28s .42s var(--ease-out) both; }
+
+    .replay { position: absolute; right: 17px; bottom: 18px; z-index: 25; min-height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: rgba(255,255,255,.86); color: var(--muted); font-size: 10px; box-shadow: 0 5px 14px rgba(29,55,83,.11); cursor: pointer; }
+    .replay:active { transform: scale(.97); }
+    .reduced .home > * { animation: none !important; opacity: 1 !important; filter: none !important; transform: none !important; }
+    .reduced .soft-veil, .reduced .scan-beam, .reduced .trace-axis, .reduced .trace-node, .reduced .trace-caption { animation: none !important; opacity: 0 !important; transform: none !important; }
+    .reduced .home { opacity: 1; }
+
+    @keyframes a-content-in { from { opacity: .26; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes veil-away { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes focus-reveal { 0% { opacity: .12; filter: blur(4px); transform: translateY(4px); } 100% { opacity: 1; filter: blur(0); transform: translateY(0); } }
+    @keyframes scan { 0% { opacity: 0; transform: translateY(-18%); } 15% { opacity: 1; } 78% { opacity: .72; } 100% { opacity: 0; transform: translateY(510%); } }
+    @keyframes trace-line { from { transform: scaleX(0); opacity: .2; } to { transform: scaleX(1); opacity: 1; } }
+    @keyframes trace-node-in { from { opacity: 0; transform: scale(.35); } to { opacity: 1; transform: scale(1); } }
+    @keyframes caption-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes trace-home-in { from { opacity: .1; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes trace-dismiss { 0%, 72% { opacity: 1; } 100% { opacity: 0; } }
+    @media (max-width: 430px) { body { padding: 36px 8px 105px; } .phone { border-width: 6px; border-radius: 35px; } }
+
+    .controls { position: fixed; left: 50%; bottom: 22px; z-index: 40; display: flex; align-items: center; gap: 9px; transform: translateX(-50%); padding: 8px 10px; border: 1px solid rgba(255,255,255,.86); border-radius: 999px; background: rgba(19,43,68,.95); color: #fff; box-shadow: 0 10px 26px rgba(14,35,57,.24); }
+    .controls button { display: grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; font-size: 16px; cursor: pointer; }
+    .controls button:hover { background: rgba(255,255,255,.2); }
+    .controls .label { min-width: 198px; text-align: center; font-size: 11px; letter-spacing: .02em; }
+    .controls .label b { color: #91dcff; }
+    .motion-toggle { position: fixed; right: 17px; bottom: 22px; z-index: 40; min-height: 32px; padding: 0 11px; border: 0; border-radius: 999px; background: rgba(255,255,255,.83); color: #5e7389; font-size: 10px; box-shadow: 0 7px 18px rgba(29,55,83,.14); cursor: pointer; }
+    .motion-toggle[aria-pressed="true"] { background: #173b5f; color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="prototype-note">PROTOTYPE · 开屏形式与首页衔接 v2 · 仅用于评估</div>
+  <main class="phone" id="phone">
+    <div class="statusbar"><span>10:24</span><span class="status-icons"><i></i><i></i><i></i></span></div>
+    <section class="scene" id="scene"></section>
+  </main>
+  <nav class="controls" aria-label="开屏方案切换">
+    <button type="button" id="prev" aria-label="上一个方案">‹</button>
+    <span class="label" id="variantLabel"></span>
+    <button type="button" id="next" aria-label="下一个方案">›</button>
+  </nav>
+  <button class="motion-toggle" id="motionToggle" type="button" aria-pressed="false">减少动效</button>
+
+  <script>
+    // Three radically different splash forms, switchable via ?variant=A|B|C.
+    const variants = {
+      A: { name: '首屏连续显现', desc: '首页背景 → 卡片 → 数据逐层就绪' },
+      B: { name: '观察焦点扫描', desc: '焦点扫过 → 内容从模糊到清晰' },
+      C: { name: '记录轨迹生成', desc: '记录节点 → 轨迹线 → 趋势卡片' }
+    };
+    const keys = Object.keys(variants);
+    const params = new URLSearchParams(location.search);
+    let current = (params.get('variant') || 'A').toUpperCase();
+    if (!variants[current]) current = 'A';
+    let reduced = false;
+
+    function home() {
+      return `<div class="home">
+        <header class="home-top"><div><p class="eyebrow">8月30日 · 周日</p><h1>今天，感觉如何？</h1></div><button class="ghost-button" aria-label="补记">＋</button></header>
+        <div class="focus-row"><span class="focus-value">2<small>次</small></span><button class="record-button">＋ 记录</button></div>
+        <div class="focus-meta"><p class="focus-status">今天 · 已记录 2 次</p><p class="focus-sub">记录本身就是觉察</p></div>
+        <hr class="rule">
+        <div class="stats"><div class="stat"><strong>6</strong><span>本周</span></div><div class="stat"><strong>18</strong><span>本月</span></div><div class="stat"><strong>4</strong><span>连续记录</span></div></div>
+        <div class="trend"><div class="card-head"><p class="card-title">次数趋势</p><p class="card-sub">每天次数</p></div><div class="chart"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="home-bottom"><span>首页首帧已就绪</span><b>进入记录</b></div>
+      </div>`;
+    }
+
+    function overlay(key) {
+      if (key === 'A') return '<div class="soft-veil" aria-hidden="true"></div>';
+      if (key === 'B') return '<div class="scan-track" aria-hidden="true"><div class="scan-beam"></div></div>';
+      return `<div class="trace-layer" aria-hidden="true"><div class="trace-axis"></div><span class="trace-node n1"></span><span class="trace-node n2"></span><span class="trace-node n3"></span><div class="trace-caption">记录 · 观察 · 理解</div></div>`;
+    }
+
+    function render(key, replay = false) {
+      const scene = document.getElementById('scene');
+      scene.innerHTML = `<div class="variant-${key.toLowerCase()} ${replay ? 'playing' : 'playing'}">${home()}${overlay(key)}<button class="replay" type="button">重新播放</button></div>`;
+      document.getElementById('variantLabel').innerHTML = `<b>${key}</b> · ${variants[key].name}　<span>${variants[key].desc}</span>`;
+      if (reduced) document.getElementById('phone').classList.add('reduced');
+      else document.getElementById('phone').classList.remove('reduced');
+      scene.querySelector('.replay').addEventListener('click', () => render(current, true));
+    }
+
+    function setVariant(key) {
+      current = key;
+      const nextUrl = new URL(location.href);
+      nextUrl.searchParams.set('variant', key);
+      history.replaceState(null, '', nextUrl);
+      render(current, true);
+    }
+    document.getElementById('prev').addEventListener('click', () => setVariant(keys[(keys.indexOf(current) + keys.length - 1) % keys.length]));
+    document.getElementById('next').addEventListener('click', () => setVariant(keys[(keys.indexOf(current) + 1) % keys.length]));
+    document.getElementById('motionToggle').addEventListener('click', (event) => {
+      reduced = !reduced;
+      event.currentTarget.setAttribute('aria-pressed', String(reduced));
+      event.currentTarget.textContent = reduced ? '恢复动效' : '减少动效';
+      render(current, true);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable) return;
+      if (event.key === 'ArrowLeft') document.getElementById('prev').click();
+      if (event.key === 'ArrowRight') document.getElementById('next').click();
+    });
+    render(current, true);
+  </script>
+</body>
+</html>

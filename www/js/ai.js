@@ -31,8 +31,14 @@ function renderInsightDisclaimer() {
   el.setAttribute('aria-hidden', String(!visible));
 }
 
-function buildAggregatePayload(days = 7) {
-  const snapshot = buildInsightSnapshot({ days });
+function buildAggregatePayload(days = 7, options = {}) {
+  /* #198/#199：调用方可能传入基础 StatsSnapshot（首页/小组件共享快照），
+     只有洞察快照才带 labels/cooccurrence；缺少洞察字段时从同一基础快照派生，
+     避免每日话语或自动报告触发 undefined.filter，同时保持同一统计上下文。 */
+  const suppliedSnapshot = options.statsSnapshot || null;
+  const snapshot = suppliedSnapshot && Array.isArray(suppliedSnapshot.labels)
+    ? suppliedSnapshot
+    : buildInsightSnapshot({ days, context: options.context, statsSnapshot: suppliedSnapshot });
   const defaultLabels = snapshot.labels.filter((item) => !item.custom);
   const observationCount = Object.fromEntries(defaultLabels.map((item) => [item.label, item.count]));
   const observationPct = Object.fromEntries(defaultLabels.map((item) => [item.label, Math.round(item.ratio * 100)]));
@@ -57,7 +63,7 @@ function buildAggregatePayload(days = 7) {
     '上一窗口记录数': snapshot.previous.recordCount,
     '记录数变化': snapshot.changes.recordDelta,
     '记录数变化百分比': snapshot.changes.recordDeltaPct,
-    '连续记录天数': countStreak(),
+    '连续记录天数': snapshot.stats ? snapshot.stats.streak : countStreak(),
     '成人内容影响记录占比': adult ? Math.round(adult.ratio * 100) : 0,
     '没有明显情绪/诱因记录数': snapshot.noneCount || 0,
     '原因不确定记录数': snapshot.unsureCount || 0,
@@ -219,9 +225,8 @@ function insightSuggestionKey(value) {
 function insightSuggestionsHTML(snapshot, aiValue, aiVisible) {
   const localItems = insightSuggestionsLocalItems(snapshot).map((text) => ({ text, source: 'local' }));
   const aiItems = aiVisible ? insightAIItems(aiValue, 3).map((text) => ({ text, source: 'ai' })) : [];
-  // #190：AI 增强可用时只展示 AI 建议；没有有效 AI 建议时回退本地建议。
-  // 这样不会因为本地前三条把 AI 建议挤出列表，也不改变 AI 请求或隐私边界。
-  const ordered = aiItems.length ? aiItems : localItems;
+  // #213：AI 单态下只展示 AI 建议；AI 没有返回建议时明确提示，不混入本地建议。
+  const ordered = aiVisible ? aiItems : localItems;
   const seen = new Set();
   const items = ordered.filter((item) => {
     const key = insightSuggestionKey(item.text);
@@ -229,7 +234,11 @@ function insightSuggestionsHTML(snapshot, aiValue, aiVisible) {
     seen.add(key);
     return true;
   }).slice(0, 3);
-  if (!items.length) return '<p class="insight-card-empty">记录更多后，这里会显示可以尝试的小调整。</p>';
+  if (!items.length) {
+    return aiVisible
+      ? '<p class="insight-card-empty insight-card-empty--ai">本次未生成可选建议。</p>'
+      : '<p class="insight-card-empty">记录更多后，这里会显示可以尝试的小调整。</p>';
+  }
   return `<ol class="insight-suggestion-list">${items.map((item, index) => `<li><span>${String(index + 1).padStart(2, '0')}</span><p>${item.source === 'ai' ? '<small class="insight-suggestion-source">AI 建议</small>' : ''}${esc(item.text)}</p></li>`).join('')}</ol>`;
 }
 
@@ -257,12 +266,13 @@ function insightCardBodyHTML(key, snapshot, fact, aiValue, aiVisible) {
     change: insightChangeVisual(snapshot),
     suggestions: insightSuggestionsHTML(snapshot, aiValue, aiVisible),
   }[key];
+  // #215：AI 只替换重复的本地说明段；本地指标、图表、标签和比较轨道始终保留。
   const narrative = key === 'suggestions'
     ? ''
-    : ['overview', 'change'].includes(key)
-      ? (aiVisible ? insightNarrativeHTML('', aiValue, true) : '')
-      : insightNarrativeHTML(fact, aiValue, aiVisible);
-  return `<div class="insight-card-body insight-card-body--${key}">${narrative}${body}</div>`;
+    : aiVisible
+      ? insightNarrativeHTML('', aiValue, true)
+      : insightNarrativeHTML(fact, null, false);
+  return `<div class="insight-card-body insight-card-body--${key}${aiVisible ? ' insight-card-body--ai' : ''}">${narrative}${body}</div>`;
 }
 
 function renderInsightAction(snapshot, aiFresh) {
@@ -279,19 +289,20 @@ function renderInsightAction(snapshot, aiFresh) {
       ? '数据有更新，上次 AI 观察已过期，可以重新生成。'
       : insightAIStatus === 'error'
         ? 'AI 观察暂时没有生成，可以稍后重试。'
-        : '基于近 7 天聚合数据，在每张卡片中补充一段可选的温和观察。';
+        : '基于近 7 天聚合数据，为每张卡片生成可选的温和观察。';
   }
   content.innerHTML = insightActionHTML(snapshot, aiFresh);
   renderInsightDisclaimer();
 }
 
-function renderInsightLocal() {
+function renderInsightLocal(statsSnapshot = null) {
   const cardsEl = $('insightCards');
   if (!cardsEl || typeof buildInsightSnapshot !== 'function') return;
   bindInsightCardActions();
-  const snapshot = buildInsightSnapshot({ days: 7 });
+  const snapshot = buildInsightSnapshot({ days: 7, statsSnapshot });
   const facts = insightLocalFacts(snapshot);
-  const aiVisible = !!insightAIData && (insightAIStatus === 'ready' || insightAIStatus === 'ready-stale');
+  // #213：已有报告在重新生成期间继续保持 AI 单态；首次生成没有旧报告时才显示本地内容。
+  const aiVisible = !!insightAIData && ['ready', 'ready-stale', 'loading'].includes(insightAIStatus);
   const aiFresh = aiVisible && insightAIStatus === 'ready' && !reportStale();
   const aiValue = (key) => aiVisible ? insightAIData[key] : null;
   cardsEl.dataset.insightMode = aiVisible ? 'ai' : 'local';
@@ -304,7 +315,7 @@ function renderInsightLocal() {
     ['suggestions', '可选建议', '可以试试', '', aiValue('suggestions')],
   ];
   cardsEl.innerHTML = cards.map(([key, tag, title, fact, aiCopy]) => `
-    <section class="report-card insight-report-card insight-card-${key}" data-insight-card="${key}">
+    <section class="report-card insight-report-card insight-card-${key}" data-insight-card="${key}" data-insight-state="${aiVisible ? 'ai' : 'local'}">
       <span class="report-tag">${tag}</span>
       <h2 class="report-title">${title}</h2>
       ${insightCardBodyHTML(key, snapshot, fact, aiCopy, aiVisible)}
@@ -400,14 +411,14 @@ function saveAIStore() {
 
 const AI_SECURE_KEY_PREFIX = 'guanji_ai_key_';
 async function readSecureAIKey(provider) {
-  if (!(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.SecureStorage)) return '';
+  if (!(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.SecureStorage)) return { value: '', ok: false };
   try {
     const res = await Capacitor.Plugins.SecureStorage.internalGetItem({
       prefixedKey: 'capacitor-storage_' + AI_SECURE_KEY_PREFIX + provider,
       sync: false,
     });
-    return res && res.data != null ? String(res.data) : '';
-  } catch { return ''; }
+    return { value: res && res.data != null ? String(res.data) : '', ok: true };
+  } catch { return { value: '', ok: false }; }
 }
 
 async function persistSecureAIKey(provider, value) {
@@ -423,19 +434,28 @@ async function hydrateAISecureKeys() {
   if (!(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.SecureStorage)) return;
   let changed = false;
   for (const provider of Object.keys(aiStore.providers)) {
-    const storedKey = await readSecureAIKey(provider);
+    const result = await readSecureAIKey(provider);
+    // SecureStorage 读取失败时不能把当前配置误判为空，保留内存/旧版迁移值，等待下一次启动重试。
+    if (!result.ok) continue;
+    const storedKey = result.value;
     const localKey = aiStore.providers[provider].apiKey || '';
     if (storedKey) {
       if (localKey !== storedKey) changed = true;
       aiStore.providers[provider].apiKey = storedKey;
     } else if (localKey) {
-      await persistSecureAIKey(provider, localKey);
+      // 只有安全存储写入成功，才让 saveAIStore() 清掉原生 localStorage 中的明文回退值。
+      try {
+        await persistSecureAIKey(provider, localKey);
+        changed = true;
+      } catch {
+        // 保留 localKey，避免一次写入失败造成老用户配置丢失。
+      }
     }
-    if (aiStore.providers[provider].apiKey) changed = true;
   }
   if (changed) saveAIStore();
   syncActiveConfig();
   if (typeof renderAISettingsUI === 'function') renderAISettingsUI();
+  if (typeof syncAISettingsInputs === 'function') syncAISettingsInputs();
 }
 
 /* 同步 active 提供商的扁平视图（askAI/getDailyTip 等读取 aiConfig/apiKey） */
@@ -729,7 +749,7 @@ function validateInsightAIData(data) {
   return true;
 }
 
-function renderAIReport(data) {
+function renderAIReport(data, statsSnapshot = null) {
   insightAIData = {
     ...data,
     labelInsights: data.labelInsights || (data.moodInsight ? [data.moodInsight] : []),
@@ -737,7 +757,9 @@ function renderAIReport(data) {
     changeInsight: data.changeInsight || '',
   };
   insightAIStatus = 'ready';
-  renderInsightLocal();
+  // #202：只有通过结构化、边界校验的结果才写入本机缓存；失败不影响当前页面。
+  void persistInsightCache(statsSnapshot);
+  renderInsightLocal(statsSnapshot);
   const result = $('analysisResult');
   if (result) result.innerHTML = '';
   const ask = $('askSection');
@@ -780,7 +802,15 @@ function aiErrorMessage(err) {
 /* ---------- AI 分析：自动生成 + 指纹 + 重试 ---------- */
 
 const REPORT_FP_KEY = 'guanji_report_fingerprint';
+const INSIGHT_CACHE_KEY = 'guanji_insight_cache_v1';
+const INSIGHT_CACHE_ENC_KEY = 'guanji_insight_cache_enc_v1';
+const INSIGHT_CACHE_SCHEMA_VERSION = 1;
 const RETRY_DELAYS = [3000];   // #174：结构化分析最多自动安全重试 1 次
+
+let insightCacheMeta = null;
+let insightCacheReady = false;
+let insightCacheRestorePromise = Promise.resolve();
+let insightAutoCheckQueued = false;
 
 function insightLocalDigest(text) {
   // 同步、不可逆的本地摘要；不把日期、记录 ID 或标签原文写入可读存储。
@@ -795,10 +825,158 @@ function insightLocalDigest(text) {
 /* 数据指纹：仅用于本地判断报告是否过期，不再把可读记录摘要写入 localStorage。 */
 function reportFingerprint() {
   const digest = records.map((r) =>
-     `${r.offset}|${r.time}|${recordObservationValues(r).join(',')}|${(r.moods || []).join(',')}|${(r.triggers || []).join(',')}|${r.duration || ''}|${r.media ? '1' : ''}`
+     `${recordDateKeyForStats(r)}|${r.occurredAtMs || ''}|${r.time}|${recordObservationValues(r).join(',')}|${(r.moods || []).join(',')}|${(r.triggers || []).join(',')}|${r.duration || ''}|${r.media ? '1' : ''}`
   ).join(';');
   return `v2:${insightLocalDigest(JSON.stringify({ date: fmtDateInput(new Date()), window: 7, count: records.length, digest }))}`;
 }
+
+function insightCurrentRuleVersion() {
+  try { return String(typeof STATS_RULE_VERSION !== 'undefined' ? STATS_RULE_VERSION : '3.60'); } catch { return '3.60'; }
+}
+
+function insightCacheContext(statsSnapshot = null) {
+  return {
+    fingerprint: reportFingerprint(),
+    generatedAtMs: Date.now(),
+    windowDays: insightWindowDays,
+    timezone: String((statsSnapshot && statsSnapshot.timezone) || (typeof preferredStatsTimeZone === 'function' ? preferredStatsTimeZone() : 'local')),
+    statsRuleVersion: String((statsSnapshot && statsSnapshot.statsRuleVersion) || insightCurrentRuleVersion()),
+    provider: String((aiConfig && aiConfig.provider) || ''),
+    model: String((aiConfig && aiConfig.model) || ''),
+  };
+}
+
+function insightPersistedReport(data) {
+  const report = {};
+  INSIGHT_SCHEMA_FIELDS.forEach((key) => {
+    if (data && Object.prototype.hasOwnProperty.call(data, key)) report[key] = data[key];
+  });
+  return report;
+}
+
+async function insightCryptoKey() {
+  const dek = await secureGetDEK();
+  return crypto.subtle.importKey('raw', secureUnb64(dek), { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+async function readInsightCacheObject() {
+  const encrypted = typeof secureMode === 'function' && secureMode() === 'encrypted';
+  let raw = null;
+  let source = '';
+  try {
+    raw = localStorage.getItem(encrypted ? INSIGHT_CACHE_ENC_KEY : INSIGHT_CACHE_KEY);
+    source = encrypted ? 'encrypted' : 'plain';
+  } catch { raw = null; }
+
+  // 模式切换后的单次迁移：先校验，再按当前模式重新保存并删除旧副本。
+  if (!raw) {
+    try {
+      raw = localStorage.getItem(encrypted ? INSIGHT_CACHE_KEY : INSIGHT_CACHE_ENC_KEY);
+      source = encrypted ? 'plain' : 'encrypted';
+    } catch { raw = null; }
+  }
+  if (!raw) return null;
+
+  try {
+    let json = raw;
+    if (source === 'encrypted') {
+      const key = await insightCryptoKey();
+      json = await secureDecrypt(JSON.parse(raw), key);
+    }
+    const cache = JSON.parse(json);
+    if (!cache || cache.schemaVersion !== INSIGHT_CACHE_SCHEMA_VERSION || !cache.report || !cache.fingerprint) return null;
+    const normalized = normalizeInsightAIData(cache.report);
+    if (!normalized || !validateInsightAIData(normalized) || violatesAIOutputBoundary(JSON.stringify(normalized))) return null;
+    const safeCache = { ...cache, report: insightPersistedReport(normalized) };
+    if (source !== (encrypted ? 'encrypted' : 'plain')) {
+      await writeInsightCacheObject(safeCache);
+    }
+    return safeCache;
+  } catch {
+    return null;
+  }
+}
+
+async function writeInsightCacheObject(cache) {
+  const json = JSON.stringify(cache);
+  const encrypted = typeof secureMode === 'function' && secureMode() === 'encrypted';
+  if (encrypted) {
+    const payload = await secureEncrypt(json, await insightCryptoKey());
+    localStorage.setItem(INSIGHT_CACHE_ENC_KEY, JSON.stringify(payload));
+    localStorage.removeItem(INSIGHT_CACHE_KEY);
+  } else {
+    localStorage.setItem(INSIGHT_CACHE_KEY, json);
+    localStorage.removeItem(INSIGHT_CACHE_ENC_KEY);
+  }
+}
+
+async function persistInsightCache(statsSnapshot = null) {
+  if (!insightAIData) return;
+  const cache = {
+    schemaVersion: INSIGHT_CACHE_SCHEMA_VERSION,
+    ...insightCacheContext(statsSnapshot),
+    report: insightPersistedReport(insightAIData),
+  };
+  try {
+    await writeInsightCacheObject(cache);
+    insightCacheMeta = cache;
+  } catch (error) {
+    // 缓存失败不影响已经显示的报告；保留旧的 localStorage 指纹兼容链路。
+    try { console.warn('[ai] insight cache write failed', error); } catch {}
+  }
+}
+
+function insightCacheStale(cache = insightCacheMeta) {
+  if (!cache) return false;
+  if (cache.fingerprint !== reportFingerprint()) return true;
+  if (String(cache.timezone || '') !== String(typeof preferredStatsTimeZone === 'function' ? preferredStatsTimeZone() : 'local')) return true;
+  if (String(cache.statsRuleVersion || '') !== insightCurrentRuleVersion()) return true;
+  if (String(cache.provider || '') !== String((aiConfig && aiConfig.provider) || '')) return true;
+  if (String(cache.model || '') !== String((aiConfig && aiConfig.model) || '')) return true;
+  return false;
+}
+
+async function restoreInsightCache() {
+  insightCacheReady = false;
+  try {
+    const cache = await readInsightCacheObject();
+    if (cache) {
+      insightCacheMeta = cache;
+      insightAIData = {
+        ...cache.report,
+        labelInsights: cache.report.labelInsights || (cache.report.moodInsight ? [cache.report.moodInsight] : []),
+        pairInsights: cache.report.pairInsights || (Array.isArray(cache.report.patterns) ? cache.report.patterns : []),
+        changeInsight: cache.report.changeInsight || '',
+      };
+      // 让旧版本指纹键继续参与 reportStale()，但不把缓存当作当前最新结果。
+      localStorage.setItem(REPORT_FP_KEY, cache.fingerprint);
+      insightAIStatus = insightCacheStale(cache) ? 'ready-stale' : 'ready';
+      if (typeof renderInsightLocal === 'function') renderInsightLocal();
+    }
+  } catch (error) {
+    insightCacheMeta = null;
+    insightAIData = null;
+    insightAIStatus = 'idle';
+    try { console.warn('[ai] insight cache restore failed', error); } catch {}
+  } finally {
+    insightCacheReady = true;
+  }
+  return insightAIData;
+}
+
+function invalidateInsightCache() {
+  insightCacheMeta = null;
+  insightAIData = null;
+  insightAIStatus = 'idle';
+  try { localStorage.removeItem(INSIGHT_CACHE_KEY); } catch {}
+  try { localStorage.removeItem(INSIGHT_CACHE_ENC_KEY); } catch {}
+  try { localStorage.removeItem(REPORT_FP_KEY); } catch {}
+  if (typeof renderInsightLocal === 'function') renderInsightLocal();
+}
+
+// 供数据替换流程调用；不暴露报告正文或缓存密钥。
+window.invalidateInsightCache = invalidateInsightCache;
+window.restoreInsightCache = restoreInsightCache;
 
 /* ---------- #147：报告过期检测 + 旧版自动触发 ---------- */
 
@@ -808,7 +986,8 @@ let reportRefreshTimer = null;     // 页面可见时记录变更的 1.5 秒防�
 /* 报告是否过期：已生成过（指纹存在）且当前数据指纹 ≠ 生成时指纹 */
 function reportStale() {
   const fp = localStorage.getItem(REPORT_FP_KEY);
-  return fp !== null && fp !== reportFingerprint();
+  if (fp !== null && fp !== reportFingerprint()) return true;
+  return insightCacheStale();
 }
 
 function insightReportInMemory() {
@@ -816,27 +995,28 @@ function insightReportInMemory() {
 }
 
 /* 数据变更：先刷新六张轻量卡片；洞察页可见时沿用旧版防抖自动刷新。 */
-function scheduleReportRefresh() {
-  if (typeof renderInsightLocal === 'function') renderInsightLocal();
+function scheduleReportRefresh(statsSnapshot = null) {
   if (analysisBusy) return;
   const screen = $('screen-analysis');
   const onAnalysis = screen && !screen.classList.contains('hidden');
+  if (onAnalysis && typeof renderInsightLocal === 'function') renderInsightLocal(statsSnapshot);
   if (!onAnalysis) return;   // 不在洞察页：下次进入时 maybeAutoGenerate 处理
   clearTimeout(reportRefreshTimer);
   reportRefreshTimer = setTimeout(() => {
     reportRefreshTimer = null;
-    if (analysisBusy || !apiKey || countRange(-6, 0) < 3) return;
+    if (analysisBusy || !apiKey || recentCount(7, { statsSnapshot }) < 3) return;
     const hasReport = insightReportInMemory();
     if (hasReport && !reportStale()) return;
-    generateAnalysis(null, { auto: true, refresh: hasReport });
+    generateAnalysis(null, { auto: true, refresh: hasReport, statsSnapshot });
   }, 1500);
 }
 
 /* 兼容旧调用名：刷新沿用统一请求，不创建独立 AI 报告区。 */
 function refreshReport() {
   if (analysisBusy) return;
-  if (!records.length || !apiKey || countRange(-6, 0) < 3) return;
-  generateAnalysis(null, { auto: true, refresh: true });
+  const statsSnapshot = buildStatsSnapshot();
+  if (!records.length || !apiKey || recentCount(7, { statsSnapshot }) < 3) return;
+  generateAnalysis(null, { auto: true, refresh: true, statsSnapshot });
 }
 
 function hideRefreshBar() {
@@ -850,13 +1030,14 @@ function generateAnalysis(ev, opts) {
   if (analysisBusy) return;
   if (!records.length) { if (!auto) toast('还没有记录，先去记录一次吧'); return; }
   if (!apiKey) { if (!auto) focusAISettings(); return; }
-  if (auto && countRange(-6, 0) < 3) return;   // 自动模式要求近 7 天 ≥3 条
+  const statsSnapshot = (opts && opts.statsSnapshot) || buildStatsSnapshot();
+  if (auto && recentCount(7, { statsSnapshot }) < 3) return;   // 自动模式要求近 7 天 ≥3 条
 
   const btn = (ev && ev.currentTarget) ? ev.currentTarget : null;
   if (btn) btn.disabled = true;
   analysisBusy = true;
   insightAIStatus = 'loading';
-  renderInsightLocal();
+  renderInsightLocal(statsSnapshot);
 
   let succeeded = false;
   let attemptNo = 0;
@@ -869,7 +1050,7 @@ function generateAnalysis(ev, opts) {
 
     askAI(
       `以下是用户${insightWindowLabel()}个人行为与习惯的聚合统计（注意：只有聚合数据，没有单条记录、备注、附件或自定义标签原文）：\n` +
-      JSON.stringify(buildAggregatePayload(7), null, 2) + AI_JSON_INSTRUCTION,
+      JSON.stringify(buildAggregatePayload(7, { statsSnapshot }), null, 2) + AI_JSON_INSTRUCTION,
       controller.signal,
       { structured: true, purpose: 'insight-report' }
     ).then((content) => {
@@ -891,7 +1072,7 @@ function generateAnalysis(ev, opts) {
         throw new Error('UNSAFE_OUTPUT');
       }
       localStorage.setItem(REPORT_FP_KEY, reportFingerprint());   // 成功后更新指纹
-      renderAIReport(data);
+      renderAIReport(data, statsSnapshot);
       succeeded = true;
     }).catch((err) => {
       // 可重试：网络/超时/空正文/格式失败（密钥无效属配置问题，刷新模式不重试）。
@@ -903,7 +1084,7 @@ function generateAnalysis(ev, opts) {
         attemptNo++;
         retryScheduled = true;
         insightAIStatus = 'loading';
-        renderInsightLocal();
+        renderInsightLocal(statsSnapshot);
         setTimeout(runAttempt, RETRY_DELAYS[attemptNo - 1]);
         return;
       }
@@ -911,17 +1092,17 @@ function generateAnalysis(ev, opts) {
         // #38：保留旧报告；若有旧数据则以过期状态继续显示，并保留更新入口
         hideRefreshBar();
         insightAIStatus = insightAIData ? 'ready-stale' : 'error';
-        renderInsightLocal();
+        renderInsightLocal(statsSnapshot);
         toast('报告刷新失败，仍显示上次结果');
       } else if (auto) {
-        // 自动模式重试失败：卡片内保留重试入口
+        // 自动模式重试失败：有旧报告时保留旧 AI 单态，并在页面级入口提示过期。
         toast(err && err.message === 'UNSAFE_OUTPUT' ? 'AI 回复未通过内容边界校验，请稍后重试' : 'AI 生成失败，已自动重试 1 次');
-        insightAIStatus = 'error';
-        renderInsightLocal();
+        insightAIStatus = insightAIData ? 'ready-stale' : 'error';
+        renderInsightLocal(statsSnapshot);
       } else {
         aiErrorToast(err);
-        insightAIStatus = 'error';
-        renderInsightLocal();
+        insightAIStatus = insightAIData ? 'ready-stale' : 'error';
+        renderInsightLocal(statsSnapshot);
       }
     }).finally(() => {
       clearTimeout(timer);
@@ -935,11 +1116,23 @@ function generateAnalysis(ev, opts) {
 
 /* 切换至洞察页时自动检查：Key + 近 7 天至少 3 条 + 报告缺失/过期。 */
 function maybeAutoGenerate() {
-  renderInsightLocal();
-  if (analysisBusy || !records.length || !apiKey || countRange(-6, 0) < 3) return;
+  const statsSnapshot = buildStatsSnapshot();
+  renderInsightLocal(statsSnapshot);
+  if (!insightCacheReady) {
+    if (!insightAutoCheckQueued) {
+      insightAutoCheckQueued = true;
+      insightCacheRestorePromise.finally(() => {
+        insightAutoCheckQueued = false;
+        const screen = $('screen-analysis');
+        if (screen && !screen.classList.contains('hidden')) maybeAutoGenerate();
+      });
+    }
+    return;
+  }
+  if (analysisBusy || !records.length || !apiKey || recentCount(7, { statsSnapshot }) < 3) return;
   const hasReport = insightReportInMemory();
   if (hasReport && !reportStale()) return;
-  generateAnalysis(null, { auto: true, refresh: hasReport });
+  generateAnalysis(null, { auto: true, refresh: hasReport, statsSnapshot });
 }
 
 function emptyStateHTML() {
@@ -1108,16 +1301,16 @@ function getLocalDailyTip(snapshot) {
   return templates[new Date().getDate() % templates.length];
 }
 
-function getDailyTip() {
+function getDailyTip(statsSnapshot = null) {
   return new Promise((resolve) => {
     if (!dailyTipEnabled()) { resolve(''); return; }
     const today = fmtDateInput(new Date());
-    const localTip = getLocalDailyTip(buildInsightSnapshot({ days: 7 }));
+    const localTip = getLocalDailyTip(buildInsightSnapshot({ days: 7, statsSnapshot }));
     let cached = null;
     try { cached = JSON.parse(localStorage.getItem('guanji_daily_tip') || 'null'); } catch { cached = null; }
     const explicitChoice = localStorage.getItem(AI_DAILY_TIP_KEY);
     if (cached && cached.date === today && cached.tip && explicitChoice === null) { resolve(cached.tip); return; }
-    if (!aiDailyTipEnabled() || tipPending || !apiKey || countRange(-6, 0) < 3) { resolve(localTip); return; }
+    if (!aiDailyTipEnabled() || tipPending || !apiKey || recentCount(7, { statsSnapshot }) < 3) { resolve(localTip); return; }
 
     tipPending = true;
     const controller = new AbortController();
@@ -1125,7 +1318,7 @@ function getDailyTip() {
 
     askAI(
       `以下是用户近 7 天个人行为与习惯的聚合统计（只有聚合数据，没有单条记录或备注）：\n` +
-      JSON.stringify(buildAggregatePayload(7), null, 2) +
+      JSON.stringify(buildAggregatePayload(7, { statsSnapshot }), null, 2) +
       `\n\n请基于以上数据生成 1 句（不超过 20 字）温和的健康提醒，直接输出提醒内容` +
       `（如「今晚试试提前 30 分钟放下手机」）。` +
       `不要包含问候语、不要任何前缀、不要引号、不要评判、不要命令式口吻。`,
@@ -1144,8 +1337,9 @@ function getDailyTip() {
 }
 
 /* 渲染问候语（v1.7 拆层）：标题固定一行时段问候，AI 提醒句渲染到下方小字，
-   标题永不截断（≤13 字一行），提醒完整可见不丢失 */
-function renderGreeting() {
+   标题永不截断（≤13 字一行），提醒完整可见不丢失。 */
+
+function renderGreeting(statsSnapshot = null) {
   $('greetingTitle').textContent = getGreeting();
   const tipEl = $('greetingTip');
   if (!dailyTipEnabled()) {
@@ -1153,9 +1347,10 @@ function renderGreeting() {
     tipEl.classList.add('hidden');
     return;
   }
-  getDailyTip().then((tip) => {
+  getDailyTip(statsSnapshot).then((tip) => {
     if (!dailyTipEnabled()) { tipEl.textContent = ''; tipEl.classList.add('hidden'); return; }
-    tipEl.textContent = tip || getLocalDailyTip(buildInsightSnapshot({ days: 7 }));
+    const nextTip = tip || getLocalDailyTip(buildInsightSnapshot({ days: 7, statsSnapshot }));
+    tipEl.textContent = nextTip;
     tipEl.classList.remove('hidden');
   });
 }

@@ -1,29 +1,52 @@
 // 观己 App · records（P1 搬移式拆分，2026-08-09——函数原样搬移，零逻辑改动）
 
-/* ============ v3.6.1 hotfix 同步：记录绝对日期（修复跨天日期漂移） ============
-   根因：offset 是「相对保存当天」的偏移，跨天后基准漂移，旧记录被归到错误日期。
-   修复：记录同时存绝对日期 dateKey（yyyy-mm-dd）；启动/数据变更/跨天后用 dateKey
-   重算 offset（相对当前今天）；旧记录（无 dateKey）用 id 内嵌 base36 毫秒时间戳精确恢复。 */
+/* ============ v3.60：记录时间模型与严格日期迁移 ============
+   旧 offset/dateKey 继续兼容；新记录增加 occurredAtMs、zoneId 和 localDateKey。
+   迁移时不把 JavaScript 可解析但不合理的日期（例如 4709-12-18）当成可信值，
+   无法无损推导的历史记录保留原始字段并隔离到统计之外。 */
 function fmtDateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function strictDateFromKey(key) {
+  if (!isValidDateKey(key)) return null;
+  const p = String(key).split('-').map(Number);
+  const d = new Date(p[0], p[1] - 1, p[2]);
+  return d.getFullYear() === p[0] && d.getMonth() === p[1] - 1 && d.getDate() === p[2] ? d : null;
+}
+
+function plausibleTimestamp(value) {
+  const ms = Number(value);
+  return Number.isFinite(ms) && ms >= 0 && ms <= 4102444800000;
 }
 
 function normalizeOffsets() {
   const today = new Date();
   let changed = false;
   records.forEach((r) => {
+    if (!r || typeof r !== 'object') return;
     let d = null;
-    if (r.dateKey) {
-      const p = String(r.dateKey).split('-');
-      if (p.length === 3) d = new Date(+p[0], +p[1] - 1, +p[2]);
+    if (plausibleTimestamp(r.occurredAtMs)) {
+      d = new Date(Number(r.occurredAtMs));
+    } else if (r.dateKey) {
+      d = strictDateFromKey(r.dateKey);
+      if (!d && !r.legacyDateKey) {
+        r.legacyDateKey = String(r.dateKey);
+        r.invalidDateKey = true;
+        changed = true;
+      }
     } else if (r.id) {
       const ts = parseInt(String(r.id).split('_')[1], 36);
-      if (!isNaN(ts)) d = new Date(ts);
+      if (plausibleTimestamp(ts)) d = new Date(ts);
     }
     if (d && !isNaN(d.getTime())) {
       const off = dayDiff(d, today);
       if (r.offset !== off) { r.offset = off; changed = true; }
-      if (!r.dateKey) { r.dateKey = fmtDateKey(d); changed = true; }
+      const dateKey = fmtDateKey(d);
+      if (r.dateKey !== dateKey) { r.dateKey = dateKey; changed = true; }
+      if (r.invalidDateKey) { delete r.invalidDateKey; changed = true; }
+      if (!r.zoneId) { r.zoneId = systemTimeZone(); changed = true; }
+      if (!r.localDateKey) { r.localDateKey = dateKey; changed = true; }
     }
   });
   if (changed) Storage.saveRecords(records);
@@ -98,6 +121,12 @@ function saveRecord() {
     records[idx] = {
       ...records[idx],   // 保留 id 等原字段
       dateKey: fmtDateKey(date), offset, time,
+      occurredAtMs: date.getTime(),
+      zoneId: systemTimeZone(),
+      localDateKey: fmtDateKey(date),
+      timePrecision: 'minute',
+      source: records[idx].source || (sheetMode === 'backfill' ? 'backfill' : 'now'),
+      updatedAtMs: Date.now(),
       duration: duration || null,
       // 旧 moods/triggers 原样保留，统一字段作为新语义来源。
       observations,
@@ -108,20 +137,40 @@ function saveRecord() {
     records.push({
       id: newRecordId('rec'),
       dateKey: fmtDateKey(date), offset, time,
+      occurredAtMs: date.getTime(),
+      zoneId: systemTimeZone(),
+      localDateKey: fmtDateKey(date),
+      timePrecision: 'minute',
+      source: sheetMode === 'backfill' ? 'backfill' : 'now',
+      createdAtMs: Date.now(),
+      updatedAtMs: Date.now(),
       duration: duration || null,
       observations,
       observation: observation || null,
       moods: [], triggers: [], media, note,
     });
   }
-  Storage.saveRecords(records);
-  afterRecordsChanged();   // #32：同步小组件统计；#38：触发报告自动重生成
+  const statsSnapshot = commitRecordChanges();   // #211 N4：普通记录与计时汇总共用同一提交/刷新入口
 
   editingId = null;   // 编辑结束复位，避免影响后续新增
   closeSheet();
   toast(isEdit ? '已更新 ✓' : '已记录 ✓');
-  renderHome();
-  if (!$('calendarSheet').classList.contains('hidden')) renderCalendar();
+  // commitRecordChanges 已完成首页与日历刷新，避免两套记录流程出现刷新差异。
+}
+
+/* #211 N4：记录流程的唯一提交入口。
+   两套记录入口（普通详情页、计时汇总页）都先落库，再生成同一份统计快照，
+   最后刷新当前视图；这样不会出现“已保存但首页仍显示旧数据”的短暂分叉。
+   不负责 toast、关闭面板或清理编辑状态，调用方可保留各自交互反馈。 */
+function commitRecordChanges() {
+  Storage.saveRecords(records);
+  const statsSnapshot = afterRecordsChanged();
+  if (typeof renderHome === 'function') renderHome(statsSnapshot);
+  const calendar = $('calendarSheet');
+  if (calendar && !calendar.classList.contains('hidden') && typeof renderCalendar === 'function') {
+    renderCalendar();
+  }
+  return statsSnapshot;
 }
 
 
@@ -135,52 +184,113 @@ function quickRecord() {
     dateKey: fmtDateKey(now),
     offset: 0,
     time: fmtTime(now),
+    occurredAtMs: now.getTime(),
+    zoneId: systemTimeZone(),
+    localDateKey: fmtDateKey(now),
+    timePrecision: 'minute',
+    source: 'now',
+    createdAtMs: now.getTime(),
+    updatedAtMs: now.getTime(),
     duration: null,
     observations: [],
     observation: null,
     moods: [], triggers: [], media: false, note: '',
   });
   Storage.saveRecords(records);
+  const statsSnapshot = afterRecordsChanged();
   toast('已快速记录 ✓');
-  renderHome();
-  syncWidgetStats();
+  renderHome(statsSnapshot);
 }
 
 window.__guanjiQuickRecord = () => quickRecord();
 
-/* 聚合统计同步到原生（widget 展示），非原生环境静默跳过。
-   格式：管道分隔字符串（避免原生 org.json 依赖）
-   todayCount|weekCount|streak|weekDelta(空=无)|近7天counts(逗号)|monthCount|monthDelta(空=无) */
-function syncWidgetStats() {
+/* #196/#200：聚合统计同步到原生（widget 展示），非原生环境静默跳过。
+   新协议为版本化 JSON；原生端仍保留旧管道格式解析，便于旧 APK 回滚。
+   同步是非阻塞的：等待原生结果只用于判断是否需要一次受控重试，不影响保存反馈。 */
+async function syncWidgetStats(snapshot = null, options = {}) {
+  const retry = options.retry !== false;
   try {
     const P = window.Capacitor && window.Capacitor.Plugins;
-    if (!P || !P.WidgetStats) return;
-    const week = [];
-    for (let i = 6; i >= 0; i--) week.push(countRange(-i, -i));
-    const cur = countRange(-6, 0);
-    const prev = countRange(-13, -7);
-    const now = new Date();
-    const firstOff = dayDiff(new Date(now.getFullYear(), now.getMonth(), 1), now);
-    const pf = dayDiff(new Date(now.getFullYear(), now.getMonth() - 1, 1), now);
-    const pl = dayDiff(new Date(now.getFullYear(), now.getMonth(), 0), now);
-    const pc = countRange(pf, pl);
-    const mc = countRange(firstOff, 0);
-    const stats = [
-      countRange(0, 0),                        // todayCount
-      cur,                                     // weekCount
-      countStreak(),                           // streak
-      prev > 0 ? Math.round((cur - prev) / prev * 100) : '',   // weekDelta
-      week.join(','),                          // 近 7 天
-      mc,                                      // monthCount
-      pc > 0 ? Math.round((mc - pc) / pc * 100) : '',          // monthDelta
-    ].join('|');
-    P.WidgetStats.syncStats({ stats });
-  } catch (e) { /* 非原生/插件不可用时忽略 */ }
+    if (!P || !P.WidgetStats) return { ok: false, accepted: false, reason: 'unavailable' };
+    const statsSnapshot = snapshot || buildStatsSnapshot();
+    const stats = JSON.stringify({
+      protocolVersion: 2,
+      schemaVersion: statsSnapshot.schemaVersion,
+      statsRuleVersion: statsSnapshot.statsRuleVersion,
+      generationId: statsSnapshot.generationId,
+      revision: statsSnapshot.revision,
+      generatedAtMs: statsSnapshot.generatedAtMs,
+      timezone: statsSnapshot.timezone,
+      todayKey: statsSnapshot.todayKey,
+      weekStartKey: statsSnapshot.weekStartKey,
+      todayCount: statsSnapshot.todayCount,
+      weekCount: statsSnapshot.weekCount,
+      streak: statsSnapshot.streak,
+      weekDelta: statsSnapshot.weekDelta,
+      week: statsSnapshot.weekCounts,
+      weekDayIndex: statsSnapshot.weekDayIndex,
+      monthCount: statsSnapshot.monthCount,
+      monthDelta: statsSnapshot.monthDelta,
+      freshness: statsSnapshot.freshness,
+      excludedInvalidRecords: statsSnapshot.excludedInvalidRecords,
+    });
+    const result = await P.WidgetStats.syncStats({ stats });
+    /* 旧插件只返回 {ok:true}；只有明确 rejected 才进入兼容重试路径。 */
+    if (result && result.accepted === false && retry && result.reason !== 'stale') {
+      await new Promise((resolve) => setTimeout(resolve, 180));
+      return syncWidgetStats(statsSnapshot, { retry: false });
+    }
+    return result || { ok: true, accepted: true, legacy: true };
+  } catch (e) {
+    /* 原生桥短暂不可用时只重试一次，绝不阻塞记录保存或页面渲染。 */
+    if (retry) {
+      await new Promise((resolve) => setTimeout(resolve, 180));
+      return syncWidgetStats(snapshot, { retry: false });
+    }
+    return { ok: false, accepted: false, reason: 'bridge_error' };
+  }
 }
 
+/* #211 N10：把聚合快照写入原生 SharedPreferences；原始记录仍只在 WebView
+   存储中，写入失败静默降级，不阻塞记录保存。 */
+async function syncNativeHomeSnapshot(snapshot = null) {
+  try {
+    const bridge = window.GuanjiNative?.homeSnapshot;
+    if (!bridge || typeof bridge.write !== 'function') return { ok: false, reason: 'unavailable' };
+    const value = snapshot || buildStatsSnapshot();
+    return await bridge.write({ snapshot: JSON.stringify({
+      protocolVersion: 1,
+      schemaVersion: value.schemaVersion,
+      statsRuleVersion: value.statsRuleVersion,
+      revision: value.revision,
+      generatedAtMs: value.generatedAtMs,
+      timezone: value.timezone,
+      todayKey: value.todayKey,
+      weekCount: value.weekCount,
+      todayCount: value.todayCount,
+      streak: value.streak,
+      weekDelta: value.weekDelta,
+      monthCount: value.monthCount,
+      monthDelta: value.monthDelta,
+      week: value.weekCounts,
+      weekDayIndex: value.weekDayIndex,
+    }) });
+  } catch { return { ok: false, reason: 'bridge_error' }; }
+}
+window.syncNativeHomeSnapshot = syncNativeHomeSnapshot;
+
 /* #147：记录变化 → 同步小组件 + 刷新洞察事实；洞察页可见时按旧版逻辑防抖自动更新 AI。 */
+let widgetSyncTimer = null;
 function afterRecordsChanged() {
-  syncWidgetStats();
-  scheduleReportRefresh();
+  const statsSnapshot = buildStatsSnapshot();
+  scheduleReportRefresh(statsSnapshot);
+  /* 让当前页面先完成渲染，再把同一快照交给原生小组件，避免阻塞保存反馈。 */
+  clearTimeout(widgetSyncTimer);
+  widgetSyncTimer = setTimeout(() => {
+    widgetSyncTimer = null;
+    syncWidgetStats(statsSnapshot);
+  }, 0);
+  setTimeout(() => syncNativeHomeSnapshot(statsSnapshot), 0);
+  return statsSnapshot;
 }
 

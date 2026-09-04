@@ -9,6 +9,7 @@
     <string name="widget_desc">一键打开观己并记录</string>
     <string name="widget_today_default">今天还没记录</string>
     <string name="widget_today_status">今天已记录 %1$d 次</string>
+    <string name="widget_today_stale">今天尚未同步</string>
     <string name="widget_open_label">打开记录面板</string>
 
     <!-- 数据看板 -->
@@ -44,5 +45,6 @@
     <string name="today_done_hint">记录本身就是觉察</string>
     <string name="today_pending">今天还没记录</string>
     <string name="today_pending_hint">想记就记，不想也没关系</string>
+    <string name="today_stale_hint">打开 App 后会刷新今天的统计</string>
     <string name="today_desc">查看今日记录状态</string>
 </resources>

@@ -7,4 +7,7 @@
     <color name="widget_ink3">#C7C7CC</color>
     <color name="widget_accent">#007AFF</color>
     <color name="widget_bar">#D9E5F5</color>
+    <!-- #203：与 Web 首页基础背景同源；液态玻璃蓝晕由首页首帧接管。 -->
+    <color name="splash_background">#F2F2F7</color>
+    <color name="splash_wordmark">#46566A</color>
 </resources>

@@ -11,6 +11,16 @@ html.liquid-glass .phone {
     var(--bg);
 }
 
+/* #219：玻璃模式滚动条使用蓝灰中性色，提升在通透背景上的辨识度。 */
+html.liquid-glass {
+  --scroll-thumb: rgba(98, 114, 134, 0.52);
+  --scroll-thumb-active: rgba(70, 86, 106, 0.72);
+}
+html.liquid-glass[data-theme="dark"] {
+  --scroll-thumb: rgba(183, 197, 214, 0.42);
+  --scroll-thumb-active: rgba(183, 197, 214, 0.64);
+}
+
 /* 浮层：无磨砂通透玻璃（tab 栏 / 记录面板 / 日历弹层 / 对话框） */
 html.liquid-glass .tabbar,
 html.liquid-glass .sheet,
@@ -301,6 +311,9 @@ html.liquid-glass .focus-num,
 html.liquid-glass .overview-num {
   text-shadow: 0.6px 0 rgba(255, 59, 92, 0.18), -0.6px 0 rgba(0, 122, 255, 0.18);
 }
+
+/* #214 补充：较上周仅保留方向文字，不叠加玻璃色散彩边。 */
+html.liquid-glass #weekDelta { text-shadow: none; }
 
 /* reduced-transparency：玻璃态下回退实底 */
 @media (prefers-reduced-transparency: reduce) {

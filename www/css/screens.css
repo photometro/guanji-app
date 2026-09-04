@@ -1,4 +1,5 @@
 /* 观己 App · screens（P1 搬移式拆分，2026-08-09——规则原样搬移，零逻辑改动） */
+
 /* ============ 面积图 ============ */
 
 .chart-wrap { width: 100%; }
@@ -47,9 +48,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: var(--space-5);
   margin-top: 14px;
-  padding-top: 12px;
+  padding-top: var(--space-3);
   border-top: 1px solid var(--line);
 }
 .chart-footer #chartSeg { flex-shrink: 0; }   /* 天数 seg 永不挤压（长文案统计下也保持间距） */
@@ -260,7 +261,9 @@
 }
 .insight-report-card {
   margin-bottom: 0;
-  padding: 22px;
+  padding: var(--card-padding, 22px);
+  border-radius: var(--card-radius, 16px);
+  box-shadow: var(--card-shadow, var(--shadow-2));
 }
 .insight-report-card .report-title {
   display: flex;
@@ -344,7 +347,8 @@
 }
 .insight-report-card .report-title { position: relative; z-index: 1; margin-bottom: 16px; }
 .insight-card-body { position: relative; z-index: 1; }
-.insight-card-fact { margin-top: 14px; color: var(--ink-2); }
+.insight-card-narrative { display: grid; gap: var(--space-3, 12px); }
+.insight-card-fact { margin-top: 0; color: var(--ink-2); }
 .insight-card-empty { color: var(--ink-3); font-size: 13px; line-height: 1.75; }
 
 /* 总览：数字优先，降低用户扫描成本。 */
@@ -399,7 +403,7 @@
 .insight-suggestion-list li > span { color: var(--accent); font-size: 11px; font-variant-numeric: tabular-nums; font-weight: 800; letter-spacing: 0.05em; }
 .insight-suggestion-list p { margin: 0; color: var(--ink-2); font-size: 13px; line-height: 1.65; }
 
-.insight-card-ai { margin-top: 16px; padding: 12px 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
+.insight-card-ai { margin-top: 0; padding: var(--space-3, 12px) 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
 .insight-card-ai .insight-ai-source { display: flex; margin-bottom: 4px; color: var(--ink-3); font-weight: 600; }
 .insight-card-ai .insight-ai-copy { margin: 4px 0 0; color: var(--ink-2); font-size: 13px; line-height: 1.7; }
 .insight-card-cta { position: relative; z-index: 1; margin-top: 18px; }
@@ -609,6 +613,13 @@
   line-height: inherit;
 }
 .insight-ai-copy { margin: 0; }
+
+/* #213：AI 单态不预留本地事实的分隔线或空白，直接沿用旧版 AI 正文层级。 */
+.insight-card-body--ai .insight-card-ai { margin: 0; padding: 0; border: 0; }
+.insight-card-body--ai .insight-ai-source { margin-right: 9px; }
+.insight-card-body--ai .insight-ai-copy { margin-top: 8px; }
+.insight-card-body--ai .insight-ai-lead .insight-ai-copy { margin-top: 0; }
+.insight-card-empty--ai { margin: 0; }
 
 /* 共同出现：表达式与次数分列，中点不会被次数列推偏。 */
 .insight-pair-list { display: grid; gap: 0; }
@@ -1002,7 +1013,7 @@ html.liquid-glass .ai-key-saved-row .btn-ghost { background: transparent; border
   overflow-y: auto;
   scrollbar-width: none;
   box-shadow: var(--shadow-3);
-  animation: sheetUp 0.32s var(--ease-spring) both;
+  /* #216：日历打开动画由 playSheetOpen() 单一管理，避免 CSS 与 JS 双重入场。 */
 }
 .calendar-sheet::-webkit-scrollbar { display: none; }
 .calendar-sheet.hidden { display: none; }
@@ -1116,6 +1127,16 @@ html.liquid-glass .ai-key-saved-row .btn-ghost { background: transparent; border
 .cal-divider { border: none; border-top: 1px solid var(--line); margin: 14px 0 10px; }
 .cal-detail-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.01em; }
 .cal-actions { display: flex; gap: 10px; margin-top: 16px; }
+
+/* #217：当日明细默认只占两条记录的高度，更多记录在列表内滚动，避免撑动整个日历 Sheet。 */
+.cal-detail-list {
+  max-height: 128px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding-inline-end: 6px;
+}
 
 /* ============ 最近记录 ============ */
 

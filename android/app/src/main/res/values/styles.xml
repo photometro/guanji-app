@@ -12,11 +12,18 @@
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <item name="android:background">@null</item>
+        <!-- #206：SplashScreen 退出到 WebView 首帧前，根窗口继续使用同源背景，禁止系统白底闪现。 -->
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:background">@color/splash_background</item>
     </style>
 
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">@drawable/splash</item>
+        <!-- #206：系统启动窗口仅作为必要的 Android 启动保护层，背景与首页同源。 -->
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <!-- 不再展示旧版品牌图形/文字动画；Android 12+ 仍会保留系统必需的启动窗口。 -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_empty</item>
+        <item name="windowSplashScreenAnimationDuration">1</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>

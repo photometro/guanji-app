@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- #204：高光随切片聚焦自然显现，不闪烁、不循环。 -->
+<objectAnimator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="180"
+    android:startOffset="90"
+    android:interpolator="@android:interpolator/linear_out_slow_in"
+    android:propertyName="alpha"
+    android:valueFrom="0.35"
+    android:valueTo="1"
+    android:valueType="floatType" />

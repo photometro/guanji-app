@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:apk:debug": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-apk.ps1 -Mode debug",
+    "build:apk:release": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-apk.ps1 -Mode release"
   },
   "keywords": [],
   "author": "",

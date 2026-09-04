@@ -47,6 +47,8 @@
 .tab:hover { color: var(--ink-2); }
 }
 .tab:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: -2px; border-radius: 8px; }
+/* #218：仅隐藏已知的触摸来源焦点环；键盘/无障碍焦点仍保留 :focus-visible。 */
+.tab[data-focus-origin="pointer"]:focus-visible { outline: none; }
 .tab.active { color: var(--accent-deep); font-weight: 700; }
 .tab.active svg { stroke-width: 2.2; }
 

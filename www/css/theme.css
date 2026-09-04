@@ -34,6 +34,9 @@
 
   /* 结构（iOS separator） */
   --line: #E5E5EA;
+  /* #219：共享滚动条——中性、轻量，不抢占主内容层级 */
+  --scroll-thumb: rgba(60, 60, 67, 0.34);
+  --scroll-thumb-active: rgba(60, 60, 67, 0.58);
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-2: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-3: 0 -2px 16px rgba(0, 0, 0, 0.08);
@@ -41,6 +44,19 @@
 
   --radius-lg: 16px;
   --radius-md: 12px;
+  /* #211 N3：共享视觉节奏 token；先由首页和趋势卡片试迁移 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --type-card-title: 16px;
+  --type-card-sub: 12px;
+  --type-meta: 11px;
+  --card-padding: 20px;
+  --card-radius: var(--radius-lg);
+  --card-shadow: var(--shadow-2);
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
 
@@ -120,6 +136,8 @@
   --amber: #FF9F0A;
 
   --line: #3A3A3C;
+  --scroll-thumb: rgba(235, 235, 245, 0.36);
+  --scroll-thumb-active: rgba(235, 235, 245, 0.62);
 
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.5);

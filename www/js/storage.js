@@ -42,6 +42,78 @@ window.uniqueGuanjiFilename = uniqueGuanjiFilename;
 
 const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 const MOODS = ['平静', '放松', '愉悦', '无聊', '焦虑', '压力'];
+/* #196：统计服务共享的时间基础。原始记录仍保存在 WebView；这些工具只负责
+   严格识别日期、保存 IANA 时区和把可信时间戳格式化为统计日期。 */
+const STATS_TIMEZONE_KEY = 'guanji_stats_timezone_v1';
+const STATS_REVISION_KEY = 'guanji_stats_revision_v1';
+const STATS_SCHEMA_VERSION = 2;
+const STATS_RULE_VERSION = '3.60';
+/* #198：同一统计时区复用格式化器，避免按记录/日期重复创建 Intl 实例。 */
+const STATS_DATE_FORMATTER_CACHE = new Map();
+
+function systemTimeZone() {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'local'; } catch { return 'local'; }
+}
+
+function isValidDateKey(value) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ''));
+  if (!m) return false;
+  const y = Number(m[1]), month = Number(m[2]), day = Number(m[3]);
+  if (y < 1970 || y > 2100 || month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const d = new Date(y, month - 1, day);
+  return d.getFullYear() === y && d.getMonth() === month - 1 && d.getDate() === day;
+}
+
+function dateKeyFromDate(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function dateKeyFromTimestamp(timestamp, zoneId = systemTimeZone()) {
+  const ms = Number(timestamp);
+  if (!Number.isFinite(ms) || ms < 0 || ms > 4102444800000) return '';
+  try {
+    const cacheKey = zoneId || 'local';
+    let formatter = STATS_DATE_FORMATTER_CACHE.get(cacheKey);
+    if (!formatter) {
+      formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: cacheKey === 'local' ? undefined : cacheKey,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+      });
+      STATS_DATE_FORMATTER_CACHE.set(cacheKey, formatter);
+    }
+    const parts = formatter.formatToParts(new Date(ms));
+    const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    const key = `${map.year}-${map.month}-${map.day}`;
+    return isValidDateKey(key) ? key : '';
+  } catch {
+    return dateKeyFromDate(new Date(ms));
+  }
+}
+
+function preferredStatsTimeZone() {
+  let stored = '';
+  try { stored = localStorage.getItem(STATS_TIMEZONE_KEY) || ''; } catch { stored = ''; }
+  const current = systemTimeZone();
+  if (!stored) {
+    try { localStorage.setItem(STATS_TIMEZONE_KEY, current); } catch { /* 只读环境 */ }
+    return current;
+  }
+  if (stored !== current) {
+    /* 统计时区变化不改写原始记录；采用新的系统时区并给出一次非阻塞提示。 */
+    try { localStorage.setItem(STATS_TIMEZONE_KEY, current); } catch { /* 只读环境 */ }
+    if (!window.__guanjiTimezoneNoticeShown) {
+      window.__guanjiTimezoneNoticeShown = true;
+      setTimeout(() => { if (typeof toast === 'function') toast('检测到时区变化，统计已按当前时区更新'); }, 0);
+    }
+    return current;
+  }
+  return stored;
+}
+
+window.isValidDateKey = isValidDateKey;
+window.dateKeyFromTimestamp = dateKeyFromTimestamp;
+window.preferredStatsTimeZone = preferredStatsTimeZone;
 // v3.18：新记录采用中性、明确的命名；旧记录和旧 CSV 保持原始值不改写。
 const ADULT_CONTENT_TRIGGER = '成人内容影响';
 const LEGACY_ADULT_CONTENT_TRIGGER = '看了片';
@@ -242,6 +314,32 @@ const Storage = {
   },
 };
 
+/* #211 N8：统一数据接口（仅收口调用契约，不迁移底层数据）。
+   records/config 继续委托现有 Storage 与 AI 配置函数，保留旧 localStorage
+   键、加密路径、JSON/CSV 导入导出；stats 只返回 StatsSnapshot，不直接接触存储。
+   后续原生适配层只需实现同一组方法即可，不要求一次性改动所有调用方。 */
+const GuanjiDataStore = Object.freeze({
+  contractVersion: 1,
+  records: Object.freeze({
+    load: () => Storage.loadRecords(),
+    save: (list) => Storage.saveRecords(list),
+  }),
+  stats: Object.freeze({
+    snapshot: (options) => (typeof buildStatsSnapshot === 'function' ? buildStatsSnapshot(options) : null),
+  }),
+  config: Object.freeze({
+    loadAI: () => (typeof loadAIStore === 'function' ? loadAIStore() : null),
+    saveAI: (config) => (typeof saveAIConfig === 'function' ? saveAIConfig(config) : false),
+    read: (key, fallback = null) => {
+      try { const value = localStorage.getItem(String(key)); return value == null ? fallback : value; } catch { return fallback; }
+    },
+    write: (key, value) => {
+      try { localStorage.setItem(String(key), String(value)); return true; } catch { return false; }
+    },
+  }),
+});
+window.GuanjiDataStore = GuanjiDataStore;
+
 let records = [];
 let apiKey = '';
 
@@ -318,11 +416,20 @@ function buildDemoRecords() {
 
       const note = k === 0 ? DEMO_NOTES[Math.floor(seeded(idx + 11) * DEMO_NOTES.length)] : '';
 
+      const demoDate = dateWithOffset(off);
+      demoDate.setHours(hh, mm, 0, 0);
       list.push({
         id: newRecordId('demo'),
-        dateKey: fmtDateKey(dateWithOffset(off)),   // v3.6.1：演示数据也写绝对日期
+        dateKey: fmtDateKey(demoDate),   // v3.6.1：演示数据也写绝对日期
         offset: off,
         time: String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'),
+        occurredAtMs: demoDate.getTime(),
+        zoneId: systemTimeZone(),
+        localDateKey: fmtDateKey(demoDate),
+        timePrecision: 'minute',
+        source: 'demo',
+        createdAtMs: demoDate.getTime(),
+        updatedAtMs: demoDate.getTime(),
         duration: Math.floor(seeded(idx + 7) * 25 + 5) * 5,
         moods: [moodMap[trigger]],
         triggers: [trigger],
