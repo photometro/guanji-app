@@ -16,9 +16,31 @@ function strictDateFromKey(key) {
 }
 
 function plausibleTimestamp(value) {
+  // Room 旧记录投影可能明确返回 null；Number(null) === 0，不能把它当作 Unix epoch。
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'boolean') return false;
+  if (typeof value === 'string' && value.trim() === '') return false;
   const ms = Number(value);
-  return Number.isFinite(ms) && ms >= 0 && ms <= 4102444800000;
+  return Number.isFinite(ms) && ms > 0 && ms <= 4102444800000;
 }
+
+/* #254：4.1.4 已把部分旧记录错误写成 1970-01-01；这些记录保留等待
+   可信备份修复，启动归一化不能再次把它们当作正常日期写回。 */
+function isEpochPlaceholder(record) {
+  if (!record || typeof record !== 'object') return false;
+  return String(record.dateKey || '') === '1970-01-01'
+    && !plausibleTimestamp(record.occurredAtMs)
+    && Number.isFinite(Number(record.offset))
+    && Number(record.offset) < -10000;
+}
+
+/* #254：供备份/同步层读取的异常日期边界。
+   只要存在无法还原的 Unix epoch 占位记录，就不能让自动备份把它覆盖到
+   服务器；恢复必须由用户选择更新前的可信备份并输入口令完成。 */
+function hasSuspiciousEpochRecords() {
+  return Array.isArray(records) && records.some(isEpochPlaceholder);
+}
+window.hasSuspiciousEpochRecords = hasSuspiciousEpochRecords;
 
 /* #224：把记录来源和测量质量归一化为可统计字段。
    旧记录没有这些字段时只补元数据，不改写原始备注/观察值；未知来源归入
@@ -45,9 +67,17 @@ function normalizeRecordQualityMetadata(record, dateKey = '') {
 
 function normalizeOffsets() {
   const today = new Date();
+  const before = records.map((record) => {
+    try { return JSON.stringify(record); } catch { return ''; }
+  });
   let changed = false;
   records.forEach((r) => {
     if (!r || typeof r !== 'object') return;
+    if (isEpochPlaceholder(r)) {
+      // 不猜测真实日期；恢复由更新前可信备份完成。
+      if (normalizeRecordQualityMetadata(r)) changed = true;
+      return;
+    }
     let d = null;
     if (plausibleTimestamp(r.occurredAtMs)) {
       d = new Date(Number(r.occurredAtMs));
@@ -74,7 +104,30 @@ function normalizeOffsets() {
       changed = true;
     }
   });
-  if (changed) Storage.saveRecords(records);
+  if (changed) {
+    // 任何记录在一次归一化中被改成 Unix epoch 都属于危险批量写回，
+    // 恢复原对象并阻止 Room/旧加密镜像被覆盖。
+    const epochMutations = records.reduce((count, record, index) => {
+      if (!record || String(record.dateKey || '') !== '1970-01-01') return count;
+      let original = null;
+      try { original = before[index] ? JSON.parse(before[index]) : null; } catch { original = null; }
+      if (!original || String(original.dateKey || '') !== '1970-01-01') return count + 1;
+      return count;
+    }, 0);
+    if (epochMutations > 0) {
+      records.forEach((record, index) => {
+        if (!record || !before[index]) return;
+        try {
+          const original = JSON.parse(before[index]);
+          Object.keys(record).forEach((key) => { if (!Object.prototype.hasOwnProperty.call(original, key)) delete record[key]; });
+          Object.assign(record, original);
+        } catch { /* 单条快照损坏时不扩大写回范围 */ }
+      });
+      console.warn('[#254] blocked suspicious epoch date normalization', { epochMutations, recordCount: records.length });
+      return;
+    }
+    Storage.saveRecords(records);
+  }
 }
 
 /* 跨天检测：App 驻留跨过午夜时，重新归一化所有记录的 offset */

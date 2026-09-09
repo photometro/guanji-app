@@ -203,6 +203,12 @@ function notifyStartupReady() {
 (async () => {
 records = await (window.GuanjiDataStore?.records?.load ? GuanjiDataStore.records.load() : Storage.loadRecords());
 normalizeOffsets();   // v3.6.1：启动即恢复旧记录绝对日期（id 时间戳）并重算 offset
+// #254：无法从旧字段无损推导真实日期时，只提示用户走可信备份恢复，
+// 不自动猜日期，也不阻塞首页首屏。
+if (typeof hasSuspiciousEpochRecords === 'function' && hasSuspiciousEpochRecords()) {
+  const pending = records.filter((record) => record && record.dateKey === '1970-01-01').length;
+  setTimeout(() => toast(`发现 ${pending} 条记录需要从更新前备份恢复`), 350);
+}
 localStorage.setItem(LAST_DATE_KEY, fmtDateKey(new Date()));   // 初始化跨天检测基准
 /* #236：Room 权威加载已在 records.load() 完成；旧桥/浏览器仅保持兼容回退。 */
 setTimeout(() => { try { window.GuanjiRoomShadow?.ensureReady?.(records); } catch { /* 原生桥不可用时保持兼容主链 */ } }, 0);

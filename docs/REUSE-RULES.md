@@ -524,6 +524,17 @@ backup-picker → secure → storage → records → stats → ai
 - **边界**：不改变 RecordEvent、JSON/CSV、WebDAV 或 AI 脱敏协议；不在 UI 层新增第二套记录状态，不按页面或卡片分别写库。
 - **验证**：`npm run verify:236` 必须覆盖方法暴露、单次权威加载、惰性回退、增量/覆盖写入、未知字段保留和所有入口持久化路径；真机 CDP 检查 `authorityReady=true`、重启后记录一致及无原始密钥泄露。
 
+### 7.1.11 旧日期迁移安全与异常写回保护（#254）
+
+**实现**：`www/js/records.js`、`www/js/app.js`、`www/js/webdav.js`、`RoomRecordEntity.kt`、`debug/verify-254-date-migration.cjs`。
+
+- **职责**：阻止 Room nullable 投影的 `null` 被解释为 Unix epoch，并在异常日期出现时保护内存快照、停止自动/手动 WebDAV 覆盖，等待用户从更新前可信备份恢复。
+- **时间戳边界**：`plausibleTimestamp()` 必须拒绝 `null`、`undefined`、空字符串、布尔值和 `0`；只接受大于 0 且不超过约 2100 年的有限毫秒值。
+- **异常记录**：`dateKey=1970-01-01` 且没有可信时间戳、`offset < -10000` 的记录视为 epoch 占位；启动归一化不得猜测日期或批量写回，并以提示引导进入可信备份恢复。
+- **备份边界**：存在 epoch 占位记录时，自动备份和手动上传均暂停，避免覆盖更新前可用备份；恢复仍复用现有 `BackupEnvelope`、WebDAV/本机恢复和 Room 原子替换链。
+- **Room 投影**：nullable 字段缺失时保持缺失，不输出无意义的 JSON `null`；未知字段和 #253 观察三态继续保留。
+- **验证**：`npm run verify:254`、`npm run verify:253`、`npm run verify:236`、全量 `verify:221–253`、浏览器回归及真机重启/Room 记录数检查；真实日期恢复必须使用用户确认的可信备份，禁止根据 ID 或统计结果猜测。
+
 ### 7.1.3 记录测量质量与覆盖快照（#224）
 
 **实现**：`www/js/records.js`、`www/js/stats.js`、`docs/contracts/record-event.schema.json`、`docs/contracts/stats-snapshot.schema.json`、`debug/verify-224-quality.cjs`。

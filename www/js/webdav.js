@@ -245,6 +245,9 @@ async function wdFingerprint() {
 async function wdBackupNow(options = {}) {
   if (secureMode() !== 'encrypted') throw new Error('WebDAV 备份需要开启加密（明文模式不上传）');
   if (!records.length) throw new Error('还没有记录可备份');
+  if (typeof hasSuspiciousEpochRecords === 'function' && hasSuspiciousEpochRecords()) {
+    throw new Error('检测到日期异常，请先从更新前的可信备份恢复后再上传');
+  }
   const task = options.task || {};
   const fingerprint = options.fingerprint || await wdFingerprint();
   const pkg = await secureExportPackage();
@@ -304,6 +307,12 @@ async function wdAutoBackup() {
   if (!wdAutoEnabled()) return;
   if (secureMode() !== 'encrypted') return;
   if (!records.length) return;
+  // #254：日期迁移异常时暂停自动上传，避免把损坏快照覆盖到服务器。
+  // 用户仍可通过“备份与同步”手动选择可信备份完成恢复后再开启自动同步。
+  if (typeof hasSuspiciousEpochRecords === 'function' && hasSuspiciousEpochRecords()) {
+    wdSetAutoState('blocked', '检测到日期异常，已暂停自动备份');
+    return;
+  }
   if (wdIsOffline()) {
     wdSetAutoState('waiting', '等待网络恢复后自动上传');
     return;
@@ -373,6 +382,7 @@ function wdRender() {
     : stat.autoState === 'uploading' ? '正在同步…'
     : stat.autoState === 'retrying' ? '同步重试中…'
     : stat.autoState === 'waiting' ? '等待网络恢复'
+    : stat.autoState === 'blocked' ? '日期异常，已暂停同步'
     : stat.lastStatus === 'error' ? '上次同步失败'
     : '服务器已连接 · ' + formatLast() + ' · 自动同步' + (wdAutoEnabled() ? '已开启' : '已关闭');
   const syncSub = $('backupSyncSub'), syncStatus = $('backupSyncStatus'), autoSwitch = $('wdAutoSwitch');
@@ -405,6 +415,8 @@ function wdRender() {
       st.textContent = '自动备份遇到网络波动，正在重试…';
     } else if (stat.autoState === 'waiting') {
       st.textContent = '等待网络恢复后自动上传。';
+    } else if (stat.autoState === 'blocked') {
+      st.textContent = '检测到日期异常，已暂停自动同步。请先从更新前的可信备份恢复，再重新同步。';
     } else if (stat.lastStatus === 'error') {
       st.textContent = '上次备份失败：' + (stat.lastError || '未知错误') + '（' + ((stat.lastErrorTime || '').slice(0, 10)) + '）';
     } else if (stat.lastBackup) {

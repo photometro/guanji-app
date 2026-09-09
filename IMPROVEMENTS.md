@@ -169,6 +169,7 @@ renderHome();
 
 ## 记录
 
+- 2026-09-10：**#254 已实施（v4.1.5）**：修复 null 时间戳被解释为 Unix epoch；Room nullable 投影保持字段缺失；启动归一化保护异常日期并提示从更新前可信备份恢复；自动/手动 WebDAV 上传在恢复前暂停，避免覆盖可信备份。全量契约、浏览器回归、离线 APK 构建、正式包名/稳定调试签名、真机覆盖安装与重启回归通过。真机 42 条记录数量保持一致，最终 Room/WebView 检查为 0 条 `1970-01-01`，未发生无依据日期猜测。
 - 2026-09-09：**#253 已实施（v4.1.4）**：Room 旧记录观察字段改为三态投影，JS 展示/统计/行为模型统一回退入口；`npm run verify:253`、全量契约回归、浏览器兼容回归、离线 APK 构建与包名/版本/签名校验通过。已通过统一构建钩子覆盖安装到魅族真机 `461QYFDN226NF`，#253 CDP 兼容回归、Room 权威链、Kotlin 快照桥接与重启后数据一致性均通过。
 - 2026-09-04：**#217/#218 已实施（v3.86）**：日历当日明细改为两条高度的内部滚动列表；修复 Android/魅族系统返回后的 Tab 焦点残留，保留键盘与无障碍焦点提示。浏览器、APK、魅族真机 CDP 回归通过。
 - 2026-09-04：**#219 已实施（v3.87）**：日历当日明细复用统一 `.app-scroll-region` 滚动条规则，改为透明轨道/细胶囊滑块/隐藏箭头；1–2 条记录按真机实际行高自适应，3 条及以上才内部滚动。浏览器、APK、魅族真机截图与 CDP 回归通过。
@@ -12927,5 +12928,74 @@ Room 序列化应依据原始 JSON 是否存在统一字段，避免把旧记录
 - 详情编辑、CSV、JSON、WebDAV 和服务器恢复不丢失字段。
 - 今日/周期统计、时长、连续记录、小组件、加密和 AI 配置行为保持不变。
 - 真机重启、洞悉刷新和 AI 重新生成不再复现该问题。
+
+---
+
+## 254. 【Bug】v4.1.4 旧记录日期被归一化为 1970 年 ✅ 已实施（v4.1.5）
+
+### 关联条目
+
+- 关联 #236（Room 成为原生记录权威）
+- 关联 #253（Room 旧记录兼容投影）
+- 目标补丁版本：v4.1.5
+
+### 需求
+
+修复 v4.1.4 升级后旧记录日期被改写为 `1970-01-01`，导致记录在首页、日历、统计、洞悉和小组件中表现为“数据丢失”的问题；同时建立迁移保护，避免后续 Room/WebView 兼容投影再次批量改写记录。
+
+### 现状
+
+- 真机只读诊断确认 Room 和旧加密镜像均保留 42 条记录，并非记录实体被删除。
+- 其中 36 条记录出现 `occurredAtMs: null`、`dateKey: 1970-01-01`、`offset: -20706`，因此被当前统计窗口排除。
+- `RoomRecordEntity.toJson()` 为旧记录补出了空时间字段；`www/js/records.js` 中 `Number(null) === 0`，使 `normalizeOffsets()` 把空值解释为 Unix epoch。
+- 启动流程随后调用 `Storage.saveRecords(records)`，错误日期被同时写回 Room 和旧加密镜像，形成持久化逻辑丢失。
+- 重启后记录数量保持 42 条，日志未发现 Room、SQLCipher 打开失败或崩溃；问题是确定性的日期元数据误写。
+
+### 复用映射
+
+- 时间归一化 → `normalizeOffsets()` / `plausibleTimestamp()` → `www/js/records.js` → 扩展为严格空值与异常值校验。
+- Room 记录投影 → `RoomRecordEntity.toJson()/fromJson()`、`RoomShadowPlugin` → `android/app/src/main/java/com/guanji/app/core/data/RoomRecordEntity.kt`、`RoomShadowPlugin.kt` → 复用现有 `rawRecordJson` 和事务边界，修正缺失字段的序列化方式。
+- 权威加载与镜像写回 → `Storage.loadRecords()` / `Storage.saveRecords()`、`GuanjiRoomShadow.loadAuthoritative()` / `commitRecords()` → `www/js/storage.js`、`www/js/room-shadow-bridge.js` → 增加迁移前快照与批量异常阻断，不新建第二套记录存储。
+- 恢复与备份 → `secure.js`、`webdav.js`、`backup-picker.js` → 复用现有加密 BackupEnvelope、WebDAV 恢复和未知字段保留规则；优先使用 4.1.4 更新前备份恢复可信日期。
+
+### 理解与设计（草案）
+
+1. 严格拒绝 `null`、`undefined`、空字符串和无效数值作为时间戳；不再将其转换为 0。
+2. Room 对缺失的 `dateKey`、`occurredAtMs`、`createdAtMs`、`updatedAtMs` 等字段保持缺失，不输出会触发旧兼容逻辑的无意义 `null`。
+3. 启动归一化增加批量异常保护：发现大范围日期变成 1970 年或 offset 突变时，阻止自动写回并保留恢复快照。
+4. 修复迁移先保护当前数据，再以 4.1.4 更新前备份为可信来源按记录 ID 对齐；匹配不到的记录不根据 ID 猜测日期，保留记录并标记为待恢复。
+5. 恢复结果以事务方式同时写入 Room、加密镜像、统计修订号和小组件快照；失败时整体回滚。
+6. 自动 WebDAV 备份在恢复确认前不得覆盖更新前的可用备份。
+
+### 实施清单
+
+1. 修复 `plausibleTimestamp()` 的空值判断，并补充 null/undefined/空字符串/0 的单元测试。
+2. 修正 `RoomRecordEntity.toJson()` 的 nullable 字段投影，保留未知字段和 #253 三态观察字段语义。
+3. 增加迁移前快照、异常日期检测、批量写回保护和可重复执行的修复标记。
+4. 实现按记录 ID 对齐的日期恢复；优先读取更新前本机/服务器备份，禁止无依据猜测日期。
+5. 验证 Room、加密镜像、JSON/CSV、WebDAV、本机恢复和服务器恢复的一致性。
+6. 完成浏览器回归、离线 APK 构建、Android 真机 CDP、重启回归和小组件统计回归。
+
+### 待确认问题
+
+- 若设备没有可用的 4.1.4 更新前备份，无法保证 1970 年记录的真实日期恢复；只能保留记录并提示待恢复，禁止根据 ID 或统计结果猜测日期。
+
+### 验收要点
+
+- 42 条记录升级前后数量一致，Room 与加密镜像数量一致。
+- `1970-01-01` 异常记录不再新增；已有记录按可信备份恢复或明确标记待恢复。
+- 重启、前后台切换、新增/编辑/删除后不会发生批量日期漂移。
+- 首页、日历、统计、洞悉、AI 输入和小组件使用同一份恢复后的日期数据。
+- 自动 WebDAV 不会覆盖更新前备份，所有恢复失败均可回滚。
+
+### 实施结果（2026-09-10，v4.1.5）
+
+- `www/js/records.js`：严格拒绝 `null`/`undefined`/空字符串/布尔值/0 时间戳；识别 `1970-01-01 + 无可信时间戳 + 极端 offset` 占位记录；启动归一化保留快照并阻止异常批量写回；暴露统一异常检测入口。
+- `android/app/src/main/java/com/guanji/app/core/data/RoomRecordEntity.kt`：nullable 字段缺失时不再序列化为 JSON `null`，保留 #253 三态观察字段和未知字段兼容。
+- `www/js/app.js`：发现待恢复记录时不阻塞首屏，只提示用户从更新前可信备份恢复。
+- `www/js/webdav.js`：检测到异常日期时暂停自动和手动上传，防止覆盖服务器上的更新前可信备份；恢复仍复用现有加密 BackupEnvelope、WebDAV/本机恢复和 Room 原子替换链。
+- 新增 `debug/verify-254-date-migration.cjs` 与 `npm run verify:254`；全量 `verify:221`–`verify:236`、`verify:253`、`verify:254` 和浏览器回归均通过。
+- 统一构建钩子生成 `com.guanji.app`、versionCode 113、versionName 4.1.5 的 `app-debug.apk`，SHA-256 为 `B3B95834886E32246E065D360A7D170FD6D6974FAFF76A203BE45459B63BA20A`，签名指纹与已安装调试签名一致，已覆盖安装到真机 `3B163A002UT00000`。
+- 真机重启后 Room 与 WebView 均保持 42 条记录；最终 CDP 检查 `epochCount=0`、Room 状态 `COMPLETED`、`encrypted=true`。若其他设备仍存在 epoch 占位，需在“恢复数据”中选择更新前备份并输入创建备份时的加密口令完成按 ID 对齐恢复；应用不会根据记录 ID 或统计结果猜测日期。
 
 ---

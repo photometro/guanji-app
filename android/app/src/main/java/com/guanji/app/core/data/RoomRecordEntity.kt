@@ -42,7 +42,9 @@ data class RoomRecordEntity(
     fun toJson(): JSONObject {
         val json = runCatching { JSONObject(rawRecordJson) }.getOrElse { JSONObject() }
         fun putNullable(key: String, value: Any?) {
-            json.put(key, value ?: JSONObject.NULL)
+            // #254：缺失字段必须保持缺失。向旧记录补写 null 会被 WebView
+            // 的旧兼容逻辑误判为显式值（尤其是 occurredAtMs=null）。
+            if (value == null) json.remove(key) else json.put(key, value)
         }
         putNullable("id", id)
         putNullable("dateKey", dateKey)

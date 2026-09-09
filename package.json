@@ -20,6 +20,7 @@
     "verify:236": "node debug/verify-236-record-chain.cjs",
     "verify:253": "node debug/verify-253-observation-compat.cjs",
     "verify:253:browser": "node debug/verify-253-browser.cjs",
+    "verify:254": "node debug/verify-254-date-migration.cjs",
     "build:apk:debug": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-apk.ps1 -Mode debug",
     "build:apk:release": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-apk.ps1 -Mode release"
   },
