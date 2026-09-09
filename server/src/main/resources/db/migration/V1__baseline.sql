@@ -1,0 +1,61 @@
+CREATE TABLE IF NOT EXISTS schema_version (
+    version_key VARCHAR(64) PRIMARY KEY,
+    app_version VARCHAR(32) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS announcements (
+    id BIGSERIAL PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    body TEXT NOT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'DRAFT',
+    published_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS feedbacks (
+    id BIGSERIAL PRIMARY KEY,
+    category VARCHAR(64) NOT NULL,
+    content TEXT NOT NULL,
+    app_version VARCHAR(32),
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS stat_snapshots (
+    id BIGSERIAL PRIMARY KEY,
+    data_revision BIGINT NOT NULL,
+    model_version VARCHAR(64) NOT NULL,
+    snapshot_json JSONB NOT NULL,
+    consent_state VARCHAR(32) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (data_revision, model_version)
+);
+
+CREATE TABLE IF NOT EXISTS review_tasks (
+    id BIGSERIAL PRIMARY KEY,
+    resource_type VARCHAR(32) NOT NULL,
+    resource_id BIGINT NOT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    reviewer VARCHAR(128),
+    reviewed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS review_actions (
+    id BIGSERIAL PRIMARY KEY,
+    task_id BIGINT NOT NULL REFERENCES review_tasks(id),
+    action VARCHAR(32) NOT NULL,
+    reason TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id BIGSERIAL PRIMARY KEY,
+    actor VARCHAR(128) NOT NULL,
+    action VARCHAR(64) NOT NULL,
+    resource_type VARCHAR(32),
+    resource_id BIGINT,
+    detail JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
