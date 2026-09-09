@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://guanji.app/contracts/backup-envelope.schema.json",
+  "title": "Guanji BackupEnvelope",
+  "type": "object",
+  "x-preserveUnknownFields": true,
+  "required": ["formatVersion", "type", "createdAt", "recordCount", "mode"],
+  "properties": {
+    "formatVersion": { "type": "integer", "minimum": 1 },
+    "type": { "type": "string", "const": "guanji-backup" },
+    "createdAt": { "type": "string", "minLength": 1 },
+    "recordCount": { "type": "integer", "minimum": 0 },
+    "mode": { "type": "string", "enum": ["encrypted", "plain", "csv"] },
+    "envelope": { "type": ["object", "null"] },
+    "ciphertext": { "type": ["string", "object", "null"] },
+    "records": { "type": "array", "items": { "type": "object" } },
+    "sourceVersion": { "type": "string" }
+  }
+}

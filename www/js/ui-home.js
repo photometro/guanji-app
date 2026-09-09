@@ -74,7 +74,7 @@ function renderHome(snapshot = null) {
   $('todayLabel').textContent =
     `${today.getMonth() + 1}月${today.getDate()}日 · ${WEEKDAYS[today.getDay()]}`;
 
-  const statsSnapshot = snapshot || buildStatsSnapshot();
+  const statsSnapshot = snapshot || (typeof getSharedStatsSnapshot === 'function' ? getSharedStatsSnapshot() : null) || buildStatsSnapshot();
   const todayCount = statsSnapshot.todayCount;
   $('todayStatus').textContent = todayCount ? `今天 · 已记录 ${todayCount} 次` : '今天 · 尚未记录';
 
@@ -116,14 +116,14 @@ function renderHome(snapshot = null) {
 
 /* #88：次数趋势视图分发（曲线 / 热力图） */
 function renderChart(days, snapshot = null) {
-  const statsSnapshot = snapshot || buildStatsSnapshot();
+  const statsSnapshot = snapshot || (typeof getSharedStatsSnapshot === 'function' ? getSharedStatsSnapshot() : null) || buildStatsSnapshot();
   if (chartView === 'heat') renderHeatmap(days, statsSnapshot);
   else renderAreaChart(days, statsSnapshot);
 }
 
 /* #88：热力图（固定行数网格——14 天恒 2 行、30 天恒 5 行；连续天数排列，蓝系色阶） */
 function renderHeatmap(days, snapshot = null) {
-  const statsSnapshot = snapshot || buildStatsSnapshot();
+  const statsSnapshot = snapshot || (typeof getSharedStatsSnapshot === 'function' ? getSharedStatsSnapshot() : null) || buildStatsSnapshot();
   const now = new Date();
   const rows = Math.ceil(days / 7);   // 固定行数：不按自然周切行，避免起始日导致多出空行
   // 最近 days 天（旧→新，行主序：每 rows*7 格）
@@ -165,7 +165,7 @@ function smoothPath(pts) {
 
 function renderAreaChart(days, snapshot = null) {
   const W = 336, H = 112, TOP = 14, BOT = 16, TOP_PAD = 16;
-  const statsSnapshot = snapshot || buildStatsSnapshot();
+  const statsSnapshot = snapshot || (typeof getSharedStatsSnapshot === 'function' ? getSharedStatsSnapshot() : null) || buildStatsSnapshot();
   const counts = days === 14 ? statsSnapshot.rolling14 : days === 30 ? statsSnapshot.rolling30 : [];
   let max = counts.reduce((value, count) => Math.max(value, count), 0);
   if (!counts.length) {
@@ -220,7 +220,7 @@ function renderAreaChart(days, snapshot = null) {
 /* ---------- 月度汇总（#15/#209）：本月次数与上月同期环比 ---------- */
 
 function renderMonthSummary(snapshot = null) {
-  const statsSnapshot = snapshot || buildStatsSnapshot();
+  const statsSnapshot = snapshot || (typeof getSharedStatsSnapshot === 'function' ? getSharedStatsSnapshot() : null) || buildStatsSnapshot();
   const curCount = statsSnapshot.monthCount;
   const prevCount = statsSnapshot.previousMonthCount;
 
@@ -319,7 +319,7 @@ function ringColors() {
 
 function renderRingDist(snapshot = null) {
   const buckets = BUCKETS.map((b) => ({ key: b.key, n: 0 }));
-  const statsSnapshot = snapshot || buildStatsSnapshot();
+  const statsSnapshot = snapshot || (typeof getSharedStatsSnapshot === 'function' ? getSharedStatsSnapshot() : null) || buildStatsSnapshot();
   const context = statsSnapshot.__statsContext;
   const validRecords = context
     ? context.valid.map((item) => item.record)

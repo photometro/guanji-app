@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://guanji.app/contracts/evidence-graph.schema.json",
+  "title": "Guanji EvidenceGraph",
+  "type": "object",
+  "x-preserveUnknownFields": true,
+  "required": ["schemaVersion", "modelVersion", "dataRevision", "generatedAtMs", "nodes", "relations", "limitations"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "modelVersion": { "type": "string", "minLength": 1 },
+    "dataRevision": { "type": "integer", "minimum": 0 },
+    "generatedAtMs": { "type": "integer", "minimum": 0 },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "x-preserveUnknownFields": true,
+        "required": ["evidenceId", "dimension", "metric", "state", "confidence", "dataRevision", "modelVersion"],
+        "properties": {
+          "evidenceId": { "type": "string", "minLength": 1 },
+          "dimension": { "type": "string", "minLength": 1 },
+          "metric": { "type": "string", "minLength": 1 },
+          "state": { "type": "string", "minLength": 1 },
+          "magnitude": { "type": "string" },
+          "persistence": { "type": "string" },
+          "confidence": { "type": "string", "minLength": 1 },
+          "status": { "type": "string" },
+          "changePoint": {
+            "type": "object",
+            "required": ["status", "method", "confidence", "evidenceBlockIds", "limitations"],
+            "properties": {
+              "status": { "enum": ["candidate", "not_detected", "uncertain"] },
+              "method": { "type": "string", "minLength": 1 },
+              "direction": { "type": "string" },
+              "confidence": { "enum": ["high", "medium", "low"] },
+              "startWeekStartKey": { "type": "string" },
+              "startWeekEndKey": { "type": "string" },
+              "endWeekStartKey": { "type": "string" },
+              "endWeekEndKey": { "type": "string" },
+              "evidenceBlockIds": { "type": "array", "items": { "type": "string" } },
+              "shiftedBlockCount": { "type": "integer", "minimum": 0 },
+              "limitations": { "type": "array", "items": { "type": "string" } }
+            },
+            "x-preserveUnknownFields": true
+          },
+          "relationEvidence": {
+            "type": "object",
+            "required": ["type", "from", "to", "relation", "confidence", "evidenceBlockIds", "limitations"],
+            "properties": {
+              "type": { "enum": ["event_cooccurrence", "temporal_co_movement"] },
+              "from": { "type": "string", "minLength": 1 },
+              "to": { "type": "string", "minLength": 1 },
+              "relation": { "enum": ["supports", "contrasts", "weakly_aligned", "insufficient_relation"] },
+              "confidence": { "enum": ["high", "medium", "low"] },
+              "evidenceBlockIds": { "type": "array", "items": { "type": "string" } },
+              "limitations": { "type": "array", "items": { "type": "string" } }
+            },
+            "x-preserveUnknownFields": true
+          },
+          "dataRevision": { "type": "integer", "minimum": 0 },
+          "modelVersion": { "type": "string", "minLength": 1 },
+          "limitations": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "relations": { "type": "array", "items": { "type": "object", "required": ["from", "to", "relation"] } },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  }
+}

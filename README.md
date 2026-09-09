@@ -1,6 +1,6 @@
 # 观己（Guanji）
 
-> 当前版本：v3.87（#219：日历当日明细滚动条真机样式优化）
+> 当前版本：v4.1.4（#253：Room 旧记录观察字段兼容修复；发行版仍为 Local-first）
 
 > 一个隐私优先、温和非评判的个人行为与习惯觉察 App。记录自己的节奏，看清自己的模式，不评判、不焦虑、不打卡式逼迫。
 
@@ -12,6 +12,7 @@
 - **首页**：今日概览、时段分布环图、次数趋势（14 / 30 天）、本月对比、最近记录
 - **历史日历**：月历角标、选天明细、补记直达；**未来日期灰显禁用**，补记未来日期会被温和拦截（「未来的日期还没到哦，先记录今天吧」）
 - **个人洞察**：现有分析页回归六张旧版 AI 卡片（近 7 天概览、时段分布、发生前状况、共同出现、近期变化、可以试试）；有可用 AI 报告时只显示 AI 观察，没有 AI 时显示完整本地洞察，支持追问，不展示独立 AI 报告
+- **可追溯 AI 观察**：本地行为模型为聚合指标和个人特征生成绑定数据修订号与模型版本的 Evidence ID；AI claim 必须引用当前证据，过期或未知引用会被拒绝；个人特征只保存在本地原生快照
 - **AI 多提供商**：默认 DeepSeek，可选 OpenAI 或自定义（Base URL / 模型 / API 密钥**按提供商分别保存**，含连接测试）
 - **「就现在」计时记录**：像运动 App 一样开始/结束计时——**全屏沉浸式计时页**（主题蓝渐变 + 超大秒数 + 脉冲徽标），结束后同屏进入**汇总页**（发生前情况补选、上方内容可滚动、底部操作区固定、「继续计时」可反悔）；时长自动精准填入
 - **实况通知（Live Updates）**：计时时切出应用，通知栏/锁屏持续显示系统级秒数（Android 16+ 实况通知 / 魅族锁屏胶囊 / 其他常驻通知）；通知自带「结束并记录 / 取消」快捷按钮；息屏 AOD 显示「已计时 X 分钟」自动刷新；计时中 App 被杀也会自动恢复衔接
@@ -70,7 +71,7 @@
 |---|---|
 | 前端 | 原生 HTML / CSS / JavaScript（Apple 风格 UI，无框架依赖） |
 | 壳 | Capacitor 8（Android WebView 包装） |
-| 原生 | Kotlin / Java（自定义插件 + 5 个 AppWidgetProvider） |
+| 原生 | Kotlin / Java（core-data/core-stats/core-behavior/core-ai 边界 + 自定义插件 + 5 个 AppWidgetProvider） |
 | 存储 | @capacitor/preferences（本地） |
 | AI | OpenAI 兼容接口（DeepSeek 默认 / OpenAI / 自定义） |
 | 小组件联动 | WebView → SharedPreferences 同步（自定义 Capacitor 插件） |
@@ -98,14 +99,18 @@ npm run build:apk:debug
 # 3. 构建并安装到首台在线设备（不清除应用数据）
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-apk.ps1 -Mode debug -Install
 
-# 4. 正式包（必须先提供 GUANJI_RELEASE_* 签名环境变量）
+# 4. GitHub 历史发行包（正式包名 + Android Debug 签名；仅用于当前发行渠道）
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-apk.ps1 -Mode release -UseDebugSigning
+
+# 5. 商店/正式签名包（必须先提供 GUANJI_RELEASE_* 签名环境变量）
 npm run build:apk:release
 ```
 
 构建产物：
 
 - debug：`android/app/build/outputs/apk/debug/app-debug.apk`（包名 `com.guanji.app`，稳定 Android Debug 签名）
-- release：`android/app/build/outputs/apk/release/app-release.apk`（包名 `com.guanji.app`，正式签名）
+- release（GitHub 历史兼容）：`android/app/build/outputs/apk/release/app-release.apk`（包名 `com.guanji.app`，显式 Android Debug 签名）
+- release（商店/正式签名）：`android/app/build/outputs/apk/release/app-release.apk`（包名 `com.guanji.app`，环境变量指定的正式签名）
 
 构建日志和最后一次摘要位于 `debug/apk-build-*.log` 与 `debug/apk-build-summary.json`。不要直接调用 `gradlew assemble*` 作为发布或真机验证入口；这样容易丢失固定用户目录、资源同步、签名和 APK 新鲜度校验。
 

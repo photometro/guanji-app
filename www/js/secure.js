@@ -116,6 +116,9 @@ async function secureSetDEK(dekB64) {
   }
 }
 
+/* #223：仅供同进程 Room 影子库派生专用数据库密钥；不写入日志、不上传网络。 */
+window.__guanjiGetDEKForRoomShadow = secureGetDEK;
+
 /* ---------- 模式 ---------- */
 function secureMode() {
   return localStorage.getItem(SECURE.MODE_KEY) === 'encrypted' ? 'encrypted' : 'plain';

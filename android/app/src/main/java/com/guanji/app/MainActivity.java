@@ -61,7 +61,9 @@ public class MainActivity extends BridgeActivity {
         registerPluginByName("com.guanji.app.SaveToDownloadsPlugin");
         registerPluginByName("com.guanji.app.GuanjiDavPlugin");
         registerPluginByName("com.guanji.app.StartupReadyPlugin");
-        registerPluginByName("com.guanji.app.NativeHomeSnapshotPlugin");
+            registerPluginByName("com.guanji.app.NativeHomeSnapshotPlugin");
+            registerPluginByName("com.guanji.app.BehaviorSnapshotPlugin");
+            registerPluginByName("com.guanji.app.RoomShadowPlugin");
         super.load();
     }
 

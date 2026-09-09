@@ -234,12 +234,27 @@ function observationDimension(value) {
   return meta ? meta.dimension : 'custom';
 }
 
+/*
+ * #253：统一判断记录是否明确使用了新版统一状况字段。
+ *
+ * 缺失/null 表示旧记录，应回退 moods/triggers；空数组是新版用户明确
+ * 未选择，不能再把旧字段合并回来。Room 的 rawRecordJson 投影会保留这
+ * 个字段存在性，因此这里不按“数组是否有内容”判断来源。
+ */
+function recordHasUnifiedObservationField(record) {
+  if (!record || typeof record !== 'object') return false;
+  if (Array.isArray(record.observations)) return true;
+  return record.observation !== null
+    && record.observation !== undefined
+    && String(record.observation).trim() !== '';
+}
+
 /* 读取优先级：observations（v3.22）→ observation（v3.20 单值）→ 旧 moods/triggers。 */
 function recordObservationValues(record) {
   if (!record) return [];
   let values;
   if (Array.isArray(record.observations)) values = normalizeObservationValues(record.observations);
-  else if (record.observation) values = normalizeObservationValues(record.observation);
+  else if (recordHasUnifiedObservationField(record)) values = normalizeObservationValues(record.observation);
   else values = normalizeObservationValues([...(record.triggers || []), ...(record.moods || [])]);
   // 旧记录仅有 media=true 时，保留“成人内容影响”的历史语义；新数组也不覆盖这一明确标记。
   if (record.media && !values.some(isAdultContentObservation)) {
@@ -275,7 +290,7 @@ function displayTrigger(value) {
 }
 
 function displayRecordTags(record) {
-  if (record && (Array.isArray(record.observations) || record.observation)) {
+  if (recordHasUnifiedObservationField(record)) {
     return recordObservationLabels(record);
   }
   const triggers = (record.triggers || []).map(displayTrigger);
@@ -298,12 +313,30 @@ const Storage = {
   KEY_RECORDS: 'guanji_records_v1',
   KEY_API: 'guanji_api_key_v1',
 
-  /* #93：加载记录（加密模式走 secure.js 解密；明文模式原逻辑） */
-  loadRecords() {
+  /* #93/#236：加载记录。原生环境优先读取 Room；Room 首次打开或中断迁移时，
+     仅使用旧加密 Storage 作为一次性种子，浏览器仍沿用原有 Storage。 */
+  async loadRecords() {
+    try {
+      const bridge = window.GuanjiRoomShadow;
+      if (bridge?.loadAuthoritative) {
+        /* 将旧 Storage 作为惰性回退，Room 已完成时不解密/扫描旧数据。 */
+        const result = await bridge.loadAuthoritative(() => secureLoadRecords());
+        if (Array.isArray(result?.records)) return result.records;
+      }
+    } catch (error) { console.error('[room] authoritative load failed', error); }
     return secureLoadRecords();
   },
-  /* #93：保存记录（加密模式走 secure.js 加密——异步执行不阻塞调用点，失败记日志；内存 records 始终保真） */
+  /* #236：原生环境先提交 Room，再异步更新旧 Storage 兼容镜像；Room 失败时才回退
+     原有加密路径，避免升级过程中因临时桥错误丢失记录。 */
   saveRecords(list) {
+    const bridge = window.GuanjiRoomShadow;
+    if (bridge?.commitRecords) {
+      bridge.commitRecords(list).then((result) => {
+        if (!result?.ok) return secureSaveRecords(list).catch((e) => console.error('[secure] fallback save failed', e));
+        return result;
+      }).catch((e) => secureSaveRecords(list).catch((fallbackError) => console.error('[secure] fallback save failed', fallbackError || e)));
+      return;
+    }
     secureSaveRecords(list).catch((e) => console.error('[secure] save failed', e));
   },
   loadApiKey() {
@@ -314,10 +347,8 @@ const Storage = {
   },
 };
 
-/* #211 N8：统一数据接口（仅收口调用契约，不迁移底层数据）。
-   records/config 继续委托现有 Storage 与 AI 配置函数，保留旧 localStorage
-   键、加密路径、JSON/CSV 导入导出；stats 只返回 StatsSnapshot，不直接接触存储。
-   后续原生适配层只需实现同一组方法即可，不要求一次性改动所有调用方。 */
+/* #211 N8/#236：统一数据接口。records 由 Room 原生仓库权威加载/提交，旧 localStorage
+   仅作为加密兼容镜像和 Room 不可用时的浏览器回退；保留 JSON/CSV 导入导出契约。 */
 const GuanjiDataStore = Object.freeze({
   contractVersion: 1,
   records: Object.freeze({
@@ -425,9 +456,11 @@ function buildDemoRecords() {
         time: String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'),
         occurredAtMs: demoDate.getTime(),
         zoneId: systemTimeZone(),
+        localDate: fmtDateKey(demoDate),
         localDateKey: fmtDateKey(demoDate),
         timePrecision: 'minute',
         source: 'demo',
+        backfill: false,
         createdAtMs: demoDate.getTime(),
         updatedAtMs: demoDate.getTime(),
         duration: Math.floor(seeded(idx + 7) * 25 + 5) * 5,

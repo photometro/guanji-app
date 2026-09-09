@@ -3,7 +3,9 @@ param(
     [ValidateSet('debug', 'release')]
     [string] $Mode = 'debug',
     [switch] $Install,
+    [switch] $UseDebugSigning,
     [switch] $SkipSync,
+    [switch] $Online,
     [switch] $NoBuildCache,
     [switch] $NoDaemon,
     [switch] $Stacktrace
@@ -41,6 +43,7 @@ $device = [ordered]@{
 $summary = [ordered]@{
     status = 'running'
     mode = $Mode
+    signingPolicy = $null
     package = $null
     variantTask = $null
     versionName = $null
@@ -260,7 +263,13 @@ try {
         $ErrorActionPreference = $previousErrorAction
     }
 
-    if ($Mode -eq 'release') {
+    if ($Mode -eq 'release' -and $UseDebugSigning) {
+        # 历史 GitHub 发行版沿用正式包名 + Android 默认调试签名。
+        # 该开关必须显式传入，避免把测试签名误当成商店正式签名。
+        $env:GUANJI_RELEASE_USE_DEBUG_SIGNING = 'true'
+        $summary.signingPolicy = 'android-debug-keystore-explicit'
+        Write-Log 'release 使用显式 Android Debug 签名（与历史 GitHub 发行版保持一致）'
+    } elseif ($Mode -eq 'release') {
         foreach ($name in @('GUANJI_RELEASE_KEYSTORE', 'GUANJI_RELEASE_STORE_PASSWORD', 'GUANJI_RELEASE_KEY_ALIAS', 'GUANJI_RELEASE_KEY_PASSWORD')) {
             if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
                 throw "release 模式缺少 $name；不会构建未签名或错误签名的正式包"
@@ -269,6 +278,7 @@ try {
         if (-not (Test-Path -LiteralPath $env:GUANJI_RELEASE_KEYSTORE -PathType Leaf)) {
             throw "正式签名 keystore 不存在：$env:GUANJI_RELEASE_KEYSTORE"
         }
+        $summary.signingPolicy = 'configured-release-keystore'
     }
 
     foreach ($probeDir in @(
@@ -320,7 +330,12 @@ try {
     }
     $summary.variantTask = $variantTask
     Set-BuildStage 'gradle-build'
-    $gradleArguments = @('-p', 'android', $variantTask, '--offline')
+    $gradleArguments = @('-p', 'android', $variantTask)
+    if ($Online) {
+        Write-Log '本次构建显式允许 Gradle 解析未缓存依赖（仅在离线构建缺少依赖时使用）'
+    } else {
+        $gradleArguments += '--offline'
+    }
     if ($NoBuildCache) {
         Write-Log '本次构建显式禁用 Gradle build cache（用于清理受锁定/权限影响的派生产物）'
         $gradleArguments += '--no-build-cache'
@@ -363,9 +378,9 @@ try {
     if ($Install) {
         Set-BuildStage 'device-preflight'
         $deviceText = Invoke-Captured -Name 'adb-devices' -Executable $adbPath -Arguments @('devices')
-        $online = @($deviceText -split "`r?`n" | Where-Object { $_ -match '\sdevice$' -and $_ -notmatch '^List of devices' })
-        if ($online.Count -eq 0) { throw '未检测到在线 Android 设备' }
-        $device.serial = (($online[0] -split '\s+')[0]).Trim()
+        $onlineDevices = @($deviceText -split "`r?`n" | Where-Object { $_ -match '\sdevice$' -and $_ -notmatch '^List of devices' })
+        if ($onlineDevices.Count -eq 0) { throw '未检测到在线 Android 设备' }
+        $device.serial = (($onlineDevices[0] -split '\s+')[0]).Trim()
         $device.status = 'online'
         # pm path 对未安装的包返回 1，这是可接受的首次安装场景。
         $installedPathText = Invoke-Captured -Name 'adb-pm-path' -Executable $adbPath -Arguments @('-s', $device.serial, 'shell', 'pm', 'path', $metadata.package) -AllowedExitCodes @(0, 1)

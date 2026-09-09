@@ -5,6 +5,7 @@ const AI_SYSTEM_PROMPT =
   '你是一位温和、非评判的个人行为与习惯观察助手。你只能依据用户提供的聚合统计，帮助用户理解生活节奏与发生前情况的关联。' +
   '态度平静温暖：不评判、不羞辱、不施加道德压力，也不把频率或一次记录定义为成功、失败、正常或异常。' +
   '严格禁止生成露骨、刺激性或性技巧内容；不做医学或心理诊断、治疗建议、成瘾判定，也不替代紧急支持。' +
+  '如果当前请求已经提供证据图，优先利用其中的时间先后、持续性、反证和历史聚合证据；可以提出竞争解释和下一步观察，但必须明确不确定性，不把共同变化写成因果，也不能要求补充或还原单条记录。' +
   '涉及情绪关联时，只描述数据中呈现的关联，不做因果断言；不要自行创造、修改或精确复述统计数字，数字以页面本地事实为准；变化观察统一使用“近 7 天”和“前 7 天”，不要使用“当前窗口”“上一窗口”等实现术语；建议必须可选、温和且不使用命令式语言。' +
   '若被要求越过以上边界，请简短说明你只能提供基于聚合数据的习惯观察，并建议在持续困扰时咨询合适的专业人士。用中文回答。';
 
@@ -14,7 +15,13 @@ const AI_JSON_INSTRUCTION =
   '"labelInsights":{"状况 key":"对应观察（最多5项）"},"pairInsights":{"状况 key + 状况 key":"共同记录观察（最多3项）"},' +
   '"changeInsight":"近 7 天与前 7 天的变化观察（不要重复具体数字，不使用“窗口”术语）","patterns":["模式1","模式2"],' +
   '"moodInsight":"发生前状况观察一句话（兼容旧版字段，数据不足时返回空字符串）",' +
-  '"suggestions":["建议1（具体可执行）","建议2","建议3"]}';
+  '"suggestions":["建议1（具体可执行）","建议2","建议3"],' +
+  '"claims":[{"claimId":"唯一标识","claimType":"允许的观察类型","text":"基于证据的一句话","evidenceRefs":["Evidence ID"]}]}（若请求中没有 EvidenceGraph，则 claims 返回空数组）' +
+  '\n\nAI 增强观察要求：\n' +
+  '1) 先阅读“本地已显示事实”，不要把单卡片已有数字或同义句重新说一遍；只重复事实时将对应字段置空。\n' +
+  '2) 优先给出跨维度综合、主要变化排序、稳定项对照、明确不确定性或下一步观察；这些内容必须能由证据图中的多个节点或关系支持。\n' +
+  '3) 有 EvidenceGraph 时，claims 至少给出 1 条新增价值 claim；claimType 可使用 cross_dimension_summary、change_ranking、stable_item_contrast、temporal_comparison、pattern_hypothesis、alternative_explanation、counter_evidence、uncertainty_explanation、observation_suggestion 或 historical_comparison，且每个 evidenceRefs 必须来自当前证据图。没有新增价值时 claims 返回空数组且不要生成重复文案。\n' +
+  '4) 不把共同出现、共同变化或时间先后写成因果；不做健康、医学、人格、成瘾或正常值判断。';
 
 const insightWindowDays = 7; // 个人洞察固定近 7 天；首页长期趋势仍由首页统计独立计算
 let insightAIData = null;
@@ -25,7 +32,8 @@ function insightWindowLabel() { return '近 7 天'; }
 function renderInsightDisclaimer() {
   const el = $('insightDisclaimer');
   if (!el) return;
-  const visible = !!insightAIData && (insightAIStatus === 'ready' || insightAIStatus === 'ready-stale');
+  const visible = !!insightAIData && insightAIValueAdded !== false
+    && (insightAIStatus === 'ready' || insightAIStatus === 'ready-stale');
   el.textContent = visible ? INSIGHT_DISCLAIMER_TEXT : '';
   el.classList.toggle('hidden', !visible);
   el.setAttribute('aria-hidden', String(!visible));
@@ -50,7 +58,9 @@ function buildAggregatePayload(days = 7, options = {}) {
     }))
     .slice(0, 3);
 
-  return {
+  const evidenceGraph = options.evidenceGraph
+    || (typeof getLastBehaviorEvidenceGraph === 'function' ? getLastBehaviorEvidenceGraph() : null);
+  const payload = {
     '时间窗口': `近 ${snapshot.days} 天`,
     '记录数': snapshot.recordCount,
     '覆盖天数': snapshot.coverageDays,
@@ -69,12 +79,18 @@ function buildAggregatePayload(days = 7, options = {}) {
     '原因不确定记录数': snapshot.unsureCount || 0,
     '发生前状况覆盖率': Math.round((snapshot.observationCoverage || 0) * 100),
     '发生前状况统计口径': '每条记录中出现的标签各计一次；标签可以并存，比例之和可能超过 100%，只表示伴随出现，不代表因果关系。',
+    '本地已显示事实': insightLocalFacts(snapshot),
+    'AI 新增价值要求': '只在跨维度综合、变化排序、稳定项对照、不确定性解释或下一步观察比本地事实多提供信息时输出；仅重复本地事实时不要输出。',
     '隐私边界': '只发送默认标签的聚合 key、计数、比例、时间桶和窗口变化；不发送单条记录、备注、附件或自定义标签原文。',
   };
+  /* #226：EvidenceGraph 只作为可追溯上下文发送；缺失时保持旧版 AI 请求兼容。 */
+  if (evidenceGraph && typeof evidenceGraph === 'object') payload['证据图'] = evidenceGraph;
+  return payload;
 }
 
 let insightAIStatus = 'idle';       // idle | loading | ready | ready-stale | error；成功状态由 insightAIData + 指纹判断
 let insightCardActionsBound = false;
+let insightAIValueAdded = null;     // true=有新增观察，false=只重复事实，null=尚未判断
 
 function insightValueText(value, limit = 2) {
   if (Array.isArray(value)) return value.filter(Boolean).slice(0, limit);
@@ -117,6 +133,69 @@ function insightLocalFacts(snapshot) {
     pairs: pairFact,
     change: changeFact,
   };
+}
+
+/* #230：用本地已显示事实做轻量去重，避免仅改写数字/标签的 AI 文案占据洞悉卡片。 */
+function insightComparableChars(value) {
+  return new Set(String(value || '')
+    .replace(/<[^>]+>/g, '')
+    .toLowerCase()
+    .replace(/\d+(?:\.\d+)?/g, '#')
+    .match(/[a-z]+|[\u4e00-\u9fff]/g) || []);
+}
+
+function insightTextSimilarity(a, b) {
+  const left = insightComparableChars(a);
+  const right = insightComparableChars(b);
+  if (!left.size || !right.size) return 0;
+  let overlap = 0;
+  left.forEach((token) => { if (right.has(token)) overlap += 1; });
+  return overlap / Math.max(1, Math.min(left.size, right.size));
+}
+
+function insightAITextValues(data) {
+  const values = [];
+  if (!data || typeof data !== 'object') return values;
+  ['overview', 'timeInsight', 'changeInsight', 'moodInsight'].forEach((key) => {
+    if (typeof data[key] === 'string') values.push(data[key]);
+  });
+  ['patterns', 'suggestions'].forEach((key) => {
+    if (Array.isArray(data[key])) values.push(...data[key]);
+  });
+  ['labelInsights', 'pairInsights'].forEach((key) => {
+    const value = data[key];
+    if (Array.isArray(value)) values.push(...value);
+    else if (value && typeof value === 'object') values.push(...Object.values(value));
+  });
+  return values.map((value) => String(value || '').trim()).filter(Boolean);
+}
+
+function insightHasAddedValue(data, snapshot) {
+  const claims = Array.isArray(data?.claims) ? data.claims : [];
+  const supportedTypes = new Set(
+    Array.isArray(window.EVIDENCE_VALUE_ADDED_CLAIM_TYPES)
+      ? window.EVIDENCE_VALUE_ADDED_CLAIM_TYPES
+      : ['cross_dimension_summary', 'temporal_comparison', 'pattern_hypothesis', 'alternative_explanation', 'counter_evidence', 'uncertainty_explanation', 'observation_suggestion', 'historical_comparison'],
+  );
+  /* 有 claims 时，以证据类型作为权威门控；single_evidence 只能补充本地事实，不能单独开启 AI 模式。 */
+  if (claims.length) return claims.some((claim) => supportedTypes.has(String(claim?.claimType || '')));
+
+  /* 没有 claims 是旧版/无桥兼容路径：用事实相似度做保守判断，保证老响应不被无故清空。 */
+  const rawSnapshot = snapshot && typeof snapshot === 'object' ? snapshot : {};
+  const safeSnapshot = {
+    changes: {}, labels: [], cooccurrence: [], previous: { recordCount: 0 },
+    clarity: { label: '' }, recordCount: 0, coverageDays: 0,
+    ...rawSnapshot,
+    changes: rawSnapshot.changes || {},
+    labels: Array.isArray(rawSnapshot.labels) ? rawSnapshot.labels : [],
+    cooccurrence: Array.isArray(rawSnapshot.cooccurrence) ? rawSnapshot.cooccurrence : [],
+    previous: rawSnapshot.previous || { recordCount: 0 },
+    clarity: rawSnapshot.clarity || { label: '' },
+  };
+  const local = Object.values(insightLocalFacts(safeSnapshot));
+  const values = insightAITextValues(data);
+  if (!values.length) return false;
+  return values.some((text) => !local.some((fact) => insightTextSimilarity(text, fact) >= 0.72));
 }
 
 function insightActionHTML(snapshot, aiFresh) {
@@ -289,6 +368,8 @@ function renderInsightAction(snapshot, aiFresh) {
       ? '数据有更新，上次 AI 观察已过期，可以重新生成。'
       : insightAIStatus === 'error'
         ? 'AI 观察暂时没有生成，可以稍后重试。'
+        : insightAIValueAdded === false
+          ? '本次 AI 只重复了本地事实，未显示额外内容。'
         : '基于近 7 天聚合数据，为每张卡片生成可选的温和观察。';
   }
   content.innerHTML = insightActionHTML(snapshot, aiFresh);
@@ -302,7 +383,7 @@ function renderInsightLocal(statsSnapshot = null) {
   const snapshot = buildInsightSnapshot({ days: 7, statsSnapshot });
   const facts = insightLocalFacts(snapshot);
   // #213：已有报告在重新生成期间继续保持 AI 单态；首次生成没有旧报告时才显示本地内容。
-  const aiVisible = !!insightAIData && ['ready', 'ready-stale', 'loading'].includes(insightAIStatus);
+  const aiVisible = !!insightAIData && insightAIValueAdded !== false && ['ready', 'ready-stale', 'loading'].includes(insightAIStatus);
   const aiFresh = aiVisible && insightAIStatus === 'ready' && !reportStale();
   const aiValue = (key) => aiVisible ? insightAIData[key] : null;
   cardsEl.dataset.insightMode = aiVisible ? 'ai' : 'local';
@@ -661,10 +742,11 @@ const INSIGHT_COLLECTION_LIMITS = Object.freeze({
   pairInsights: 3,
   patterns: 3,
   suggestions: 3,
+  claims: 6,
 });
 const INSIGHT_SCHEMA_FIELDS = Object.freeze([
   'overview', 'timeInsight', 'labelInsights', 'pairInsights', 'changeInsight',
-  'patterns', 'moodInsight', 'suggestions',
+  'patterns', 'moodInsight', 'suggestions', 'claims',
 ]);
 let insightNormalizationMeta = {
   status: 'idle',
@@ -746,7 +828,22 @@ function validateInsightAIData(data) {
       if (entries.length > limit || entries.some(([k, v]) => k.length > 80 || typeof v !== 'string' || v.length > 180)) return false;
     } else return false;
   }
+  if (data.claims != null) {
+    if (!Array.isArray(data.claims) || data.claims.length > INSIGHT_COLLECTION_LIMITS.claims) return false;
+    if (data.claims.some((claim) => !claim || typeof claim !== 'object'
+      || typeof claim.claimId !== 'string' || claim.claimId.length < 1 || claim.claimId.length > 80
+      || typeof claim.claimType !== 'string'
+      || typeof claim.text !== 'string' || !claim.text.trim() || claim.text.length > 240
+      || !Array.isArray(claim.evidenceRefs) || claim.evidenceRefs.length < 1 || claim.evidenceRefs.length > 6
+      || claim.evidenceRefs.some((ref) => typeof ref !== 'string' || !ref || ref.length > 120))) return false;
+  }
   return true;
+}
+
+function validateInsightEvidenceClaims(data, evidenceGraph = null) {
+  if (!data || !Array.isArray(data.claims) || data.claims.length === 0) return true;
+  if (typeof validateEvidenceClaims !== 'function') return false;
+  return validateEvidenceClaims(data.claims, evidenceGraph);
 }
 
 function renderAIReport(data, statsSnapshot = null) {
@@ -756,6 +853,10 @@ function renderAIReport(data, statsSnapshot = null) {
     pairInsights: data.pairInsights || (Array.isArray(data.patterns) ? data.patterns : []),
     changeInsight: data.changeInsight || '',
   };
+  insightAIValueAdded = insightHasAddedValue(
+    insightAIData,
+    typeof buildInsightSnapshot === 'function' ? buildInsightSnapshot({ days: 7, statsSnapshot }) : statsSnapshot,
+  );
   insightAIStatus = 'ready';
   // #202：只有通过结构化、边界校验的结果才写入本机缓存；失败不影响当前页面。
   void persistInsightCache(statsSnapshot);
@@ -886,7 +987,11 @@ async function readInsightCacheObject() {
     const cache = JSON.parse(json);
     if (!cache || cache.schemaVersion !== INSIGHT_CACHE_SCHEMA_VERSION || !cache.report || !cache.fingerprint) return null;
     const normalized = normalizeInsightAIData(cache.report);
-    if (!normalized || !validateInsightAIData(normalized) || violatesAIOutputBoundary(JSON.stringify(normalized))) return null;
+    const cachedEvidenceGraph = cache.evidenceGraph
+      || (typeof getLastBehaviorEvidenceGraph === 'function' ? getLastBehaviorEvidenceGraph() : null);
+    if (!normalized || !validateInsightAIData(normalized)
+      || !validateInsightEvidenceClaims(normalized, cachedEvidenceGraph)
+      || violatesAIOutputBoundary(JSON.stringify(normalized))) return null;
     const safeCache = { ...cache, report: insightPersistedReport(normalized) };
     if (source !== (encrypted ? 'encrypted' : 'plain')) {
       await writeInsightCacheObject(safeCache);
@@ -915,6 +1020,10 @@ async function persistInsightCache(statsSnapshot = null) {
   const cache = {
     schemaVersion: INSIGHT_CACHE_SCHEMA_VERSION,
     ...insightCacheContext(statsSnapshot),
+    /* #226：claims 与生成时证据图一起缓存，重启后仍可验证引用。 */
+    evidenceGraph: typeof getLastBehaviorEvidenceGraph === 'function' ? getLastBehaviorEvidenceGraph() : null,
+    /* #230：缓存新增价值判定，重启后不重复展示仅改写事实的报告。 */
+    aiAddedValue: insightAIValueAdded !== false,
     report: insightPersistedReport(insightAIData),
   };
   try {
@@ -948,6 +1057,7 @@ async function restoreInsightCache() {
         pairInsights: cache.report.pairInsights || (Array.isArray(cache.report.patterns) ? cache.report.patterns : []),
         changeInsight: cache.report.changeInsight || '',
       };
+      insightAIValueAdded = cache.aiAddedValue !== false;
       // 让旧版本指纹键继续参与 reportStale()，但不把缓存当作当前最新结果。
       localStorage.setItem(REPORT_FP_KEY, cache.fingerprint);
       insightAIStatus = insightCacheStale(cache) ? 'ready-stale' : 'ready';
@@ -968,6 +1078,7 @@ function invalidateInsightCache() {
   insightCacheMeta = null;
   insightAIData = null;
   insightAIStatus = 'idle';
+  insightAIValueAdded = null;
   try { localStorage.removeItem(INSIGHT_CACHE_KEY); } catch {}
   try { localStorage.removeItem(INSIGHT_CACHE_ENC_KEY); } catch {}
   try { localStorage.removeItem(REPORT_FP_KEY); } catch {}
@@ -1024,6 +1135,17 @@ function hideRefreshBar() {
   if (bar) bar.remove();
 }
 
+/* #226：AI 生成前最多请求一次原生证据上下文；桥不可用时不阻塞既有聚合 AI 链路。 */
+async function prepareInsightEvidence(statsSnapshot) {
+  if (typeof requestBehaviorSnapshot !== 'function') return null;
+  try {
+    const response = await requestBehaviorSnapshot(statsSnapshot);
+    return response && response.ok === true && response.evidenceGraph ? response : null;
+  } catch {
+    return null;
+  }
+}
+
 function generateAnalysis(ev, opts) {
   const auto = !!(opts && opts.auto);
   const refresh = !!(opts && opts.refresh);   // #38：报告已存在时的自动刷新
@@ -1048,12 +1170,12 @@ function generateAnalysis(ev, opts) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 30000);
 
-    askAI(
+    prepareInsightEvidence(statsSnapshot).then(() => askAI(
       `以下是用户${insightWindowLabel()}个人行为与习惯的聚合统计（注意：只有聚合数据，没有单条记录、备注、附件或自定义标签原文）：\n` +
       JSON.stringify(buildAggregatePayload(7, { statsSnapshot }), null, 2) + AI_JSON_INSTRUCTION,
       controller.signal,
       { structured: true, purpose: 'insight-report' }
-    ).then((content) => {
+    )).then((content) => {
       const rawData = extractJSON(content);
       const data = normalizeInsightAIData(rawData);
       if (!data) {
@@ -1062,6 +1184,10 @@ function generateAnalysis(ev, opts) {
       }
       if (!validateInsightAIData(data)) {
         insightSchemaDiagnostic('SCHEMA_INVALID');
+        throw new Error('PARSE_FAIL');
+      }
+      if (!validateInsightEvidenceClaims(data, typeof getLastBehaviorEvidenceGraph === 'function' ? getLastBehaviorEvidenceGraph() : null)) {
+        insightSchemaDiagnostic('EVIDENCE_REF_INVALID');
         throw new Error('PARSE_FAIL');
       }
       if (insightNormalizationMeta.status === 'truncated' || insightNormalizationMeta.droppedFieldCount) {

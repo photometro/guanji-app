@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://guanji.app/contracts/insight-cache.schema.json",
+  "title": "Guanji InsightCache",
+  "type": "object",
+  "x-preserveUnknownFields": true,
+  "required": ["schemaVersion", "fingerprint", "generatedAtMs", "windowDays", "timezone", "statsRuleVersion", "provider", "model", "report"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "fingerprint": { "type": "string", "minLength": 1 },
+    "generatedAtMs": { "type": "integer", "minimum": 0 },
+    "windowDays": { "type": "integer", "minimum": 1 },
+    "timezone": { "type": "string", "minLength": 1 },
+    "statsRuleVersion": { "type": "string", "minLength": 1 },
+    "provider": { "type": "string" },
+    "model": { "type": "string" },
+    "aiAddedValue": { "type": "boolean" },
+    "evidenceGraph": { "type": ["object", "null"] },
+    "report": {
+      "type": "object",
+      "required": ["overview", "timeInsight", "labelInsights", "pairInsights", "changeInsight", "patterns", "moodInsight", "suggestions"],
+      "properties": {
+        "overview": { "type": "string" },
+        "timeInsight": { "type": "string" },
+        "labelInsights": { "type": "object" },
+        "pairInsights": { "type": "object" },
+        "changeInsight": { "type": "string" },
+        "patterns": { "type": "array", "items": { "type": "string" } },
+        "moodInsight": { "type": "string" },
+        "suggestions": { "type": "array", "items": { "type": "string" } },
+        "claims": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "required": ["claimId", "claimType", "text", "evidenceRefs"],
+            "properties": {
+              "claimId": { "type": "string", "minLength": 1 },
+              "claimType": { "type": "string", "minLength": 1 },
+              "text": { "type": "string", "minLength": 1 },
+              "evidenceRefs": { "type": "array", "minItems": 1, "maxItems": 6, "items": { "type": "string", "minLength": 1 } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,7 +1,179 @@
 # 观己 · 更新日志
 
 > 「观己」是一个温和、非评判的习惯记录 App。数据仅存本地，AI 分析只接收聚合统计，不涉及单条记录。
-> 更新日期：2026-09-04
+> 更新日期：2026-09-09
+
+## [4.1.4] Room 旧记录观察字段兼容修复（#253）
+
+### 修复
+
+- 修复 Room 权威读取后，旧记录 `moods/triggers` 被自动生成的空 `observations` 遮蔽，导致洞悉状态观察、关联观察、行为模型和 AI 聚合证据缺失。
+- Room 序列化保留“统一字段缺失 / 明确为空 / 有值”三态语义；旧记录不再被伪装成新版空数组。
+- 首页、日历、详情页、CSV、JSON 与备份恢复继续复用同一套观察字段兼容读取规则。
+
+### 兼容与验证
+
+- 不批量改写历史原始数据；用户明确保存为空的新版记录不会被旧字段重新填回。
+- 新增 `npm run verify:253`，覆盖旧字段回退、统一字段优先、空数组保持为空、媒体兼容和 Room 投影静态契约。
+- versionCode 112 / versionName 4.1.4；前端 CSS 缓存参数更新至 `v=186`，模块脚本更新至 `v=193`。
+
+## [4.1.3] 个人模型到记录链路整批原生化（#231–#236）
+
+### 新增
+
+- 原生环境新增 Room 权威记录读取与写入链，直接记录、补记、编辑、删除、演示数据和恢复数据统一复用同一套 `RecordEvent` 持久化接口。
+- 新增增量 `commitRecords()` 与事务性 `replaceRecords()`；写入队列避免快速连续操作交叉覆盖，Room 成功后再更新旧加密 Storage 兼容镜像。
+- Room 实体通过 `rawRecordJson` 保留未知字段，读取时恢复到公共 `RecordEvent`，保证老记录、JSON/CSV 与 WebDAV 数据兼容。
+- 新增个人特征签名：基于 56 天聚合数据计算典型间隔、时长、时段、发生前状况和 IQR 波动；样本不足时返回 `insufficient`，不输出固定类型或健康判断。
+- AI 继续复用既有聚合与 EvidenceGraph 边界，增加时间先后、持续性、竞争解释、反证和下一步观察的提示约束，不新增个人签名或原始记录上传。
+- 新增 Kotlin Stats Engine 单一入口、快照协议与 `GuanjiSnapshotBus`；一次请求只计算/序列化一次，旧 `dataRevision` 回调被拒绝。
+
+### 兼容与验证
+
+- Room 已完成时启动只读取加密 Room，不预先解密/扫描旧 Storage；首次初始化、迁移未完成或原生桥不可用时才惰性回退旧 Storage。
+- WebView UI、浏览器回退、AI 脱敏边界、JSON/CSV 与 WebDAV 协议保持不变；旧 Storage 继续作为降级/降版兼容镜像。
+- 新增 `npm run verify:236`，覆盖 Room 方法暴露、权威加载、惰性回退、增量/覆盖写入、未知字段保留和记录入口接线。
+- versionCode 111 / versionName 4.1.3；前端 CSS 缓存参数保持 `v=185`，模块脚本更新至 `v=192`。
+
+## [4.0.8] AI 证据增强 v1（#230）
+
+### 新增
+
+- AI 报告请求增加“本地已显示事实”与 EvidenceGraph 上下文，优先生成跨维度综合、变化排序、稳定项对照、不确定性解释和下一步观察。
+- 结构化 `claims` 继续绑定当前 `EvidenceRefs`；只有跨维度、时间比较、模式假设、竞争解释、反证、不确定性或观察建议等新增价值 claim 才进入 AI 单态。
+- 仅重复本地事实的 AI 响应会保留在本机缓存但不覆盖本地洞悉，并显示“未显示额外内容”的状态说明。
+
+### 边界与验证
+
+- 保留现有免责声明、AI 失败本地回退、加密缓存和旧报告兼容；不上传单条记录、备注、附件或精确时间线。
+- 新增 `npm run verify:230`，覆盖 EvidenceRefs、重复事实门控、缓存字段和隐私边界。
+- versionCode 110 / versionName 4.0.8；前端 CSS 缓存参数更新至 `v=184`，模块脚本更新至 `v=189`。
+
+## [4.0.7] 共现与时间共同变化（#229）
+
+### 新增
+
+- 在既有多选 `observations` 聚合基础上，输出单条记录内的共同出现关系（`event_cooccurrence`）。
+- 在 #227/#228 自然周持续性和候选变化期证据上，输出记录密度与持续时间的时间共同变化关系（`temporal_co_movement`）。
+- 统一提供 `supports`、`contrasts`、`weakly_aligned`、`insufficient_relation` 四种关系，并将关系作为 EvidenceGraph 可追溯节点。
+
+### 边界与验证
+
+- 关系只描述聚合数据中的并存、相似或相反方向，不表示因果；样本不足时保留 `insufficient_relation` 与限制说明。
+- 不新增原始记录、备注、精确时间线或事件标识上传；继续复用单次桥接、缓存和 Local-first 隐私边界。
+- 新增 `npm run verify:229` 与真机 `debug/verify-229-device.cjs`，并回归 #221–#228。
+- versionCode 109 / versionName 4.0.7；前端脚本缓存参数更新至 `v=188`、样式资源更新至 `v=183`。
+
+## [4.0.6] 候选变化期识别（#228）
+
+### 新增
+
+- 在 #227 自然周持续性结果上增加候选变化期识别：按连续周块的滚动偏离序列，输出候选起止周、方向、证据块 ID 与置信度。
+- 单个尖峰、方向混合、未知周块或有效块不足时不生成确定起点，明确标注 `not_detected` 或 `uncertain` 及限制说明。
+- EvidenceGraph 指标节点同步携带候选变化期对象，AI 仍只能引用当前修订号下的聚合证据。
+
+### 兼容与验证
+
+- 复用 #225 的稳健偏离与 #227 的自然周证据块；不引入正式变化点算法，不读取单条记录、备注或精确时间线。
+- 新增 `npm run verify:228` 与真机 `debug/verify-228-device.cjs`，覆盖候选起止区间、偶发异常隔离、回归模式、不确定性和证据投影。
+- versionCode 108 / versionName 4.0.6；前端脚本缓存参数更新至 `v=187`、样式资源更新至 `v=182`。
+
+## [4.0.5] 变化持续性判断（#227）
+
+### 新增
+
+- 按不重叠的周一至周日证据块，对个人基线变化输出 `stable`、`single_shift`、`repeated_shift`、`returning` 或 `uncertain`。
+- 首尾不完整自然周只作为覆盖限制；完整证据块不足、近期数据不足或方向混合时不做持续性判断。
+- 快照与 EvidenceGraph 同步携带周块、状态、置信度和限制说明；不新增原始记录、医学判断或因果结论。
+
+### 兼容与验证
+
+- 复用 #225 的个人基线与稳健偏离规则，旧版快照没有 `persistence` 时仍可按原有字段读取。
+- 新增 `npm run verify:227` 与真机 `debug/verify-227-device.cjs`，并回归 #221–#226 契约、架构、Room、质量、基线和证据测试。
+- versionCode 107 / versionName 4.0.5；前端资源缓存参数统一更新至 `v=186`。
+
+## [4.0.4] Evidence ID 与证据质量（#226）
+
+### 新增
+
+- 本地个人基线结果转换为 EvidenceGraph：统计根节点与指标节点均绑定 `dataRevision`、`modelVersion`，并记录状态、幅度、持续性状态、置信度和限制。
+- AI 结构化输出支持可选 `claims`；每条 claim 必须引用当前证据图中的 Evidence ID，未知、过期或版本不匹配的引用会被拒绝，不覆盖已有可信报告。
+- 原生桥成功时缓存完整证据上下文供 AI 使用；桥不可用时继续沿用原有聚合 AI 请求与本地回退。
+
+### 兼容与验证
+
+- EvidenceGraph 仅包含聚合统计和模型结果，不包含单条记录、备注、附件或精确时间线；旧版 AI 响应未提供 claims 时保持兼容。
+- 新增 `npm run verify:226` 与真机 `debug/verify-226-device.cjs`，并回归 #221–#225 契约、架构、Room、质量和个人基线测试。
+- versionCode 106 / versionName 4.0.4；前端资源缓存参数统一更新至 `v=185`。
+
+## [4.0.3] 56 天个人基线与偏离检测（#225）
+
+### 新增
+
+- 增加以个人历史为参照的 56 天基线与最近 28 天观察窗口；Kotlin 行为模型计算 Median、IQR、MAD、Percentile、偏离方向和幅度。
+- 增加按天聚合的行为模型桥输入；不传输单条记录、备注、观察原文或精确时间线。
+- 数据跨度不足 56 天时返回 `baseline.status=insufficient`，不输出人群正常值、健康判断或因果结论。
+
+### 兼容与验证
+
+- 继续复用 #224 的时区、异常日期隔离和数据质量字段；桥不可用时保留现有 JS 统计回退。
+- versionCode 105 / versionName 4.0.3；前端资源缓存参数统一更新至 `v=184`。
+
+## [4.0.2] 测量质量与数据覆盖字段（#224）
+
+### 新增
+
+- 记录补齐 `localDate`、`backfill`、来源和时间精度元数据；旧记录启动时兼容归一化，不改写原始观察内容。
+- 统计快照增加最近 7 个自然日的数据覆盖、来源分布、补记比例、时间精度、元数据完整度和异常/未来日期隔离信息。
+- Room 影子库增加 `localDate` 与 `backfill` 字段，并提供 1→2 迁移；保留原始 JSON 以兼容未知字段。
+
+### 兼容与验证
+
+- 旧记录、跨时区记录、补记记录和异常日期均可映射；异常/未来日期不进入统计。
+- 新增 `npm run verify:224`；与 #221/#222/#223 契约、架构和 Room 回归保持通过。
+- versionCode 104 / versionName 4.0.2；前端资源缓存参数统一更新至 `v=183`。
+
+## [4.0.1] Room 影子库增量写入（#223）
+
+### 新增
+
+- 建立加密 Room 影子库：首次迁移按批次写入，保留未知字段和迁移检查点，支持中断后继续。
+- 后续记录保存通过增量 upsert/delete 同步到影子库；旧 WebView Storage 仍为权威数据源，首页和记录保存不等待影子库。
+- 增加 `RoomShadow` 原生桥、`npm run verify:223` 和真机 CDP 幂等迁移回归。
+
+### 兼容与验证
+
+- SQLCipher Community Edition 使用现有 DEK 经 HKDF 派生的独立数据库密钥；不上传原始记录，不改变发行版 Local-first 边界。
+- versionCode 103 / versionName 4.0.1；前端资源缓存参数统一更新至 `v=182`。
+- APK 使用统一构建钩子完成：包名 `com.guanji.app`、稳定 Android Debug 签名、魅族真机安装启动均通过。
+
+## [4.0.0] Kotlin 基础架构与 core-ai 骨架（#222）
+
+### 新增
+
+- 建立 `core.data`、`core.stats`、`core.behavior`、`core.ai` 和 `core.migration` Kotlin 边界，复用 #221 六类公共契约。
+- 新增 `BehaviorSnapshot` 原生桥：按 `dataRevision` 去重，一次返回统计快照、行为模型快照和证据图；不传递单条记录、备注或精确时间线。
+- 历史上曾新增 `server/` Spring Boot + PostgreSQL/Flyway 本地后端实验骨架与 `/health` 健康检查；该实验不属于发行版能力，后续毕业设计另行维护。
+
+### 兼容与验证
+
+- JS AI 网络调用保持现状，原生桥不可用时继续使用现有 JS 统计/AI 回退链路。
+- Room 尚未成为权威存储，影子库增量写入留给 #223；旧用户数据不迁移、不清除。
+- versionCode 102 / versionName 4.0.0；前端资源缓存参数统一更新至 `v=181`。
+
+## [P0] 协议与迁移准入基线（#221，未改变发行版版本号）
+
+### 新增
+
+- 建立 `RecordEvent`、`StatsSnapshot`、`BehaviorModelSnapshot`、`EvidenceGraph`、`InsightCache` 和 `BackupEnvelope` 六类公共 Schema。
+- 增加直接记录、计时、补记、v3.53/v3.87、CSV、WebDAV、时区、异常日期、小组件、AI 缓存和迁移中断黄金样本。
+- 固化 Kotlin ↔ WebView 单次 `requestBehaviorSnapshot(dataRevision)` 桥接契约，禁止按卡片重复请求或传递原始记录。
+- 增加 SQLCipher Community Edition 的许可证、供应链、HKDF、API 23+、魅族、ABI、WAL、损坏恢复和性能准入清单。
+
+### 技术与验证
+
+- 新增 `node debug/verify-221-contracts.cjs`（`npm run verify:221`），验证 Schema、未知字段往返、AI 脱敏边界和单次桥接。
+- 保持 versionCode 101 / versionName 3.87；本节点只建立协议与准入基线，不切换 Room 权威存储，不改变发行版联网边界。后续用户可见版本从 v4.0.0 开始。
 
 ## [3.87] 日历明细滚动条真机样式优化（#219）
 

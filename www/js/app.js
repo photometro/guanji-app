@@ -204,6 +204,8 @@ function notifyStartupReady() {
 records = await (window.GuanjiDataStore?.records?.load ? GuanjiDataStore.records.load() : Storage.loadRecords());
 normalizeOffsets();   // v3.6.1：启动即恢复旧记录绝对日期（id 时间戳）并重算 offset
 localStorage.setItem(LAST_DATE_KEY, fmtDateKey(new Date()));   // 初始化跨天检测基准
+/* #236：Room 权威加载已在 records.load() 完成；旧桥/浏览器仅保持兼容回退。 */
+setTimeout(() => { try { window.GuanjiRoomShadow?.ensureReady?.(records); } catch { /* 原生桥不可用时保持兼容主链 */ } }, 0);
 // 密钥回显由 initAIUI 按 active 提供商负责（#43 per-provider），这里保持配置同步
 if (typeof hydrateAISecureKeys === 'function') await hydrateAISecureKeys();
 syncActiveConfig();
@@ -232,6 +234,21 @@ initSheetDrag('calendarGrab', $('calendarSheet'), $('sheetBackdrop'), closeCalen
 /* #198：先完成首页首轮渲染，再把同一快照交给原生小组件，避免启动统计阻塞首屏。 */
 const initialStatsSnapshot = renderHome();
 setTimeout(() => syncWidgetStats(initialStatsSnapshot), 0);
+/* #235：启动后请求一次完整 Kotlin 快照；成功时首页与小组件复用同一结果，
+   失败则继续沿用首帧 JS 快照，不阻塞启动。 */
+setTimeout(async () => {
+  try {
+    if (typeof requestBehaviorSnapshot !== 'function') return;
+    const result = await requestBehaviorSnapshot(initialStatsSnapshot);
+    const current = buildStatsSnapshot();
+    if (result?.ok === true && Number(result.dataRevision) === Number(current.revision)
+      && result.statsSnapshot) {
+      renderHome(result.statsSnapshot);
+      syncWidgetStats(result.statsSnapshot);
+      syncNativeHomeSnapshot(result.statsSnapshot);
+    }
+  } catch { /* Kotlin 快照不可用时保留 JS 兼容链 */ }
+}, 0);
 setTimeout(async () => {
   /* 原生快照只在 revision 与当前 WebView 数据一致时回显，避免旧缓存覆盖新记录。 */
   try {

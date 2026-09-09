@@ -1,5 +1,6 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'   // 小组件/插件 Kotlin 源码（WidgetStatsPlugin 等）
+apply plugin: 'kotlin-kapt'
 
 android {
     namespace = "com.guanji.app"
@@ -8,8 +9,8 @@ android {
         applicationId "com.guanji.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 101
-        versionName "3.87"
+          versionCode 112
+          versionName "4.1.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -22,11 +23,16 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             // 正式签名只从环境变量读取，禁止把密钥提交进仓库。
+            // GitHub 历史发行包使用正式包名 + Android Debug 签名；仅由构建钩子显式开启，
+            // 不改变默认的正式签名安全边界。
+            def useDebugSigning = System.getenv('GUANJI_RELEASE_USE_DEBUG_SIGNING') == 'true'
             def releaseStoreFile = System.getenv('GUANJI_RELEASE_KEYSTORE')
             def releaseStorePassword = System.getenv('GUANJI_RELEASE_STORE_PASSWORD')
             def releaseKeyAlias = System.getenv('GUANJI_RELEASE_KEY_ALIAS')
             def releaseKeyPassword = System.getenv('GUANJI_RELEASE_KEY_PASSWORD')
-            if (releaseStoreFile && releaseStorePassword && releaseKeyAlias && releaseKeyPassword) {
+            if (useDebugSigning) {
+                signingConfig = signingConfigs.debug
+            } else if (releaseStoreFile && releaseStorePassword && releaseKeyAlias && releaseKeyPassword) {
                 signingConfig = signingConfigs.create('guanjiRelease')
                 signingConfig.storeFile = file(releaseStoreFile)
                 signingConfig.storePassword = releaseStorePassword
@@ -47,8 +53,12 @@ dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
-    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
-    implementation project(':capacitor-android')
+        implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation "androidx.room:room-runtime:$androidxRoomVersion"
+    implementation "androidx.sqlite:sqlite:$androidxSqliteVersion"
+    implementation "net.zetetic:sqlcipher-android:$sqlcipherAndroidVersion"
+    kapt "androidx.room:room-compiler:$androidxRoomVersion"
+        implementation project(':capacitor-android')
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'   // #115：WebDAV 任意方法（PROPFIND/MKCOL）
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"

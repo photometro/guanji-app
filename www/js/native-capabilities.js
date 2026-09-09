@@ -33,6 +33,17 @@
       read: (options) => call('homeSnapshot', 'NativeHomeSnapshot', 'readSnapshot', options),
       write: (options) => call('homeSnapshot', 'NativeHomeSnapshot', 'writeSnapshot', options),
     }),
+    behaviorSnapshot: Object.freeze({
+      request: (options) => call('behaviorSnapshot', 'BehaviorSnapshot', 'requestBehaviorSnapshot', options),
+    }),
+    roomShadow: Object.freeze({
+      inspect: (options) => call('roomShadow', 'RoomShadow', 'inspect', options),
+      loadRecords: (options) => call('roomShadow', 'RoomShadow', 'loadRecords', options),
+      replaceRecords: (options) => call('roomShadow', 'RoomShadow', 'replaceRecords', options),
+      migrateRecordBatch: (options) => call('roomShadow', 'RoomShadow', 'migrateRecordBatch', options),
+      applyDelta: (options) => call('roomShadow', 'RoomShadow', 'applyDelta', options),
+      close: (options) => call('roomShadow', 'RoomShadow', 'close', options),
+    }),
     lifecycle: Object.freeze({
       addListener: (event, callback) => {
         const target = plugin('App');

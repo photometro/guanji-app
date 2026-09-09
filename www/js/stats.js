@@ -60,7 +60,7 @@ function recordDateKeyForStats(record, zoneId = preferredStatsTimeZone()) {
     const key = dateKeyFromTimestamp(timestamp, zoneId);
     if (key) return key;
   }
-  const local = String(record.localDateKey || '');
+  const local = String(record.localDate || record.localDateKey || '');
   if (isValidDateKey(local)) return local;
   const legacy = String(record.dateKey || '');
   return isValidDateKey(legacy) ? legacy : '';
@@ -82,6 +82,57 @@ function statsSourceRecords(nowMs = Date.now(), zoneId = preferredStatsTimeZone(
     const dateKey = recordDateKeyForStats(record, zoneId);
     return { record, dateKey, offset: statsRecordOffset(record, safeNow, zoneId, todayKey, dateKey) };
   });
+}
+
+/* #224：质量指标只描述“这批数据有多完整”，不把缺失记录解释为未发生。
+   统计窗口固定为最近 7 个自然日；来源和补记比例只基于可归类、非未来记录。 */
+function buildDataQuality(source, valid, todayKey, windowDays = 7) {
+  const safeDays = Math.max(1, Number(windowDays) || 7);
+  const startKey = shiftDateKey(todayKey, -(safeDays - 1));
+  const windowItems = (Array.isArray(valid) ? valid : []).filter((item) => item && item.dateKey >= startKey && item.dateKey <= todayKey);
+  const sourceCounts = {};
+  const precisionCounts = {};
+  const covered = new Set();
+  let backfillCount = 0;
+  let metadataCompleteCount = 0;
+  windowItems.forEach((item) => {
+    const record = item.record || {};
+    covered.add(item.dateKey);
+    const sourceKey = String(record.source || 'legacy');
+    sourceCounts[sourceKey] = (sourceCounts[sourceKey] || 0) + 1;
+    const precision = String(record.timePrecision || 'unknown');
+    precisionCounts[precision] = (precisionCounts[precision] || 0) + 1;
+    if (record.backfill === true || sourceKey === 'backfill') backfillCount += 1;
+    if (Number.isFinite(Number(record.occurredAtMs)) && String(record.zoneId || '').trim()
+      && isValidDateKey(String(record.localDate || record.localDateKey || item.dateKey))) {
+      metadataCompleteCount += 1;
+    }
+  });
+  const recordCount = windowItems.length;
+  const coverageDays = covered.size;
+  const coverageRatio = +(coverageDays / safeDays).toFixed(4);
+  const completenessRatio = recordCount ? +(metadataCompleteCount / recordCount).toFixed(4) : 0;
+  const status = recordCount === 0 ? 'insufficient' : (coverageRatio < 0.5 || completenessRatio < 0.5 ? 'partial' : 'usable');
+  const invalidCount = (Array.isArray(source) ? source : []).filter((item) => !item || !item.dateKey).length;
+  const futureCount = (Array.isArray(source) ? source : []).filter((item) => item && item.dateKey && item.dateKey > todayKey).length;
+  return {
+    windowDays: safeDays,
+    windowStartKey: startKey,
+    windowEndKey: todayKey,
+    recordCount,
+    coverageDays,
+    coverageRatio,
+    sourceCounts,
+    backfillCount,
+    backfillRatio: recordCount ? +(backfillCount / recordCount).toFixed(4) : 0,
+    timePrecisionCounts: precisionCounts,
+    metadataCompleteCount,
+    completenessRatio,
+    status,
+    excludedInvalidRecords: invalidCount,
+    excludedFutureRecords: futureCount,
+    excludedRecords: invalidCount + futureCount,
+  };
 }
 
 /* #198：一次性建立统计上下文，后续日期计数只读 Map，不重复扫描 records。 */
@@ -221,6 +272,7 @@ function buildStatsSnapshot({ nowMs = Date.now(), zoneId = preferredStatsTimeZon
   /* 未来日期会留在数据源中但不参与当前周期；这里只统计真正无法归类的
      异常记录，避免把用户误填的未来记录冒充成 3.6.1 异常日期。 */
   const excludedInvalidRecords = source.filter((item) => !item.dateKey).length;
+  const excludedFutureRecords = source.filter((item) => item.dateKey && item.dateKey > todayKey).length;
   const weekDayIndex = Math.max(0, Math.min(6, dateKeyDiff(todayKey, weekStartKey) || 0));
   const weekEndKey = shiftDateKey(weekStartKey, 6);
   const weekCounts = Array.from({ length: 7 }, (_, index) => countDateKey(shiftDateKey(weekStartKey, index), safeNow, safeZone, ctx));
@@ -272,6 +324,8 @@ function buildStatsSnapshot({ nowMs = Date.now(), zoneId = preferredStatsTimeZon
     rolling30: rolling[30],
     freshness: 'fresh',
     excludedInvalidRecords,
+    excludedFutureRecords,
+    dataQuality: buildDataQuality(source, valid, todayKey, 7),
   };
   /* 内部调用可共享源数据；不可枚举，避免污染 WidgetStats/AI JSON 协议。 */
   Object.defineProperty(snapshot, '__statsContext', { value: ctx, enumerable: false });

@@ -20,6 +20,29 @@ function plausibleTimestamp(value) {
   return Number.isFinite(ms) && ms >= 0 && ms <= 4102444800000;
 }
 
+/* #224：把记录来源和测量质量归一化为可统计字段。
+   旧记录没有这些字段时只补元数据，不改写原始备注/观察值；未知来源归入
+   legacy，避免把历史数据误判成“现在记录”或“补记”。 */
+const RECORD_SOURCE_VALUES = new Set(['now', 'timer', 'backfill', 'quick', 'import', 'legacy', 'demo']);
+function normalizeRecordQualityMetadata(record, dateKey = '') {
+  if (!record || typeof record !== 'object') return false;
+  let changed = false;
+  const source = String(record.source || '').trim();
+  const normalizedSource = RECORD_SOURCE_VALUES.has(source)
+    ? source
+    : (record.backfill === true ? 'backfill' : (source ? 'legacy' : 'legacy'));
+  if (record.source !== normalizedSource) { record.source = normalizedSource; changed = true; }
+  const backfill = record.backfill === true || normalizedSource === 'backfill';
+  if (record.backfill !== backfill) { record.backfill = backfill; changed = true; }
+  if (dateKey && record.localDate !== dateKey) { record.localDate = dateKey; changed = true; }
+  if (dateKey && record.localDateKey !== dateKey) { record.localDateKey = dateKey; changed = true; }
+  const precision = ['minute', 'second', 'unknown'].includes(String(record.timePrecision || ''))
+    ? String(record.timePrecision)
+    : (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(String(record.time || '')) ? 'minute' : 'unknown');
+  if (record.timePrecision !== precision) { record.timePrecision = precision; changed = true; }
+  return changed;
+}
+
 function normalizeOffsets() {
   const today = new Date();
   let changed = false;
@@ -46,7 +69,9 @@ function normalizeOffsets() {
       if (r.dateKey !== dateKey) { r.dateKey = dateKey; changed = true; }
       if (r.invalidDateKey) { delete r.invalidDateKey; changed = true; }
       if (!r.zoneId) { r.zoneId = systemTimeZone(); changed = true; }
-      if (!r.localDateKey) { r.localDateKey = dateKey; changed = true; }
+      if (normalizeRecordQualityMetadata(r, dateKey)) changed = true;
+    } else if (normalizeRecordQualityMetadata(r)) {
+      changed = true;
     }
   });
   if (changed) Storage.saveRecords(records);
@@ -123,9 +148,11 @@ function saveRecord() {
       dateKey: fmtDateKey(date), offset, time,
       occurredAtMs: date.getTime(),
       zoneId: systemTimeZone(),
+      localDate: fmtDateKey(date),
       localDateKey: fmtDateKey(date),
       timePrecision: 'minute',
       source: records[idx].source || (sheetMode === 'backfill' ? 'backfill' : 'now'),
+      backfill: records[idx].backfill === true || sheetMode === 'backfill',
       updatedAtMs: Date.now(),
       duration: duration || null,
       // 旧 moods/triggers 原样保留，统一字段作为新语义来源。
@@ -139,9 +166,11 @@ function saveRecord() {
       dateKey: fmtDateKey(date), offset, time,
       occurredAtMs: date.getTime(),
       zoneId: systemTimeZone(),
+      localDate: fmtDateKey(date),
       localDateKey: fmtDateKey(date),
       timePrecision: 'minute',
       source: sheetMode === 'backfill' ? 'backfill' : 'now',
+      backfill: sheetMode === 'backfill',
       createdAtMs: Date.now(),
       updatedAtMs: Date.now(),
       duration: duration || null,
@@ -186,9 +215,11 @@ function quickRecord() {
     time: fmtTime(now),
     occurredAtMs: now.getTime(),
     zoneId: systemTimeZone(),
+    localDate: fmtDateKey(now),
     localDateKey: fmtDateKey(now),
     timePrecision: 'minute',
     source: 'now',
+    backfill: false,
     createdAtMs: now.getTime(),
     updatedAtMs: now.getTime(),
     duration: null,
