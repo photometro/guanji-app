@@ -2,7 +2,10 @@ param([int]$Port = 8080)
 $ErrorActionPreference = 'Stop'
 $serverRoot = Split-Path -Parent $PSScriptRoot
 $repoRoot = Split-Path -Parent $serverRoot
-$javaHome = 'C:\Users\43124\Android\jdk-21'
+$javaHome = $env:JAVA_HOME
+if ([string]::IsNullOrWhiteSpace($javaHome)) {
+    throw 'Set JAVA_HOME to a JDK 21 installation before running this script.'
+}
 $mavenVersion = '3.9.11'
 $mavenHome = Join-Path $env:LOCALAPPDATA "Guanji\tools\apache-maven-$mavenVersion"
 $mavenCmd = Join-Path $mavenHome 'bin\mvn.cmd'

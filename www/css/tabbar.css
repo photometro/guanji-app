@@ -20,6 +20,12 @@
   padding: 0 10px;
   transition: transform 0.25s ease, opacity 0.25s ease;
 }
+/* #274：原生 NativeRoot Tab 接管后，WebView Tab 从视觉、点击和无障碍树完整退出。 */
+.tabbar.native-tab-hidden {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
 /* #42：软键盘弹出时移出屏外（视觉视口被压缩，避免 tab 栏被顶到键盘上方） */
 .tabbar.keyboard-up {
   transform: translateY(180%);

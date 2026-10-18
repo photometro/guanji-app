@@ -337,11 +337,80 @@ async function syncWidgetStats(snapshot = null, options = {}) {
 
 /* #211 N10：把聚合快照写入原生 SharedPreferences；原始记录仍只在 WebView
    存储中，写入失败静默降级，不阻塞记录保存。 */
-async function syncNativeHomeSnapshot(snapshot = null) {
+async function syncNativeHomeSnapshot(snapshot = null, options = {}) {
   try {
     const bridge = window.GuanjiNative?.homeSnapshot;
     if (!bridge || typeof bridge.write !== 'function') return { ok: false, reason: 'unavailable' };
-    const value = snapshot || buildStatsSnapshot();
+    if (window.__guanjiRecordsReady !== true) return { ok: false, reason: 'records_not_ready' };
+    let value = snapshot || buildStatsSnapshot();
+    /* #275：写入首页聚合图表、最近 7 条展示字段和按日期查看所需的
+       轻量索引；不把备注/原始记录字段跨层复制，编辑/删除仍回到既有
+       JS/Room 链。 */
+    const context = value.__statsContext;
+    /* #280 regression guard: a Kotlin/JSON behavior snapshot is a plain
+       object, so the JS-only non-enumerable __statsContext is intentionally
+       absent after the round trip.  Never interpret that absence as an empty
+       record set.  Rebuild only the lightweight derived index from the same
+       current records, timestamp and statistics timezone; the counters from
+       `value` remain the authoritative behavior snapshot values. */
+    let derivedContext = context && Array.isArray(context.valid)
+      ? context
+      : (typeof createStatsContext === 'function'
+        ? createStatsContext({
+          nowMs: Number(value.generatedAtMs) || Date.now(),
+          zoneId: value.timezone || (typeof preferredStatsTimeZone === 'function' ? preferredStatsTimeZone() : undefined),
+        })
+        : null);
+    let valid = derivedContext && Array.isArray(derivedContext.valid)
+      ? derivedContext.valid.map((item) => item.record)
+      : [];
+    /* Kotlin JSON 往返或早到的异步回调可能丢失 JS 非枚举上下文。
+       当前记录源已有数据时，重新基于当前源构建，不能把该回调解释成
+       “用户有 0 条记录”。 */
+    if (!valid.length && Array.isArray(records) && records.length && typeof createStatsContext === 'function') {
+      const currentContext = createStatsContext({
+        nowMs: Number(value.generatedAtMs) || Date.now(),
+        zoneId: value.timezone || (typeof preferredStatsTimeZone === 'function' ? preferredStatsTimeZone() : undefined),
+      });
+      if (Array.isArray(currentContext.valid) && currentContext.valid.length) {
+        value = buildStatsSnapshot({ nowMs: currentContext.nowMs, zoneId: currentContext.zoneId, context: currentContext });
+        derivedContext = currentContext;
+        valid = currentContext.valid.map((item) => item.record);
+      }
+    }
+    const allowEmpty = options && options.allowEmpty === true;
+    const dayCounts = {};
+    const timeBuckets = { 清晨: 0, 上午: 0, 下午: 0, 傍晚: 0, 深夜: 0 };
+    valid.forEach((record) => {
+      const key = recordDateKeyForStats(record);
+      if (key) dayCounts[key] = (dayCounts[key] || 0) + 1;
+      const hour = hourOf(record);
+      const bucket = hour < 6 ? '深夜' : hour < 9 ? '清晨' : hour < 12 ? '上午' : hour < 18 ? '下午' : hour < 22 ? '傍晚' : '深夜';
+      timeBuckets[bucket] += 1;
+    });
+    const recent = [...(Array.isArray(records) ? records : [])]
+      .filter((record) => !!recordDateKeyForStats(record))
+      .sort((a, b) => Number(b.occurredAtMs || 0) - Number(a.occurredAtMs || 0) || String(b.time || '').localeCompare(String(a.time || '')))
+      .slice(0, 7)
+      .map((record) => ({
+        id: String(record.id || ''),
+        dateKey: recordDateKeyForStats(record) || '',
+        time: String(record.time || ''),
+        tags: typeof displayRecordTags === 'function' ? displayRecordTags(record).join(' · ') : '',
+        duration: record.duration == null ? '' : String(record.duration),
+      }));
+    const calendarRecords = valid.map((record) => ({
+      id: String(record.id || ''),
+      dateKey: recordDateKeyForStats(record) || '',
+      time: String(record.time || ''),
+      tags: typeof displayRecordTags === 'function' ? displayRecordTags(record).join(' · ') : '',
+      duration: record.duration == null ? '' : String(record.duration),
+    })).filter((record) => record.dateKey);
+    /* #277：洞悉原生页只接收已经聚合的洞悉快照与脱敏 AI 状态；
+       不把单条记录、备注、精确时间或 API 配置跨过 NativeRoot。 */
+    const insightContext = typeof window.getNativeInsightContext === 'function'
+      ? window.getNativeInsightContext(value)
+      : null;
     return await bridge.write({ snapshot: JSON.stringify({
       protocolVersion: 1,
       schemaVersion: value.schemaVersion,
@@ -358,7 +427,24 @@ async function syncNativeHomeSnapshot(snapshot = null) {
       monthDelta: value.monthDelta,
       week: value.weekCounts,
       weekDayIndex: value.weekDayIndex,
-    }) });
+      greetingTitle: typeof $ === 'function' && $('greetingTitle') ? $('greetingTitle').textContent : '',
+      greetingTip: typeof $ === 'function' && $('greetingTip') ? $('greetingTip').textContent : '',
+      // 记录面板首帧只读取轻量偏好/自定义字典；避免点击后等待整段 JS
+      // 上下文计算，同时保持 quick/timer 和自定义选项与 WebView 一致。
+      preferredRecordMode: typeof loadRecordMode === 'function' ? loadRecordMode() : 'timer',
+      customObservationOptions: typeof loadCustomList === 'function' ? loadCustomList('guanji_custom_observations') : [],
+      rolling14: value.rolling14 || [],
+      rolling30: value.rolling30 || [],
+      timeBuckets,
+      dayCounts,
+      recent,
+      calendarRecords,
+      insight: insightContext && insightContext.snapshot ? insightContext.snapshot : null,
+      insightReadStatus: insightContext && insightContext.insightReadStatus ? insightContext.insightReadStatus : 'error',
+      cooccurrenceStatus: insightContext && insightContext.cooccurrenceStatus ? insightContext.cooccurrenceStatus : 'error',
+      insightAsk: insightContext && insightContext.ask ? insightContext.ask : { status: 'idle', question: '', answer: '' },
+      insightAI: insightContext && insightContext.ai ? insightContext.ai : null,
+    }), allowEmpty });
   } catch { return { ok: false, reason: 'bridge_error' }; }
 }
 window.syncNativeHomeSnapshot = syncNativeHomeSnapshot;
@@ -374,7 +460,11 @@ function afterRecordsChanged() {
     widgetSyncTimer = null;
     syncWidgetStats(statsSnapshot);
   }, 0);
-  setTimeout(() => syncNativeHomeSnapshot(statsSnapshot), 0);
+  setTimeout(() => syncNativeHomeSnapshot(statsSnapshot, {
+    /* 只有一次明确的记录替换/删除已经把当前源变为空时，才允许
+       将空快照写入 Native；启动期/缓存回调默认禁止空覆盖。 */
+    allowEmpty: Array.isArray(records) && records.length === 0,
+  }), 0);
   return statsSnapshot;
 }
 

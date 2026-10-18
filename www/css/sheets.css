@@ -57,6 +57,7 @@ body.keyboard-up .backdrop.dialog-layer {
   min-height: 0;
   max-height: calc(100vh - 24px - var(--safe-top) - var(--safe-bottom));
   max-height: calc(100dvh - 24px - var(--safe-top) - var(--safe-bottom));
+  padding-bottom: 20px;
   overflow: hidden;
 }
 .sheet-content-scroll {
@@ -66,16 +67,34 @@ body.keyboard-up .backdrop.dialog-layer {
 }
 .sheet-content-scroll::-webkit-scrollbar { display: none; }
 .sheet.details-active .sheet-content-scroll {
-  flex: 0 1 auto;
+  /* #280：详情页不再用固定 viewport 减法猜测内容高度；
+     剩余空间交给 stepDetails 内部的发生前状况列表。 */
+  flex: 1 1 auto;
   min-height: 0;
-  max-height: calc(100vh - 190px - var(--safe-top) - var(--safe-bottom));
-  max-height: calc(100dvh - 190px - var(--safe-top) - var(--safe-bottom));
-  overflow-y: auto;
+  max-height: none;
+  overflow-y: visible;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   padding: 0 2px 4px;
 }
-.sheet.details-active .sheet-content-scroll:not(.is-scrollable) {
+.sheet.details-active #stepDetails:not(.hidden) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+.sheet.details-active #stepDetails .observation-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.sheet.details-active #stepDetails .observation-scroll::-webkit-scrollbar {
+  display: none;
+}
+.sheet.details-active #stepDetails .observation-scroll:not(.is-scrollable) {
   overflow-y: hidden;
 }
 .sheet.details-active .sheet-actions {
@@ -84,7 +103,6 @@ body.keyboard-up .backdrop.dialog-layer {
   padding-top: 8px;
   padding-bottom: max(0px, var(--safe-bottom));
 }
-
 /* #211 N4：记录详情与计时汇总采用相同的“内容可滚动、操作不滚动”边界。
    min-height:0 允许 WebView flex 子项真正收缩，safe-area 不会把保存按钮推出屏幕。 */
 #recordSheet.details-active .sheet-content-scroll,

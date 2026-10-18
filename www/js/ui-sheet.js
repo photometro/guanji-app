@@ -235,6 +235,7 @@ function openEditRecord(id) {
   $('stepDetails').classList.remove('hidden');
   $('recordSheet').classList.add('details-active');
   $('sheetContentScroll').scrollTop = 0;
+  $('observationScroll').scrollTop = 0;
   requestAnimationFrame(updateDetailsScrollState);
   $('nextBtn').classList.add('hidden');
   $('prevBtn').classList.add('hidden');
@@ -250,6 +251,7 @@ function openSheet(mode, presetDate) {
   $('recordSheet').classList.remove('details-active');
   renderObservationChips([], $('observationChips'));
   $('sheetContentScroll').scrollTop = 0;
+  $('observationScroll').scrollTop = 0;
   $('durSlider').value = 0;
   $('durLabel').textContent = '未记录';
   $('noteInput').value = '';
@@ -297,6 +299,8 @@ function closeSheet() {
   animateSheetClose($('recordSheet'), $('sheetBackdrop'), () => {
     $('recordSheet').classList.add('hidden');
     $('sheetBackdrop').classList.add('hidden');
+    /* #275：通知同一 MainActivity 内的 Native 首页恢复可见，避免 WebView/Native 双层。 */
+    try { if (typeof notifyNativeTabRoute === 'function') notifyNativeTabRoute('home'); } catch (_) {}
   });
 }
 
@@ -362,6 +366,7 @@ function goToDetails() {
   $('stepDetails').classList.remove('hidden');
   $('recordSheet').classList.add('details-active');
   $('sheetContentScroll').scrollTop = 0;
+  $('observationScroll').scrollTop = 0;
   requestAnimationFrame(updateDetailsScrollState);
   $('nextBtn').classList.add('hidden');
   $('prevBtn').classList.remove('hidden');
@@ -666,7 +671,7 @@ window.isBackupHubOpen = isBackupHubOpen;
    CSS 负责实际的高度约束，这个状态用于在新增/删除标签、键盘和旋转后重新计算。 */
 function updateDetailsScrollState() {
   const sheet = $('recordSheet');
-  const scroller = $('sheetContentScroll');
+  const scroller = $('observationScroll');
   if (!sheet || !scroller) return;
   const active = sheet.classList.contains('details-active');
   const scrollable = active && scroller.scrollHeight > scroller.clientHeight + 1;
@@ -1068,17 +1073,20 @@ $('positiveSwitch').addEventListener('click', () => {
 // 我的页：导出数据（#184：由独立导出 Sheet 明确承接，保留原有安全分流与文件实现）
 async function runDataExport() {
   // #111：两种模式统一空数据提示（此前加密分支无检查，会导出空备份包）
-  if (!records.length) { toast('还没有记录可导出'); return; }
+  if (!records.length) { toast('还没有记录可导出'); return { ok: false, code: 'NO_DATA' }; }
   if (secureMode() === 'encrypted') {
     try {
       const r = await exportEncryptedBackupFile();
       // #100/#103：口令机制说明 + 短路径提示
       toast(`已保存加密备份：下载/${r.filename}——受你的加密口令保护`);
+      return { ok: true, code: 'EXPORTED_ENCRYPTED' };
     } catch (e) {
       if (!/cancel/i.test((e && e.message) || '')) toast((e && e.message) || '导出失败');
       // 用户取消分享面板 = 正常操作，静默
+      return /cancel/i.test((e && e.message) || '')
+        ? { ok: false, cancelled: true, code: 'CANCELLED' }
+        : { ok: false, code: 'EXPORT_FAILED', error: (e && e.message) || '导出失败' };
     }
-    return;
   }
   const rows = [['日期', '时间', '时长(分)', '发生前情况', '发生前状况(多选)', '情绪', '诱因', '成人内容影响', '备注']];
   [...records]
@@ -1104,10 +1112,12 @@ async function runDataExport() {
     try {
       const res = await Capacitor.Plugins.GuanjiSave.saveToDownloads({ filename: fname, data: csv });
       toast('已保存到 下载/' + fname);
-      return;
+      return { ok: true, code: 'EXPORTED_CSV' };
     } catch (e) {
       if (!/cancel/i.test((e && e.message) || '')) toast((e && e.message) || '导出失败');
-      return;
+      return /cancel/i.test((e && e.message) || '')
+        ? { ok: false, cancelled: true, code: 'CANCELLED' }
+        : { ok: false, code: 'EXPORT_FAILED', error: (e && e.message) || '导出失败' };
     }
   }
   if (window.Capacitor && Capacitor.Plugins.Filesystem) {
@@ -1117,23 +1127,35 @@ async function runDataExport() {
       await Capacitor.Plugins.Share.share({ title: '观己数据导出', files: [res.uri], dialogTitle: '保存或发送导出数据' });
       // #100/#101 引导：分享面板即保存位置选择器（「文件管理」= 保存入口）
       toast('导出文件已生成——在分享面板选「文件管理」即可保存到你的目录（' + fname + '）');
-      return;
+      return { ok: true, code: 'EXPORTED_SHARE' };
     } catch (e) {
       if (!/cancel/i.test((e && e.message) || '')) toast((e && e.message) || '导出失败');
       // 用户取消分享面板 = 正常操作，静默
-      return;
+      return /cancel/i.test((e && e.message) || '')
+        ? { ok: false, cancelled: true, code: 'CANCELLED' }
+        : { ok: false, code: 'EXPORT_FAILED', error: (e && e.message) || '导出失败' };
     }
   }
   const doCopy = () => navigator.clipboard.writeText(csv)
-    .then(() => toast(`已复制 ${records.length} 条记录到剪贴板`))
-    .catch(() => toast('复制失败，请手动复制'));
-  if (navigator.clipboard && navigator.clipboard.writeText) doCopy();
+    .then(() => {
+      toast(`已复制 ${records.length} 条记录到剪贴板`);
+      return { ok: true, code: 'COPIED' };
+    })
+    .catch(() => {
+      toast('复制失败，请手动复制');
+      return { ok: false, code: 'COPY_FAILED' };
+    });
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try { return await doCopy(); }
+    catch (_) { return { ok: false, code: 'COPY_FAILED' }; }
+  }
   else {
     const ta = document.createElement('textarea');
     ta.value = csv;
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand('copy'); toast('已复制到剪贴板'); } catch { toast('复制失败'); }
+    try { document.execCommand('copy'); toast('已复制到剪贴板'); return { ok: true, code: 'COPIED' }; }
+    catch { toast('复制失败'); return { ok: false, code: 'COPY_FAILED' }; }
     ta.remove();
   }
 }
@@ -1149,6 +1171,42 @@ $('exportBtn').addEventListener('click', () => {
 $('exportRunBtn').addEventListener('click', async () => { await runDataExport(); closeSheetPanel('exportBackdrop'); });
 $('exportCancel').addEventListener('click', () => closeSheetPanel('exportBackdrop'));
 $('exportCloseTop').addEventListener('click', () => closeSheetPanel('exportBackdrop'));
+
+// #279：Native 数据维护只复用这里的既有数据实现，不再点击旧 DOM 弹层。
+// 传输内容仅包含 requestId、动作、状态和 revision，不包含记录、口令或文件正文。
+const nativeMaintenanceSeen = new Set();
+function nativeMaintenanceReply(requestId, type, status, result = {}) {
+  const revision = (() => {
+    try { return Number(typeof buildStatsSnapshot === 'function' ? buildStatsSnapshot().revision : Date.now()) || Date.now(); }
+    catch (_) { return Date.now(); }
+  })();
+  const payload = { requestId, type, status, dataRevision: revision, code: result.code || '', errorCode: result.errorCode || '' };
+  if (window.GuanjiNativeDataMaintenance?.onResult) {
+    window.GuanjiNativeDataMaintenance.onResult(JSON.stringify(payload));
+  }
+}
+
+window.__guanjiNativeDataMaintenanceAction = async function (raw) {
+  let request;
+  try { request = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (_) { return 'invalid'; }
+  const requestId = String(request?.requestId || '');
+  const type = String(request?.type || '');
+  if (!requestId || !['export', 'clear', 'restore'].includes(type)) return 'invalid';
+  if (nativeMaintenanceSeen.has(requestId)) return 'duplicate';
+  nativeMaintenanceSeen.add(requestId);
+  try {
+    let result;
+    if (type === 'export') result = await runDataExport();
+    else if (type === 'clear') result = await runClearAllData(!!request.clearServer);
+    else result = await runRestoreDemoData();
+    const status = result?.cancelled ? 'cancelled' : result?.ok === false ? 'failed' : 'completed';
+    nativeMaintenanceReply(requestId, type, status, result || {});
+    return 'started';
+  } catch (error) {
+    nativeMaintenanceReply(requestId, type, 'failed', { code: 'UNEXPECTED', errorCode: String(error?.message || 'unknown') });
+    return 'started';
+  }
+};
 
 // #183/#184：恢复是“备份与恢复”内部的连续状态，而非单独覆盖层。
 $('backupHubRestoreBtn').addEventListener('click', () => window.openBackupHubRestore());
@@ -1177,9 +1235,11 @@ $('wdClearServerSwitch').addEventListener('click', () => $('wdClearServerSwitch'
 $('dialogCancel').addEventListener('click', () => {
   $('dialogBackdrop').classList.add('hidden');
 });
-$('dialogConfirm').addEventListener('click', async () => {
+async function runClearAllData(clearServer = false) {
   // #115：先删服务器备份（成功/失败都继续本机清除，失败提示）
-  if (!$('wdClearServerSwitch').classList.contains('hidden') && $('wdClearServerSwitch').classList.contains('on')) {
+  const serverCfg = typeof wdLoadCfg === 'function' ? wdLoadCfg() : null;
+  const shouldClearServer = clearServer && secureMode() === 'encrypted' && !!serverCfg;
+  if (shouldClearServer) {
     try {
       const files = await wdList();
       for (const f of files) { try { await wdDelete(f.name); } catch (e) {} }
@@ -1204,9 +1264,14 @@ $('dialogConfirm').addEventListener('click', async () => {
   $('analysisEmpty').classList.remove('hidden');
   $('analysisEmpty').innerHTML = emptyStateHTML();
   bindGenBtn();
+  return { ok: true, code: 'CLEARED' };
+}
+$('dialogConfirm').addEventListener('click', async () => {
+  const clearServer = $('wdClearServerSwitch').classList.contains('on');
+  await runClearAllData(clearServer);
 });
 
-$('restoreBtn').addEventListener('click', () => {
+async function runRestoreDemoData() {
   records = buildDemoRecords();
   // #202：演示数据替换当前数据集，旧洞察必须失效。
   if (typeof invalidateInsightCache === 'function') invalidateInsightCache();
@@ -1219,7 +1284,10 @@ $('restoreBtn').addEventListener('click', () => {
   $('analysisEmpty').classList.remove('hidden');
   $('analysisEmpty').innerHTML = emptyStateHTML();
   bindGenBtn();
-});
+  return { ok: true, code: 'RESTORED_DEMO' };
+}
+
+$('restoreBtn').addEventListener('click', () => { runRestoreDemoData(); });
 
 
 function setupNowStep() {

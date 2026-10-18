@@ -18,6 +18,8 @@ const THEME_KEY = 'guanji_theme';   // system | light | dark
 function applyTheme(mode) {
   const dark = mode === 'dark' || (mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  // #274 修复：主题变化后立即把 WebView 的最终主题事实同步给同一宿主内的原生 Tab。
+  if (typeof notifyNativeTabTheme === 'function') notifyNativeTabTheme();
 }
 
 /* #124：外观单选 seg 滑块同步（chips → seg，与加密同款） */
@@ -71,6 +73,8 @@ function initLiquidGlass() {
   $('liquidGlassSwitch').classList.toggle('on', on);
   // #113：读取磨砂强度设置（无值走默认 3）
   applyGlassBlur(localStorage.getItem(LG_BLUR_KEY) || LG_BLUR_DEFAULT);
+  // #274 修复：初始化材质后再同步一次，覆盖主题初始化时的旧材质值。
+  if (typeof notifyNativeTabTheme === 'function') notifyNativeTabTheme();
 }
 
 $('liquidGlassSwitch').addEventListener('click', () => {
@@ -78,6 +82,7 @@ $('liquidGlassSwitch').addEventListener('click', () => {
   localStorage.setItem(LG_KEY, on ? 'on' : 'off');
   document.documentElement.classList.toggle('liquid-glass', on);
   renderHome();   // 背景/卡片随玻璃态重绘
+  if (typeof notifyNativeTabTheme === 'function') notifyNativeTabTheme();
 });
 
 /* #113：磨砂强度滑块——拖动实时生效 + 持久化（玻璃关着也能调，下次开启生效） */
@@ -85,6 +90,8 @@ $('glassBlurSlider').addEventListener('input', (e) => {
   const px = parseInt(e.target.value, 10);
   localStorage.setItem(LG_BLUR_KEY, String(px));
   applyGlassBlur(px);
+  // #274 material follow-up：磨砂强度同时同步到同一宿主内的原生 Tab。
+  if (typeof notifyNativeTabTheme === 'function') notifyNativeTabTheme();
 });
 
 // 跟随系统模式：系统主题变化时自动切换
@@ -93,6 +100,8 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
   if (mode === 'system') {
     applyTheme('system');
     renderHome();
+    // applyTheme 已同步主题；这里保留一次显式通知，兼容系统事件与桥接时序。
+    if (typeof notifyNativeTabTheme === 'function') notifyNativeTabTheme();
   }
 });
 

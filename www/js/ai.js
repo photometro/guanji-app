@@ -26,6 +26,29 @@ const AI_JSON_INSTRUCTION =
 const insightWindowDays = 7; // 个人洞察固定近 7 天；首页长期趋势仍由首页统计独立计算
 let insightAIData = null;
 const INSIGHT_DISCLAIMER_TEXT = 'AI 观察基于近 7 天脱敏聚合统计生成（不上传单条记录、备注或附件），仅作习惯觉察参考，不构成医疗或心理诊断、治疗建议，也不代表因果结论。如持续困扰，建议咨询合适的专业人士。';
+/* #277 follow-up：追问状态只跨 NativeRoot 传递问句、状态和已渲染回答，
+   不跨层复制原始记录或 AI 请求上下文。WebView 仍是唯一 AI 请求所有者。 */
+let nativeInsightAskState = { status: 'idle', question: '', answer: '' };
+
+function setNativeInsightAskState(next) {
+  nativeInsightAskState = {
+    status: String(next?.status || 'idle'),
+    question: String(next?.question || ''),
+    answer: String(next?.answer || ''),
+  };
+  if (typeof window.syncNativeHomeSnapshot === 'function') {
+    setTimeout(() => window.syncNativeHomeSnapshot(), 0);
+  }
+}
+
+function nativeAskPlainText(value) {
+  return String(value || '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .trim();
+}
 
 function insightWindowLabel() { return '近 7 天'; }
 
@@ -201,7 +224,9 @@ function insightHasAddedValue(data, snapshot) {
 function insightActionHTML(snapshot, aiFresh) {
   // AI 是整页洞察的一次性动作，不在六张卡片上重复放置相同按钮。
   if (insightAIStatus === 'loading') {
-    return '<div class="insight-action-loading"><span class="spinner"></span><span>正在生成 AI 增强观察…</span></div>';
+    // #277 follow-up：重新生成时只替换原按钮区域；已有报告和介绍文字继续保留，
+    // 不清空卡片，也不让动作区因为可见文案改变而发生 Layout Shift。
+    return '<div class="insight-action-loading" role="status" aria-label="正在生成 AI 增强观察"><span class="spinner" aria-hidden="true"></span><span>正在生成 AI 增强观察…</span></div>';
   }
   if (snapshot.recordCount < 3) {
     return '<p class="insight-action-note">记录更多后开始观察</p>';
@@ -364,13 +389,19 @@ function renderInsightAction(snapshot, aiFresh) {
   bar.classList.toggle('is-stale', insightAIStatus === 'ready-stale');
   const title = bar.querySelector('.insight-action-title');
   if (title) {
-    title.textContent = insightAIStatus === 'ready-stale'
-      ? '数据有更新，上次 AI 观察已过期，可以重新生成。'
-      : insightAIStatus === 'error'
-        ? 'AI 观察暂时没有生成，可以稍后重试。'
-        : insightAIValueAdded === false
-          ? '本次 AI 只重复了本地事实，未显示额外内容。'
-        : '基于近 7 天聚合数据，为每张卡片生成可选的温和观察。';
+    // 重新生成且已有报告时保持当前介绍，不把整张动作卡替换成 Loading 页面。
+    // 首次生成没有旧报告，才显示等待中的提示。
+    if (insightAIStatus !== 'loading' || !insightAIData) {
+      title.textContent = insightAIStatus === 'ready-stale'
+        ? '数据有更新，上次 AI 观察已过期，可以重新生成。'
+        : insightAIStatus === 'error'
+          ? 'AI 观察暂时没有生成，可以稍后重试。'
+          : insightAIValueAdded === false
+            ? '本次 AI 只重复了本地事实，未显示额外内容。'
+            : insightAIStatus === 'loading'
+              ? '正在生成 AI 增强观察…'
+              : '基于近 7 天聚合数据，为每张卡片生成可选的温和观察。';
+    }
   }
   content.innerHTML = insightActionHTML(snapshot, aiFresh);
   renderInsightDisclaimer();
@@ -403,7 +434,69 @@ function renderInsightLocal(statsSnapshot = null) {
     </section>`).join('');
   renderInsightAction(snapshot, aiFresh);
   updateInsightActionState();
+  /* #277：Native 洞悉页只消费本地聚合快照和脱敏 AI 结果；
+     写入异步排队，避免卡片重绘阻塞 WebView 首帧。 */
+  if (typeof window.syncNativeHomeSnapshot === 'function') {
+    setTimeout(() => window.syncNativeHomeSnapshot(statsSnapshot), 0);
+  }
 }
+
+/* #277：原生洞悉页的唯一桥接输入。只暴露当前 7 天聚合结果、AI
+   结构化观察和显示状态，不暴露单条记录、备注、精确时间或密钥。 */
+window.getNativeInsightContext = function (statsSnapshot = null) {
+  try {
+    const snapshot = typeof buildInsightSnapshot === 'function'
+      ? buildInsightSnapshot({ days: 7, statsSnapshot })
+      : null;
+    const report = insightAIData && typeof insightAIData === 'object'
+      ? {
+        overview: String(insightAIData.overview || ''),
+        timeInsight: String(insightAIData.timeInsight || ''),
+        labelInsights: insightAIData.labelInsights || [],
+        pairInsights: insightAIData.pairInsights || [],
+        changeInsight: String(insightAIData.changeInsight || ''),
+        patterns: Array.isArray(insightAIData.patterns) ? insightAIData.patterns.slice(0, 3) : [],
+        suggestions: Array.isArray(insightAIData.suggestions) ? insightAIData.suggestions.slice(0, 3) : [],
+        moodInsight: String(insightAIData.moodInsight || ''),
+      }
+      : null;
+    const disclaimer = $('insightDisclaimer') && !$('insightDisclaimer').classList.contains('hidden')
+      ? String($('insightDisclaimer').textContent || '')
+      : '';
+    const readStatus = !snapshot
+      ? 'error'
+      : Number(snapshot.recordCount || 0) === 0
+        ? 'empty'
+        : Number(snapshot.recordCount || 0) < 3 || Number(snapshot.coverageDays || 0) < 2
+          ? 'insufficient'
+          : !Array.isArray(snapshot.cooccurrence)
+            ? 'error'
+            : 'ready';
+    const cooccurrenceStatus = !snapshot || !Array.isArray(snapshot.cooccurrence)
+      ? 'error'
+      : readStatus;
+    return {
+      snapshot,
+      insightReadStatus: readStatus,
+      cooccurrenceStatus,
+      ask: { ...nativeInsightAskState },
+      ai: {
+        status: String(insightAIStatus || 'idle'),
+        valueAdded: insightAIValueAdded !== false,
+        report,
+        disclaimer,
+      },
+    };
+  } catch (_) {
+    return {
+      snapshot: null,
+      insightReadStatus: 'error',
+      cooccurrenceStatus: 'error',
+      ask: { ...nativeInsightAskState },
+      ai: { status: 'idle', valueAdded: false, report: null, disclaimer: '' },
+    };
+  }
+};
 
 function setInsightWindowDays(days) {
   renderInsightLocal();
@@ -1079,6 +1172,7 @@ function invalidateInsightCache() {
   insightAIData = null;
   insightAIStatus = 'idle';
   insightAIValueAdded = null;
+  nativeInsightAskState = { status: 'idle', question: '', answer: '' };
   try { localStorage.removeItem(INSIGHT_CACHE_KEY); } catch {}
   try { localStorage.removeItem(INSIGHT_CACHE_ENC_KEY); } catch {}
   try { localStorage.removeItem(REPORT_FP_KEY); } catch {}
@@ -1281,6 +1375,16 @@ function focusAISettings() {
   toast('AI 是可选增强功能，填入 API Key 后即可生成增强洞察');
 }
 
+/* #277：Native 洞悉页的动作仍回到既有 JS 入口，不复制 AI 配置或请求链。 */
+window.__guanjiFocusAISettings = function () {
+  focusAISettings();
+  return 'ok';
+};
+window.__guanjiGenerateInsight = function () {
+  generateAnalysis(null, { auto: false });
+  return 'ok';
+};
+
 /* ---------- 追问（真实对话） ---------- */
 
 const ASK_PRESETS = {
@@ -1327,13 +1431,17 @@ function renderMarkdown(text) {
 
 function askQuestion(q) {
   const ans = $('askAnswer');
+  const question = String(q || '').trim();
+  if (!question) return;
   if (questionNeedsAIBoundary(q)) {
     ans.innerHTML = `<p class="ask-q">${esc(q)}</p><p style="color:var(--ink-2)">${AI_BOUNDARY_REPLY}</p>`;
     ans.classList.remove('hidden');
+    setNativeInsightAskState({ status: 'ready', question, answer: AI_BOUNDARY_REPLY });
     return;
   }
   ans.innerHTML = `<p class="ask-q">${esc(q)}</p><p class="card-sub">正在思考…</p>`;
   ans.classList.remove('hidden');
+  setNativeInsightAskState({ status: 'loading', question, answer: '' });
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 30000);
@@ -1345,13 +1453,21 @@ function askQuestion(q) {
   ).then((content) => {
     if (violatesAIOutputBoundary(content)) throw new Error('UNSAFE_OUTPUT');
     ans.innerHTML = `<p class="ask-q">${esc(q)}</p>` + renderMarkdown(content);
+    setNativeInsightAskState({ status: 'ready', question, answer: nativeAskPlainText(content) });
   }).catch((err) => {
     const message = err && err.message === 'NO_KEY'
       ? '请先在「我的 → AI 设置」填入密钥'
       : err && err.message === 'UNSAFE_OUTPUT' ? AI_BOUNDARY_REPLY : 'AI 暂时不可用，稍后再试';
     ans.innerHTML = `<p class="ask-q">${esc(q)}</p><p style="color:var(--ink-2)">${message}</p>`;
+    setNativeInsightAskState({ status: 'error', question, answer: message });
   }).finally(() => clearTimeout(timer));
 }
+
+/* Native 洞悉页点击预设问题时沿用上述 WebView 请求链。 */
+window.__guanjiAskQuestion = function (q) {
+  askQuestion(String(q || ''));
+  return 'ok';
+};
 
 /* ---------- 问候语（时间问候 + AI 健康提醒组合） ---------- */
 
@@ -1478,6 +1594,9 @@ function renderGreeting(statsSnapshot = null) {
     const nextTip = tip || getLocalDailyTip(buildInsightSnapshot({ days: 7, statsSnapshot }));
     tipEl.textContent = nextTip;
     tipEl.classList.remove('hidden');
+    /* #275：原生首页只消费聚合快照；问候副文案完成异步生成后再写一次，
+       保持 WebView 与 Native 的首屏文案同源。 */
+    if (typeof window.syncNativeHomeSnapshot === 'function') window.syncNativeHomeSnapshot(statsSnapshot);
   });
 }
 

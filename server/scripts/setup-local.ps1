@@ -1,9 +1,12 @@
 param(
-    [string]$JavaHome = 'C:\Users\43124\Android\jdk-21',
+    [string]$JavaHome = $env:JAVA_HOME,
     [string]$MavenVersion = '3.9.11'
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($JavaHome)) {
+    throw 'Set JAVA_HOME to a JDK 21 installation before running this script.'
+}
 $serverRoot = Split-Path -Parent $PSScriptRoot
 $repoRoot = Split-Path -Parent $serverRoot
 $toolsRoot = Join-Path $env:LOCALAPPDATA 'Guanji\tools'

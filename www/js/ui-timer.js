@@ -7,6 +7,9 @@ function loadRecordMode() {
 }
 function saveRecordMode(m) {
   try { localStorage.setItem('guanji_record_mode', m); } catch (e) {}
+  // 原生记录面板首帧从首页轻量快照读取偏好；设置页修改后立即刷新该快照，
+  // 不让下一次点击先闪现旧的“计时记录/快速记录”状态。
+  try { if (typeof syncNativeHomeSnapshot === 'function') setTimeout(() => syncNativeHomeSnapshot(), 0); } catch (e) {}
 }
 
 /* #172：计时通知是独立于 App 内计时状态的本地偏好。默认开启，兼容旧用户当前行为。 */

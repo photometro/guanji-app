@@ -3,6 +3,9 @@ package com.guanji.app;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -26,9 +29,34 @@ public class NativeHomeSnapshotPlugin extends Plugin {
             call.reject("snapshot required");
             return;
         }
-        boolean committed = getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .edit().putString(KEY_SNAPSHOT, snapshot).commit();
+        boolean allowEmpty = call.getBoolean("allowEmpty", false);
+        SharedPreferences prefs = getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        String previous = prefs.getString(KEY_SNAPSHOT, "");
+        if (!allowEmpty && calendarRecordCount(snapshot) == 0 && calendarRecordCount(previous) > 0) {
+            /* #280 P5：启动/缓存异步回调不能用空聚合覆盖已有有效快照。
+             * 真正的清空/空恢复由 JS 明确传 allowEmpty=true。 */
+            call.resolve(new JSObject().put("ok", true)
+                    .put("accepted", false)
+                    .put("reason", "empty_snapshot_rejected"));
+            return;
+        }
+        boolean committed = prefs.edit().putString(KEY_SNAPSHOT, snapshot).commit();
+        /* #275：首页原生切片已经接管当前路由时，写入快照必须立即回推宿主，
+         * 否则冷启动缓存会一直显示旧的问候语/每日话语，直到下次重建 Activity。 */
+        if (committed && getActivity() instanceof MainActivity) {
+            NativeRootHost.setNativeHomeSnapshot(getActivity(), snapshot);
+        }
         call.resolve(new JSObject().put("ok", committed).put("accepted", committed));
+    }
+
+    private static int calendarRecordCount(String raw) {
+        if (raw == null || raw.trim().isEmpty()) return 0;
+        try {
+            JSONArray records = new JSONObject(raw).optJSONArray("calendarRecords");
+            return records == null ? 0 : records.length();
+        } catch (Exception ignored) {
+            return 0;
+        }
     }
 
     @PluginMethod

@@ -170,7 +170,7 @@ renderHome();
 ## 记录
 
 - 2026-09-10：**#254 已实施（v4.1.5）**：修复 null 时间戳被解释为 Unix epoch；Room nullable 投影保持字段缺失；启动归一化保护异常日期并提示从更新前可信备份恢复；自动/手动 WebDAV 上传在恢复前暂停，避免覆盖可信备份。全量契约、浏览器回归、离线 APK 构建、正式包名/稳定调试签名、真机覆盖安装与重启回归通过。真机 42 条记录数量保持一致，最终 Room/WebView 检查为 0 条 `1970-01-01`，未发生无依据日期猜测。
-- 2026-09-09：**#253 已实施（v4.1.4）**：Room 旧记录观察字段改为三态投影，JS 展示/统计/行为模型统一回退入口；`npm run verify:253`、全量契约回归、浏览器兼容回归、离线 APK 构建与包名/版本/签名校验通过。已通过统一构建钩子覆盖安装到魅族真机 `461QYFDN226NF`，#253 CDP 兼容回归、Room 权威链、Kotlin 快照桥接与重启后数据一致性均通过。
+- 2026-09-09：**#253 已实施（v4.1.4）**：Room 旧记录观察字段改为三态投影，JS 展示/统计/行为模型统一回退入口；`npm run verify:253`、全量契约回归、浏览器兼容回归、离线 APK 构建与包名/版本/签名校验通过。已通过统一构建钩子覆盖安装到魅族真机 `[序列号已省略]`，#253 CDP 兼容回归、Room 权威链、Kotlin 快照桥接与重启后数据一致性均通过。
 - 2026-09-04：**#217/#218 已实施（v3.86）**：日历当日明细改为两条高度的内部滚动列表；修复 Android/魅族系统返回后的 Tab 焦点残留，保留键盘与无障碍焦点提示。浏览器、APK、魅族真机 CDP 回归通过。
 - 2026-09-04：**#219 已实施（v3.87）**：日历当日明细复用统一 `.app-scroll-region` 滚动条规则，改为透明轨道/细胶囊滑块/隐藏箭头；1–2 条记录按真机实际行高自适应，3 条及以上才内部滚动。浏览器、APK、魅族真机截图与 CDP 回归通过。
 - 2026-09-06：**#221 P0 已实施（不改变发行版版本号）**：建立六类公共 Schema、黄金样本、Kotlin↔WebView 单次快照桥接契约与 SQLCipher Community Edition 准入清单；离线契约校验、未知字段往返、AI 脱敏边界和构建验证通过。Room 权威迁移与原生 UI 仍按 #222–#252 后续节点推进。
@@ -331,7 +331,7 @@ renderHome();
 - 2026-08-06：**v2.3 实施完成**：#37 小组件点击统一（OpenMode 三模式 OPEN_HOME/OPEN_RECORD/QUICK_RECORD，requestCode 0/1/2；4 个统计 widget 整卡点击只进首页；快速记录 widget 删「打开记录面板」按钮，整卡+大按钮一键记录）；#38 记录编辑（recent-actions 编辑按钮×2 处、openSheet 'edit' 模式预填多选 chips/时长/看片/备注/时间、saveRecord editingId 原地更新保持 id、toast「已更新 ✓」）+ 修改后自动重生成报告（reportStale 指纹过期检测、scheduleReportRefresh 防抖 1.5s、analysisBusy 防重入、刷新提示条不清空旧报告、失败保留旧报告温和 toast、maybeAutoGenerate 支持报告可见时过期刷新、刷新模式不重试）；#39 regenBtn 改 btn-primary + generateAnalysis finally 恢复 btn.disabled；#40 btn-ghost 全局样式（--ink 主文字 + 1px --line 边框 + 深浅色 hover）；versionCode 14 / versionName 2.3，资源版本 ?v=16
 - 2026-08-06：v2.3 浏览器回归中发现并追加修复 6 处：① durSlider max=60 clamp 丢时长（预填 clamp + 保存从 durLabel 解析，编辑 135 分钟记录不再变 60）；② reportFingerprint 升级为内容摘要（digest 覆盖 offset/time/情绪/诱因/时长/看片，note 不参与）——原指纹只看 count/latestId/date，编辑内容不触发刷新，时效性需求不满足；③ regenBtn 绑定传事件对象（否则 btn=null 点击不禁用，防重复失效）；④ scheduleReportRefresh 用「是否在分析页」判断（原用 analysisResult.hidden 不准，首页编辑会后台烧 API）；⑤ refreshReport 前置检查（无 key/无数据不触发，避免刷新条残留 + analysisBusy 卡死）；⑥ editingId 保存后重置。全部浏览器验证通过（编辑保存/预填/时长保真/offset 重算/无重复/自动刷新 1.5s 防抖/失败保留旧报告/无 key 静默/regenBtn disabled 恢复）
 - 2026-08-06：新增第 41 条【Bug】（换新手机后系统字体放大，趋势胶囊「30 天」与 API 保存按钮上下排布），浏览器定位根因（textZoom 只放大文本不放大容器：card-head 胶囊被压缩导致「30 天」空格断行；picker-row input min-width:auto 撑大挤压保存按钮），方案（.seg white-space:nowrap + card-head 标题截断胶囊不压缩 + picker-row input min-width:0/按钮 flex-shrink:0）已写入，仅记录
-- 2026-08-06：**v2.4 实施完成**：#41 textZoom UI 修复（.seg nowrap、card-head > div:first-child 截断 + #chartSeg flex-shrink:0、.picker-row input min-width:0 + .btn-ghost flex-shrink:0）；浏览器 font-size ×2.0 模拟验证（胶囊单行完整、API 行并排）；新手机（3B163A002UT00000）真机验证 6 项 PASS + 编辑功能回归 11 项 PASS；versionCode 15 / versionName 2.4，资源版本 ?v=17
+- 2026-08-06：**v2.4 实施完成**：#41 textZoom UI 修复（.seg nowrap、card-head > div:first-child 截断 + #chartSeg flex-shrink:0、.picker-row input min-width:0 + .btn-ghost flex-shrink:0）；浏览器 font-size ×2.0 模拟验证（胶囊单行完整、API 行并排）；新手机（[序列号已省略]）真机验证 6 项 PASS + 编辑功能回归 11 项 PASS；versionCode 15 / versionName 2.4，资源版本 ?v=17
 - 2026-08-06：新增第 42 条【Bug】（配置 AI 时软键盘把底部 tab 栏顶起来），定位根因（真机 .phone height:100vh + .tabbar absolute bottom，Capacitor adjustResize 压缩 WebView 高度 → tabbar 贴到键盘上方），方案草案（visualViewport resize 监听 → 键盘显示时 tabbar 加隐藏态）已写入，待确认，仅记录
 - 2026-08-06：新增第 43 条【Bug】（AI 提供商切换时 API 密钥不清空——自定义 key 残留到 DeepSeek，保存后 401），定位根因（applyProviderPreset 只更新 baseUrl/model 不处理 apiKeyInput + 单份配置存储不按提供商区分），方案草案 A（切换清空密钥 + 提示，推荐）/ B（按提供商分别存储含迁移）已写入，待确认，仅记录
 - 2026-08-06：第 43 条方案决策确认——**选择方案 B（按提供商分别保存密钥）**：aiConfig 扩展 per-provider 结构 + active 记忆 + v1 旧配置迁移（旧 key 归入原 provider），切换自动回显；A 方案弃用，仅记录
@@ -491,7 +491,7 @@ renderHome();
 - 2026-08-08：**#72 液态玻璃原型交付（待定稿）**：prototype/liquid-glass.html 桌面交互原型——三组件（tab 栏/记录面板/数据卡）液态玻璃 vs 原毛玻璃一键切换对比 + 面板弹簧打开（复用 anime vendor）+ 配方说明；配方 blur(26px) saturate(180%) + 亮边 + inset 上缘高光 + ::before 折射光带；验证全过（配方生效/切换/弹簧落位/position）；修复 2 个原型 bug（.glass 规则 position:relative 覆盖 absolute 致 sheet 掉流；CSS 初始 transform 与 anime 清理冲突致面板收回）；截图 v72_liquid_glass_on/off.png；应用需真机性能验证（#44 前科）+ reduced-motion 降级，待用户定稿
 - 2026-08-08：**#72 anime 试点实施完成（v3.5 内补丁）**：vendor 引入 animejs v3.2.2（v4 无 UMD 单文件改 v3）；面板弹出改回弹动画——playSheetOpen（animation:'none' 防 CSS 双动画 + anime translateY easeOutBack(1.4) 550ms + changeComplete 清 transform、animation 保持 none 防 sheetUp 重播 + animateSheetClose 先 pause + vendor 缺失/reduced-motion 回退 CSS 零风险）；spring easing 弃用（v3 固定 1s 不可调，实测 1003ms 太拖沓）；环图已有 CSS 交错入场不替换；浏览器验证回弹 -6.48% overshoot + 清理/落位/退场全过（CDP evaluate 期间 rAF 节流为测试干扰）；真机逐帧验证 y 851→381→overshoot 319→衰减振荡→381 稳定，~550ms 无停顿；资源 ?v=38/38
 - 2026-08-08：新增第 72 条（动效与视觉增强候选——用户调研三个 GitHub 库：liquid-glass-react 液态玻璃组件 / cult-ui React 组件库 / anime.js 轻量动画库），调研结论：两个 React 库直接不可用（观己零构建 vanilla 架构，反证无需为动效库改 React——动效库均框架无关）；liquid-glass 视觉配方可纯 CSS 模拟（注意 WebView 性能降级，#44 前科）；anime.js 唯一可落地（v4 单文件无构建，补 CSS 短板：真实弹簧/stagger/时间线/SVG/数字滚动）；落地候选 anime 试点两处（面板弹簧弹出 + 环图分段入场）+ 液态玻璃 CSS 原型；2 个待拍板，仅记录
-- 2026-08-08：新增第 71 条（观己宣传海报系列 HTML 交付物——参考「桌面/原型」7 张手机界面截图，无生图模型改为 HTML 输出）：交付 7 张竖版海报（1080×1920 设计稿 + JS 等比缩放）到 `C:\Users\43124\Desktop\观己海报\`（01 全屏计时/02 实况通知/03 首页看板/04 AI分析/05 桌面小组件/06 历史日历/07 数据安全），统一 Apple 风格设计系统 + 按功能还原手机 mockup（计时蓝渐变/锁屏胶囊+通知/AI 报告卡/小组件网格/月历/盾牌隐私卡）+ 卖点 chips + 隐私 footer；生成脚本 debug/poster-gen.cjs 可复用；Playwright 抽查 01/05/07 布局全过
+- 2026-08-08：新增第 71 条（观己宣传海报系列 HTML 交付物——参考「桌面/原型」7 张手机界面截图，无生图模型改为 HTML 输出）：交付 7 张竖版海报（1080×1920 设计稿 + JS 等比缩放）到 `%USERPROFILE%\Desktop\观己海报\`（01 全屏计时/02 实况通知/03 首页看板/04 AI分析/05 桌面小组件/06 历史日历/07 数据安全），统一 Apple 风格设计系统 + 按功能还原手机 mockup（计时蓝渐变/锁屏胶囊+通知/AI 报告卡/小组件网格/月历/盾牌隐私卡）+ 卖点 chips + 隐私 footer；生成脚本 debug/poster-gen.cjs 可复用；Playwright 抽查 01/05/07 布局全过
 - 2026-08-08：**#70 实施完成（v3.5 内补丁）**：网页原型矮视口状态栏显示不完全——根因 `.phone` 固定 844px + body flex 居中，桌面窗口 <890px 时顶部被裁（实测 800 高视口状态栏 y=-21）；修复 `@media (max-height:920px) and (pointer:fine)` 手机高度 calc(100vh-28px) 跟随视口（.screen flex:1 吸收高度差，状态栏 46px 恒完整），min-height 640 兜底；fine/coarse 与真机规则互斥零影响；验证状态栏 y=-21→y=15 完整可见；资源 ?v=37；已构建安装
 - 2026-08-08：**#69 实施完成（v3.5 内补丁，版本号不变）**：关于卡去分割线与「隐私说明」标题——`.about-privacy` 简化为直接挂 about-card 的 `ul.privacy-list`（品牌区后直跟 2 条隐私条目，苹果页脚风格），CSS 去 border-top/padding-top、margin-top 18px 衔接；版本号不变（26/3.5），资源 ?v=36/36；真机验证（魅族）borderTop=0px none + 无 card-title + brandY 2077→privY 2141 + 2 条文案左对齐 + v3.5；浏览器回归一致；截图 v35_about_clean.png
 - 2026-08-08：**#68 实施完成（v3.5 内补丁，版本号不变）**：独立隐私说明卡并入 about-card——品牌区（logo/观己/版本）下方新增 `.about-privacy` 分区（隐私说明标题 + 原 2 条文案），`--line` 分隔线 + 左对齐；卡片数 9→8；版本号不变（26/3.5，about-ver 保持），资源 ?v=35/35；真机验证（魅族）cardCount=8 + 分隔线 0.73px --line + 左对齐 + 2 条文案完整 + 数据管理仍在其上 + 清除弹窗回归正常；浏览器回归一致；截图 v35_about_merged.png
@@ -2091,7 +2091,7 @@ Android WebView 的系统字体缩放（textZoom）只放大文本、不放大�
 ### 需求（用户 2026-08-08）
 情绪/诱因点「添加」时键盘弹出，把预览框顶高、页面被拉扯——**面板与汇总两套风格都触发**（共性）。
 
-### 根因（✅ 真机复现定位，魅族 461QYFDN226NF）
+### 根因（✅ 真机复现定位，魅族 [序列号已省略]）
 UI 树实测（键盘弹出后 WebView 压缩至 1452px）：
 1. **预览框顶高/重叠**：输入时 addCount（n/6）与 addPreview（「将添加：xxx」）同时出现，CSS 间距不足（.dialog-hint margin-top 6px、.dialog-text 无独立上距）→ 两者重叠约 3px；出现瞬间 dialog 高度突变 → flex 居中重算 → dialog 在键盘上方跳动 =「顶高」感
 2. **页面拉扯**：adjustResize 压缩视口 → 底部记录面板被顶起（实测 top 200）、全页重排——键盘动画期间连续变化（#42 仅处理 tabbar，面板本身跟随视口）
@@ -2120,7 +2120,7 @@ UI 树实测（键盘弹出后 WebView 压缩至 1452px）：
 - **修复 2（styles.css）**：媒体查询 `.phone { height: 100vh }` → `height: 100%` + `.stage { height: 100% }`（提供确定参照，否则百分比回退 auto 撑高内容——实测回归 1620px 后补上）
 - **修复 3（styles.css）**：`#addPreview { min-height: 1.8em }` 预留预览行——dialog 高度恒定，预览出现时不再 flex 居中跳动（±0px）
 - **修复 4（styles.css）**：汇总页 3 处 `clamp(4vh/4.5vh)` 间距固定化（28px/32px/32px）——vh 在键盘压缩时变化导致跳动，固定值在常见屏高安全
-- **真机验证（魅族 461QYFDN226NF，键盘前后分离采样）**：
+- **真机验证（魅族 [序列号已省略]，键盘前后分离采样）**：
   - 面板风格：键盘前 sheet `y=170/h=681/bottom=851` → 键盘弹出后（innerHeight 528、html/body 冻结 851px）sheet **完全一致 y=170/bottom=851** ✓（修复前顶到 top:200）；输入 5 字 dialog `y=310/h=232` 与输入前一致（预留高度零跳动）；单行预览「5/6 · 将添加：abcde」无重叠；键盘收起解冻恢复 851 ✓
   - 汇总页风格（真实点按路径）：键盘弹出冻结 851 ✓、dialog y=310 与面板风格一致 ✓、单行预览 ✓、summary-title margin-top=28px（vh 固定生效）✓
   - 对话框两套风格共享 #addBackdrop，一处修复两处生效；z-index 70 与 timerScreen 无冲突（#63）
@@ -2796,7 +2796,7 @@ Android 16 实况通知的**未展开状态（状态条状标签 chip）**有点
 2. 点击记录 → 点「不想计时？直接填写」→ 到记录页：**同样在切换动作**
 - 编辑（openEditRecord）直达详情、不走步骤切换 → **无此问题**
 
-### 根因（✅ 真机实测定位，魅族 461QYFDN226NF + rAF 逐帧采样 + CDP Profiler）
+### 根因（✅ 真机实测定位，魅族 [序列号已省略] + rAF 逐帧采样 + CDP Profiler）
 **`goToDetails()` 的 `transitionSheetHeight('stepDetails')` 目标高度算错 + 双向动画 + 清理定时器竞态，三重叠加：**
 
 1. **目标高度错误（核心）**：sheet 结构 = grab 条 + 标题「记录」+ step 内容 + 按钮区 + padding（≈188px chrome）。`transitionSheetHeight` 把目标设为 `stepDetails` **自身**高度：实测 `from = sheet 681.1px`，`to = stepDetails 493.3px` → **高度过渡方向反了（收缩而非展开）**
@@ -2817,7 +2817,7 @@ Android 16 实况通知的**未展开状态（状态条状标签 chip）**有点
 ### ✅ 实施记录（2026-08-08，方案 A）
 - **app.js**：`transitionSheetHeight(targetId)` → `transitionSheetHeight(from)`——签名改为接收「切换前高度」；`to` 改为调用时 sheet 的自然全高（步骤已切换完，含 chrome）；清理改 `transitionend`（`e.target===sheet && propertyName==='height'` 才清理，防子元素冒泡）+ 600ms 兜底定时器（display:none 场景 transitionend 不触发）；时长 0.35s→0.22s easeOutCubic(0.33,1,0.68,1) 与退场语言一致
 - **app.js**：`goToDetails()`/`goToTime()` 各在步骤切换前测 `from = sheet.getBoundingClientRect().height` 传入
-- **真机验证（魅族 461QYFDN226NF，rAF 逐帧采样对比修复前后）**：
+- **真机验证（魅族 [序列号已省略]，rAF 逐帧采样对比修复前后）**：
   - 补记→下一步：修复前 y 序列「170→358 收缩→停 493 约 216ms→跳回 170」；修复后「478→444→413→384→358→221→173→170」**单调展开** 373→681，无反向/无停顿/无跳变，216ms 后 transitionend 清理
   - 小字直达：单调展开 470→681 ✓（y 381→…→170 无反向）
   - 上一步：单调收缩 681→470 ✓（y 170→…→381 无反向）
@@ -2850,10 +2850,10 @@ Android 16 实况通知的**未展开状态（状态条状标签 chip）**有点
 ## 71. 观己宣传海报系列（HTML 交付物） ✅ 已交付（2026-08-08）
 
 ### 需求（用户 2026-08-08）
-> 参考「C:\Users\43124\Desktop\原型」里的手机界面截图，制作观己的 app 宣传海报（每个功能介绍一张），无生图模型 → 海报以 HTML 输出。
+> 参考「%USERPROFILE%\Desktop\原型」里的手机界面截图，制作观己的 app 宣传海报（每个功能介绍一张），无生图模型 → 海报以 HTML 输出。
 
 ### 交付
-- **7 张竖版海报（1080×1920 设计稿，JS 等比缩放适配任意视口）** → `C:\Users\43124\Desktop\观己海报\`：
+- **7 张竖版海报（1080×1920 设计稿，JS 等比缩放适配任意视口）** → `%USERPROFILE%\Desktop\观己海报\`：
   01-全屏计时 / 02-实况通知 / 03-首页看板 / 04-AI分析 / 05-桌面小组件 / 06-历史日历 / 07-数据安全
 - 统一设计系统：Apple 风格浅色底 + 蓝渐变点缀、心形 logo、手机 mockup（按功能还原真实界面：计时页蓝渐变/锁屏胶囊+通知/AI 报告卡/小组件网格/月历/盾牌隐私卡）、卖点 chips、隐私承诺 footer
 - 生成脚本 `debug/poster-gen.cjs`（模板 + 7 功能配置，可复用/扩展）
@@ -2883,7 +2883,7 @@ Android 16 实况通知的**未展开状态（状态条状标签 chip）**有点
 ### 实施记录
 - **index.html**：隐私说明卡从「我的」页顶部（header 之后）移至「数据管理」卡之后、「关于」卡之前——新顺序：外观 → AI 设置 → 记录提醒 → 正向反馈 → 记录方式 → 实况通知 → **数据管理 → 隐私说明** → 关于（logo/版本）；文案与结构不变（privacy-list 2 条）
 - **版本升级 v3.5**（用户指定）：`android/app/build.gradle` versionCode 25→26 / versionName "3.4"→"3.5"；`index.html` about-ver「v3.4 · 数据仅存本地」→「v3.5 · 数据仅存本地」；资源 styles.css?v=34 / app.js?v=34
-- **真机验证（魅族 461QYFDN226NF）**：dumpsys versionCode=26 / versionName=3.5；CDP DOM 顺序 dataBeforePrivacy=true（数据管理 index 6 < 隐私说明 index 7）；about-ver 显示 v3.5；清除确认弹窗回归正常（privacyItems=2 文案完整）
+- **真机验证（魅族 [序列号已省略]）**：dumpsys versionCode=26 / versionName=3.5；CDP DOM 顺序 dataBeforePrivacy=true（数据管理 index 6 < 隐私说明 index 7）；about-ver 显示 v3.5；清除确认弹窗回归正常（privacyItems=2 文案完整）
 - 浏览器回归同结果（顺序一致 + v3.5）；截图 `debug/v35_me_page.png`
 
 
@@ -2898,7 +2898,7 @@ Android 16 实况通知的**未展开状态（状态条状标签 chip）**有点
 - **index.html**：删除独立「隐私说明」卡，并入 about-card——品牌区（logo/观己/版本）上方，新增 `.about-privacy` 分区（标题「隐私说明」+ 原 2 条 privacy-list）置于下方；我的页卡片数 9→8
 - **styles.css**：`.about-card .about-privacy`——`align-self:stretch` + `border-top: 1px solid var(--line)` 分隔线与上部品牌区分 + `text-align:left`（关于区居中、隐私长句左对齐可读）
 - **版本号不变**（用户指定）：versionCode 26 / versionName 3.5 / about-ver 保持 v3.5；仅资源 ?v=35/35
-- **真机验证（魅族 461QYFDN226NF）**：cardCount=8；about-card 内含 logo/观己/v3.5 + 隐私区（brandY=460 → privY=528，分隔线 `0.73px solid rgb(229,229,234)`=--line）；左对齐；2 条文案完整；数据管理仍在其上（dataBeforePrivacy=true）；清除确认弹窗回归正常
+- **真机验证（魅族 [序列号已省略]）**：cardCount=8；about-card 内含 logo/观己/v3.5 + 隐私区（brandY=460 → privY=528，分隔线 `0.73px solid rgb(229,229,234)`=--line）；左对齐；2 条文案完整；数据管理仍在其上（dataBeforePrivacy=true）；清除确认弹窗回归正常
 - 浏览器回归一致（cardCount=8、分隔线、2 条）；截图 `debug/v35_about_merged.png`
 
 
@@ -2913,7 +2913,7 @@ Android 16 实况通知的**未展开状态（状态条状标签 chip）**有点
 - **index.html**：移除 `.about-privacy` 内的「隐私说明」标题；`.about-privacy` 从 div 包装简化为直接挂在 about-card 下的 `ul.privacy-list`——品牌区（logo/观己/版本）之后直接跟 2 条隐私条目（苹果页脚风格）
 - **styles.css**：`.about-card .about-privacy` 去掉 `border-top` 与 `padding-top`，`margin-top` 22px→18px（与版本行衔接），保留 `align-self:stretch` + `text-align:left`
 - **版本号不变**（用户指定）：26/3.5/about-ver v3.5；资源 ?v=36/36
-- **真机验证（魅族 461QYFDN226NF）**：`privBorderTop = 0px none`（无分割线）✓；about-card 无 card-title（无标题）✓；brandY=2077 → privY=2141（间距 64px 含品牌块）✓；2 条文案完整、左对齐；v3.5 显示正常；卡片数 8
+- **真机验证（魅族 [序列号已省略]）**：`privBorderTop = 0px none`（无分割线）✓；about-card 无 card-title（无标题）✓；brandY=2077 → privY=2141（间距 64px 含品牌块）✓；2 条文案完整、左对齐；v3.5 显示正常；卡片数 8
 - 浏览器回归一致（无 border/无 title/v3.5/2 条）；截图 `debug/v35_about_clean.png`
 
 
@@ -2954,7 +2954,7 @@ Android 16 实况通知的**未展开状态（状态条状标签 chip）**有点
 - **环图结论**：时段分布环图已有 CSS staggered 交错入场（stroke-dasharray 0.6s + 110ms 间隔），anime 化收益低——**不替换**
 - **验证**：
   - 浏览器（Playwright）：回弹曲线实测 100% → -6.48% overshoot → 衰减稳定；动画完成清理（animDone/transformCleared）；面板落位 bottom 对齐；退场动画正常接管；CDP evaluate 期间 rAF 被节流导致「动画不推进」为测试方法干扰，分离式验证通过
-  - 真机（魅族 461QYFDN226NF，rAF 逐帧采样）：y 序列 851→381 滑入 → **overshoot 上弹至 319**（超出锚点 62px≈13%）→ 衰减振荡 5 次 → 稳定 381；总时长 ~550ms；帧连续无停顿；无残留动画
+  - 真机（魅族 [序列号已省略]，rAF 逐帧采样）：y 序列 851→381 滑入 → **overshoot 上弹至 319**（超出锚点 62px≈13%）→ 衰减振荡 5 次 → 稳定 381；总时长 ~550ms；帧连续无停顿；无残留动画
 - 资源 ?v=38/38；版本号不变（v3.5 内补丁）；后续可试点：弹层/对话框回弹、stagger 交错、数字滚动（anime 已就位）
 
 ### ✅ 液态玻璃原型（2026-08-08，已交付待定稿）
@@ -2964,7 +2964,7 @@ Android 16 实况通知的**未展开状态（状态条状标签 chip）**有点
 - **修复 2 个原型 bug**：①`.glass` 规则里 `position:relative` 覆盖组件 absolute 导致 sheet 掉进文档流（absolute 自身即 ::before 定位上下文，移除即可）②CSS 初始 `transform: translateY(120%)` 与 anime 清理冲突导致面板收回（初始态改 JS 内联）
 - 截图 `debug/v72_liquid_glass_on.png` / `v72_liquid_glass_off.png`（开/关对比）
 - **v2 调整（用户反馈「背景不需要白色模糊，哪里体现通透感」）**：`--lg-tint` 0.55→**0.10（近乎透明）**、`--lg-blur` 26→20px（轻磨砂）、`--lg-saturate` 180%→**200%**（背景色透过并提亮）——通透感来自 blur+saturate 而非白色填充，亮边 0.75 + 折射光带保留；对照组（原毛玻璃白雾 0.72）不变以突出对比；截图 `debug/v72_liquid_glass_v2.png`
-- **v3 增强（用户确认按推荐推进）**：借鉴 cult-ui 的 `distorted-glass` 实现——**SVG feTurbulence + feDisplacementMap 折射扰动**（`baseFrequency 0.12 numOctaves 1 scale 22 seed 7`，隐藏 SVG 定义 `#lg-distort`），`.glass` 三组件加 `filter: url(#lg-distort)`——玻璃表面有了折射扭曲细节（cult-ui 分析：真透镜折射需 Three.js shader，SVG 扰动是移动 WebView 可行的近似，其余组件（edge-blur mask 渐隐 / morph-surface 多层 inset 阴影）已确认与现有原型思路一致无需再借鉴；cult-ui 克隆暂存 `C:\Users\43124\ZCodeProject\cult-ui-review\`）；截图 `debug/v72_liquid_glass_v3.png`
+- **v3 增强（用户确认按推荐推进）**：借鉴 cult-ui 的 `distorted-glass` 实现——**SVG feTurbulence + feDisplacementMap 折射扰动**（`baseFrequency 0.12 numOctaves 1 scale 22 seed 7`，隐藏 SVG 定义 `#lg-distort`），`.glass` 三组件加 `filter: url(#lg-distort)`——玻璃表面有了折射扭曲细节（cult-ui 分析：真透镜折射需 Three.js shader，SVG 扰动是移动 WebView 可行的近似，其余组件（edge-blur mask 渐隐 / morph-surface 多层 inset 阴影）已确认与现有原型思路一致无需再借鉴；cult-ui 克隆暂存 `%USERPROFILE%\ZCodeProject\cult-ui-review\`）；截图 `debug/v72_liquid_glass_v3.png`
 - **⚠️ v3 回归（用户实测「整个画面都扭曲变形」）**：整面 `filter: url(#lg-distort)` 挂玻璃主体 + 0×0 SVG（滤镜区域失效）+ scale 22 → **位移映射捕获整屏内容，全画面扭曲**——我的验证只查了 computed filter 未查视觉结果，验证方法失误；**v4 修复**：①移除玻璃主体整面滤镜 ②扰动重做为**边缘折射层**（`.lg-distort` 时 6px 透明边框 ::after 挂 `#lg-edge-distort`，inset -6px，只扰动细边）③SVG 给真实尺寸 300×300（0×0 滤镜区域失效）+ 显式 `x/y/width/height` 滤镜区域 ④参数收敛（scale 22→8、baseFrequency 0.12→0.02 温和涟漪）⑤扰动开关独立、**默认关闭**；验证：默认态 cardFilter=none + v2 配方完整（blur 20px/saturate 2/亮边/光带）、扰动开关开启后仅 ::after 边缘层带滤镜、主体 filter 仍 none；截图 `debug/v72_liquid_glass_v4_default.png` / `v72_liquid_glass_v4_distort_on.png`
 - **应用前置**：定稿后应用到 App 时需真机逐帧验证（blur+saturate 每帧重绘成本高于原毛玻璃，#44 前科）+ `prefers-reduced-motion` 降级 + 低端机关闭策略（扰动滤镜作可选项，低端机降级为无扰动）——待用户看原型拍板
 
@@ -2972,7 +2972,7 @@ Android 16 实况通知的**未展开状态（状态条状标签 chip）**有点
 - **应用范围**：`.tabbar`（悬浮 tab 栏）+ `.sheet`（记录面板）——原型三组件中玻璃材质对应的两个；数据卡未应用（App 卡片为白底内容容器非玻璃材质）
 - **styles.css**：`:root`/深色块加 `--lg-tint`（浅色 0 / 深色 0.05 适配）+ `--lg-saturate: 2`；.tabbar/.sheet 替换为定稿配方——无磨砂（`blur(0px) saturate(2)`）+ 阴影栈（外侧发丝暗线 0.5px/内侧白亮环/上缘 1px 高光/下缘微光/内缘柔光/外投影）；共享 `::after` 渐变边框环（环形 mask content-box xor/exclude，不碰主体）+ `::before` 顶部受光/斜向光带；tabbar :active 按压增强（--lg-saturate 2.2）
 - **兼容确认**：reduced-transparency 偏好（盖白底）保留 ✓；#44 退场转不透明逻辑（backdropFilter:none + var(--card)）兼容 ✓；anime 弹簧弹出不受影响 ✓
-- **验证**：浏览器（Playwright）浅色/深色全过——tabbar/sheet `blur(0px) saturate(2)`、透明底、环形 mask exclude、光带、深色 tint 0.05 生效；真机（魅族 461QYFDN226NF）CDP 配方生效 + 真实点按打开面板落位 381 动画清理无残留；资源 ?v=39/39
+- **验证**：浏览器（Playwright）浅色/深色全过——tabbar/sheet `blur(0px) saturate(2)`、透明底、环形 mask exclude、光带、深色 tint 0.05 生效；真机（魅族 [序列号已省略]）CDP 配方生效 + 真实点按打开面板落位 381 动画清理无残留；资源 ?v=39/39
 - **原型同步清理**：liquid-glass.html 移除液体微摆（SVG 滤镜/开关/JS/CSS），保持与定稿一致；截图 `debug/v72_liquid_glass_app.png`（App 真机）
 
 ### ✅ 全 App 扩展（2026-08-08，用户「效果还可以，应用到整个app看看」）
@@ -3005,7 +3005,7 @@ Android 16 实况通知的**未展开状态（状态条状标签 chip）**有点
 - **P2 材质细节**：①Vibrancy 近似——tint-card 0.55→0.60/深 0.08 ②选中 tab 图标玻璃底座（32px 圆形径向渐变 + inset 高光 + 蓝光晕，tab-pill 提 z-index 1 保内容在上）③色散近似（实验）——大数字 .stat-num/.focus-num/.overview-num 极轻 RGB 双色 text-shadow（0.6px ±红 0.18/蓝 0.18）
 - **沉淀**：DESIGN-LANGUAGE.md 新增第 9 章「液态玻璃 Material 分层」——L0-L4 五级 tint 规范表 + 边缘结构/流动性/降级三小节
 - **验证**：浏览器全过（滚动收缩双态/底座/色散/深色）；真机（魅族）滚动收缩 h=50+玻璃变实 0.4、底座/色散生效；资源 ?v=44/45；截图 `debug/v72_liquid_glass_p12.png`
-- **v5 调整（参照 AndroidLiquidGlass 原生配方量级——读取 kyant0/backdrop 库源码）**：①`--lg-blur` 20px→**8px**（原生示例 `blur(8dp)` 量级——轻磨砂才通透，20px 偏重）②边缘层修正：v4 的透明边框空元素挂滤镜无可位移内容（实际不可见）——改为**半透明环带 `rgba(255,255,255,0.16)` + 小位移**（位移有了实际内容，产生「液体微摆」边缘）③**按压反馈**（参照原生按压驱动模型）：:active 时 `--lg-saturate 220% / 高光 1.0 / blur 12px / 亮边 0.9` + 卡片微缩放 0.985 + tab 微缩放 0.94（弹簧过渡）——玻璃「活」起来；原生算法参考价值（SDF 圆角矩形 + circleMap 边缘衰减 + 法线折射 + 色差）：确认「边缘折射+强度衰减」模型，AGSL 与 GLSL 兼容可作鸿蒙 ArkUI shader 直接翻译的算法底稿；克隆暂存 `C:\Users\43124\ZCodeProject\android-liquid-glass-review\`；截图 `debug/v72_liquid_glass_v5_default.png` / `v72_liquid_glass_v5_edge_on.png`
+- **v5 调整（参照 AndroidLiquidGlass 原生配方量级——读取 kyant0/backdrop 库源码）**：①`--lg-blur` 20px→**8px**（原生示例 `blur(8dp)` 量级——轻磨砂才通透，20px 偏重）②边缘层修正：v4 的透明边框空元素挂滤镜无可位移内容（实际不可见）——改为**半透明环带 `rgba(255,255,255,0.16)` + 小位移**（位移有了实际内容，产生「液体微摆」边缘）③**按压反馈**（参照原生按压驱动模型）：:active 时 `--lg-saturate 220% / 高光 1.0 / blur 12px / 亮边 0.9` + 卡片微缩放 0.985 + tab 微缩放 0.94（弹簧过渡）——玻璃「活」起来；原生算法参考价值（SDF 圆角矩形 + circleMap 边缘衰减 + 法线折射 + 色差）：确认「边缘折射+强度衰减」模型，AGSL 与 GLSL 兼容可作鸿蒙 ArkUI shader 直接翻译的算法底稿；克隆暂存 `%USERPROFILE%\ZCodeProject\android-liquid-glass-review\`；截图 `debug/v72_liquid_glass_v5_default.png` / `v72_liquid_glass_v5_edge_on.png`
 - **v8 修复（用户反馈「边框改动影响卡片主体，通透感没了」）**：v7 双层背景 bug——`background: 透明 padding-box, 白渐变 border-box` 中**透明层遮不住 border-box 层**（border-box 覆盖整盒），白渐变实际盖满卡片主体（白纱）；修复：主体恢复 `background: var(--lg-tint)` 纯透明 + 渐变边框改 **::after 环形 mask 独立绘制**（`-webkit-mask: linear-gradient(#000) content-box, linear-gradient(#000)` + `mask-composite: exclude`——渐变只画 1px 边框环，圆角保留，不碰主体）；液体微摆开关改为环带加宽 6px + SVG 扰动（滤镜作用于有内容的环带）；验证：主体 `rgba(255,255,255,0)` + 无磨砂保持 + 环形 mask composite exclude 生效 + 发丝暗线/白亮环/光带全在；截图 `debug/v72_liquid_glass_v8.png`
 - **v7 调整（用户反馈「边框轮廓不够玻璃」）**：重构玻璃边缘——①均匀白描边 → **渐变边框**（`background: tint padding-box + linear-gradient(180deg, 白0.95→白0.55→白0.28) border-box`，上亮下暗受光感，圆角不破坏）②**外侧发丝暗线** `0 0 0 0.5px rgba(0,0,0,0.08)`（玻璃与背景分离）③**内侧白亮环** `inset 0 0 0 0.5px rgba(255,255,255,0.55)` ④上缘细高光改 1px 实线 + 内缘 12px 柔光晕 ⑤顶部转角亮斑增强（radial 130% 70% at 15% 0%）；验证：渐变边框（双层 background-clip）/发丝暗线/白亮环/高光/柔光/转角光全生效 + 圆角 24px 保留 + 无磨砂保持；截图 `debug/v72_liquid_glass_v7_edge.png`
 - **v6 调整（用户要求「彻底无磨砂」）**：`--lg-blur` 8px→**0px**、`--lg-tint` 0.12→**0（完全透明）**——backdrop-filter 仅 `saturate(200%)`，通透感完全来自饱和度 + 边缘高光/折射光带/边缘层；按压反馈去掉 blur 增强项（保留 saturate 220%/高光/亮边）；**性能红利**：无 blur 后无每帧模糊重绘，#44 前科的渲染成本基本解除（饱和度叠加为轻量操作）；验证 `blur(0px) saturate(2)` + 透明底 + 高光/光带/边缘层全生效；截图 `debug/v72_liquid_glass_v6_noblur.png`
@@ -3376,7 +3376,7 @@ Android 16 实况通知的**未展开状态（状态条状标签 chip）**有点
 ### 实施清单
 1. `www/styles.css`：玻璃态 `.tab-slide` 覆盖材质（#76 渐变玻璃胶囊配方）替代 `display:none`；删除 `html.liquid-glass .tab.active::before`；`.tab svg` 加过渡
 2. 浏览器验证：玻璃态切换 tab 滑块平滑滑动（computed transition 生效 + 视觉），非玻璃态回归无变化
-3. 真机验证（魅族 461QYFDN226NF）：切换流畅无卡顿、胶囊材质无回归
+3. 真机验证（魅族 [序列号已省略]）：切换流畅无卡顿、胶囊材质无回归
 4. 资源版本 bump（v=57→58）
 
 ### 待确认问题
@@ -3549,7 +3549,7 @@ box-shadow:
 ### 实施清单
 1. `www/styles.css`：深浅变量区新增 --lg-glow/--lg-edge/--lg-hi（深色 0.10-0.14 / 0.35-0.12 / 0.2）；`::before` 光带、`::after` 渐变边框环、card/btn/chip inset 高光替换为变量
 2. 浏览器验证：浅色+玻璃=现值无回归；深色+玻璃=卡片左上角无白晕、边框/高光柔和（computed 对比）
-3. 真机验证（魅族 461QYFDN226NF）：深色+液态玻璃全页面抽查（首页卡片/记录面板/tab 栏）
+3. 真机验证（魅族 [序列号已省略]）：深色+液态玻璃全页面抽查（首页卡片/记录面板/tab 栏）
 
 ### 待确认问题
 - 深色降白幅度：光带 0.4→0.10 / 0.12 / 0.14？（建议 0.12，保留受光暗示）
@@ -3575,7 +3575,7 @@ box-shadow:
 ### 需求（用户 2026-08-09）
 > 记录页的两态切换高低差的问题又出现了，解决方法可以搜索知识库。
 
-### 实测（2026-08-09，v3.6 真机 461QYFDN226NF + 浏览器 8127，CDP 测量）
+### 实测（2026-08-09，v3.6 真机 [序列号已省略] + 浏览器 8127，CDP 测量）
 | 场景 | 就现在（now） | 补记（backfill） | 差 |
 |---|---|---|---|
 | 玻璃态（默认） | 346.7px | 347.2px | **0.5px（严格一致）** |
@@ -4827,7 +4827,19 @@ box-shadow:
 
 - 已以语义化的设置卡标题、操作列表、单一操作和次级动作分组取代局部边距修补；未改变任何设置项功能或顺序。
 
+- 2026-09-22：**#280 VC2.2 三设备候选渲染补齐（仍保持阻断）**：OnePlus PLZ110（`[序列号已省略]`）连接后，使用与两台魅族完全相同的 `home-top-static-title-v1` fixture、经典浅色、`fontScale=1.0` 对 Noto Sans CJK SC 与 Source Han Sans SC 完成补采集。Noto 的魅族 21→18S/OnePlus 覆盖率相对差异为 `0.5281%/0.1759%`，Source Han 为 `0.7107%/0.1527%`，两套候选均通过本轮三设备静态样张阈值，报告状态为 `three_device_candidate_render`、`Passed=true`。这不等于字体准入：API 24、三设备 WebView 同 fixture、包体/冷启动/内存和许可证声明仍未完成，生产不选择字体。候选测试结束后恢复系统字体、删除候选 `res/font` 与精确 `android/app/build`，重新生成正式调试 APK `4.2.10/code132`，包体 `32,070,486` bytes、SHA-256 `5A6BB2BC0FA0B59FE055EC729EF6790AF9A86D7F246D3963A72E5B77B9B58C63`；通过统一构建钩子回装魅族 18S 与 OnePlus，设备端 `pm path` 大小/SHA 与构建产物一致。另修正候选渲染脚本成功退出码，并将三设备报告嵌入 VC2.2 准入报告。证据：`debug/visual-migration/#280-p6-vc0-20260922/vc2.2-font-candidate-render/*-report.json`。
+
 ---
+
+### #280 VC3 最终三设备验收（2026-09-22，运行时通过，#280 总体仍未完成）
+
+- OnePlus PLZ110 已在 T3 完成后接入；使用统一构建钩子安装 `com.guanji.app 4.2.10/code132`，与魅族 18s/21 保持同一 APK、经典浅色、`fontScale=1.0`、键盘关闭和只读 fixture。
+- 由于最多同时连接两台设备，最终证据由“魅族 18s + 魅族 21”与“魅族 18s + OnePlus”两个批次合并；新增 `npm run verify:280:vc3:final`，校验三台设备的生命周期、八条路线、记录快照稳定性、证据文件和同版本构建摘要。
+- `debug/visual-migration/#280-p6-vc0-20260922/vc3-final/vc3-final-report.json` 状态为 `passed_three_device_same_fixture`；T0/T1/T2/T3 报告已引用该最终证据，`npm run verify:280:vc3:internal` 状态为 `passed_three_device_internal`。
+- 同时修正 P5 采集状态：两台在线但缺少第三台时不再错误标记 `passed`，会明确报告 `current_device_batch_passed_pending_<serial>`；本轮 OnePlus + 魅族 18s 批次明确列出缺失魅族 21，避免最多两台设备在线时误签收。
+- VC3 的字体角色、许可证资源和三设备只读运行时已通过；下一步仅剩 VC3 发布合规/性能收尾（“关于 → 开源软件许可”可访问性、发行材料 NOTICE、字体包体/冷启动/内存评估），以及 #280 的 VC0–VC6/P7 其余独立签收。#281 仍不开始。
+
+- 2026-09-22：**#280 VC2.2 候选字体两台魅族渲染复核完成，仍保持阻断**：在魅族 21（`[序列号已省略]`）与魅族 18S（`[序列号已省略]`）使用同一 `home-top-static-title-v1` fixture 临时渲染 Noto Sans CJK SC 与 Source Han Sans SC；Noto 覆盖率相对差异 `0.5281%`，Source Han `0.7107%`，两台魅族均通过本地 5% 差异阈值，但不能替代 OnePlus、API 24 和三设备 WebView 对照。新增 `debug/verify-280-vc2.2-candidate-render.ps1` 及两个 npm 入口，证据见 `debug/visual-migration/#280-p6-vc0-20260922/vc2.2-font-candidate-render/`。候选测试后删除精确 `android/app/build`、恢复系统字体生产源码和空 `res/font`，使用无缓存构建确认生产 APK 为 `32,070,486` bytes 且不含候选字体，并通过统一构建钩子回装两台魅族。期间发现候选替换后的 Gradle 增量输出复用风险，候选包体增量不纳入本轮证据；VC2.2 仍为 `blocked_pending_candidate_render`，不得进入 VC3-T1 或签收 #280。
 
 ## 130. 产品定位与功能边界：个人行为与习惯觉察工具 ✅ 已实施（v3.18）
 
@@ -5004,7 +5016,7 @@ observation: "stress" | "boredom" | "adult_content_effect" | null
 - `www/js/records.js`、`www/js/ui-timer.js`：直接记录、补记、计时结束汇总写入 `observation`；快速记录保持空值直存；“成人内容影响”统一推导 `media`。
 - `www/js/storage.js`、`www/js/secure.js`：保留旧 `moods`、`triggers`、`media`，旧记录/旧 CSV 可映射到新标签；CSV 增加“发生前情况”列并兼容旧列。
 - `www/js/ai.js`：聚合层同时支持新旧记录，AI 输入仅保留统计分布，报告文案改为“发生前情况观察”。
-- 验证通过：全部修改 JS `node --check`；浏览器 `debug/verify-132-browser.cjs`；`npx cap sync android`；`gradlew.bat assembleDebug --no-daemon`；魅族 461QYFDN226NF 安装 APK 后通过独立 CDP 端口执行 `debug/verify-132-device.cjs`。测试数据已恢复。
+- 验证通过：全部修改 JS `node --check`；浏览器 `debug/verify-132-browser.cjs`；`npx cap sync android`；`gradlew.bat assembleDebug --no-daemon`；魅族 [序列号已省略] 安装 APK 后通过独立 CDP 端口执行 `debug/verify-132-device.cjs`。测试数据已恢复。
 - 版本：`versionCode 41` / `versionName 3.20`；真机核验显示 `v3.20 · 数据默认仅存本地`；回归截图保存为 `screenshots/guanji-v320-132.png`。
 
 ---
@@ -5573,7 +5585,7 @@ AI 分为三层：本地算法、手机端侧 AI、云端 AI（高级可选）�
 - 默认诱因、记录提问、历史展示与计时汇总统一采用“成人内容影响”；旧记录的“看了片”保留原始存储值，通过显示映射和聚合归并保证统计连续。
 - CSV 新导出列名更新为“成人内容影响”，导入同时兼容该列与旧版“看片”列；旧诱因值和 `media` 语义均可正确恢复。
 - AI 改为基于聚合统计的个人行为与习惯观察：系统提示词、追问格式、输入拦截和输出校验均禁止露骨内容、医疗/心理诊断及羞耻化/道德评判；不合规回复不会渲染。
-- 浏览器与真机（魅族 461QYFDN226NF）回归通过；versionCode 39 / versionName 3.18 / 资源 `v=108`。
+- 浏览器与真机（魅族 [序列号已省略]）回归通过；versionCode 39 / versionName 3.18 / 资源 `v=108`。
 
 ---
 
@@ -7709,7 +7721,7 @@ AI 可选增强 · 不影响本地洞察
 
 - `www/index.html` 的资源查询参数由 `v=132` 更新为 `v=133`，仅用于 WebView 缓存刷新；`versionCode 61`、`versionName 3.40`、关于页 `v3.40` 均保持不变。
 - 浏览器 390×844：默认开启、关闭持久化、测试按钮禁用/恢复、浏览器环境结构化结果、无横向溢出和无控制台错误。
-- 真机 `461QYFDN226NF`：安装 APK 成功；计时通知开启时 `dumpsys notification` 可见 `com.guanji.app` 的 `4101` 常驻通知，关闭时 App 内计时仍运行且不产生该通知；CDP UI 回归通过。
+- 真机 `[序列号已省略]`：安装 APK 成功；计时通知开启时 `dumpsys notification` 可见 `com.guanji.app` 的 `4101` 常驻通知，关闭时 App 内计时仍运行且不产生该通知；CDP UI 回归通过。
 
 ### 实施决策
 
@@ -9025,7 +9037,7 @@ AI 观察仍位于对应卡片内部，不再单独形成割裂的 AI 页面；�
 
 ### 现状与已确认根因
 
-- 真机 `461QYFDN226NF` 已捕获：DeepSeek `deepseek-v4-flash` 请求返回 HTTP 200，`finishReason=stop`，JSON 提取成功，内容边界检查通过。
+- 真机 `[序列号已省略]` 已捕获：DeepSeek `deepseek-v4-flash` 请求返回 HTTP 200，`finishReason=stop`，JSON 提取成功，内容边界检查通过。
 - 该响应的 `labelInsights` 对象包含 6 项；当前 `validateInsightAIData()` 在 `entries.length > 5` 时直接返回失败，`generateAnalysis()` 随后抛出 `PARSE_FAIL`，页面显示“AI 观察暂时没有生成”。
 - v3.45 的流程只判断 JSON 是否存在，没有这条严格对象数量校验，因此同类响应可以正常显示。
 - 当前 AI 提示词没有明确约束 `labelInsights` 最多 5 项，造成模型输出与客户端协议不一致。
@@ -9912,7 +9924,7 @@ WebView 原始记录
 - 真机回归发现首页每日话语把基础 `StatsSnapshot` 传给 AI 聚合函数时缺少 `labels`，`www/js/ai.js` 增加最小派生兼容，避免 `undefined.filter`，不改变脱敏字段、触发条件或报告语义。
 - `www/js/ui-calendar.js` 的日历入口接入 `playSheetOpen()`；`www/css/sheets.css` 与 `www/css/screens.css` 的 `sheetUp` fallback 同步到统一 550ms/微缩放规格；备份恢复二级状态未新增遮罩或独立卡片动画。
 - 版本更新为 versionCode 77 / versionName 3.62，前端 CSS/JS 缓存参数更新至 `v=153`；Android assets 与 `www` 关键文件 SHA-256 一致。
-- 验证：全量 JS `node --check`、`git diff --check` 通过；浏览器验证记录/日历/备份/导出根级动效、快速关闭清理、恢复本机返回来源和控制台无错误；离线 Gradle 构建成功；真机 `461QYFDN226NF` 覆盖安装成功，CDP 验证版本、根级动效、父 Sheet 和返回链通过，logcat 无崩溃/ANR/TypeError/Capacitor Console error，并保存 `screenshots/v362-root-sheet.png`。
+- 验证：全量 JS `node --check`、`git diff --check` 通过；浏览器验证记录/日历/备份/导出根级动效、快速关闭清理、恢复本机返回来源和控制台无错误；离线 Gradle 构建成功；真机 `[序列号已省略]` 覆盖安装成功，CDP 验证版本、根级动效、父 Sheet 和返回链通过，logcat 无崩溃/ANR/TypeError/Capacitor Console error，并保存 `screenshots/v362-root-sheet.png`。
 - 复用规则归档：更新 `docs/REUSE-RULES.md` 的 3.1.1 为 v3.62 根级 Sheet 统一动效；保留 #197 的竞态/中断保护规则，不再保留任务专用 B 动效分支。
 
 ---
@@ -9980,7 +9992,7 @@ WebView 原始记录
 - `WidgetStats.parseJson()` 移除 `-100..1000` 的展示层变化率限制，保留整数可表示性和计数/周数组结构校验；`monthDelta=5600` 快照已在真机返回 `accepted:true` 并写入 last-known-good。
 - `WidgetStatsHelper` 增加按快照时区计算当前日期的过期判断，并将兼容值 `local` 映射到设备默认时区；`GuanjiWidget`、`GuanjiStatsWidget`、`GuanjiTodayWidget` 在旧 `todayKey` 时统一显示“今天尚未同步”，同步成功后恢复原有今日文案。旧 v1 管道因无 `todayKey` 继续兼容。
 - `syncWidgetStats()` 改为等待原生结果，失败最多重试一次且不阻塞保存；App 冷启动、回到前台和驻留跨过本地午夜均复用 `buildStatsSnapshot()` 重新同步。
-- 全量 JS `node --check`、`git diff --check`、离线 Gradle 构建通过；APK versionCode 78 / versionName 3.63，安装到真机 `461QYFDN226NF` 成功。
+- 全量 JS `node --check`、`git diff --check`、离线 Gradle 构建通过；APK versionCode 78 / versionName 3.63，安装到真机 `[序列号已省略]` 成功。
 - 真机回归：受控注入 `todayKey=2026-08-27` 的旧快照后，数据看板/快速记录/今日卡片均显示“今天尚未同步”；重新打开 App 后恢复 `todayKey=2026-08-28`、`todayCount=0`，显示“今天还没记录”；logcat 无 `reason:"invalid"`、崩溃、ANR 或 JS 错误。
 - 复用规则归档：`docs/REUSE-RULES.md` 新增 4.3.3“小组件快照新鲜度与传输边界”，沿用 #196/#198 的统一快照、原子提交和兼容规则。
 
@@ -10204,7 +10216,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - `www/js/app.js` 保留既有启动编排，在 `renderHome()` 后等待连续两帧再通知原生，AI、WebDAV、小组件和每日话语不阻塞首帧；资源缓存参数整体更新至 `v=156`。
 - 语法检查：13 个前端 JS 文件 `node --check` 全部通过；Splash XML 与资源元数据解析通过，`splash_icon_anim`、`splash_background`、`splash_wordmark` 已进入 APK。
 - APK：通过统一 `tools/build-apk.ps1 -Mode debug` 构建，执行 `:app:assembleDebug --offline --build-cache`；`versionCode=80`、`versionName=3.65`，包名 `com.guanji.app`，Android Debug 签名指纹 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
-- 真机：设备 `461QYFDN226NF` 已用同签名 APK 覆盖安装并启动成功，未卸载或清除用户数据；冷启动抓帧确认 01-C 图形、`观己` 字标和首页首帧按顺序衔接，无空白/黑屏，构建锁已释放。
+- 真机：设备 `[序列号已省略]` 已用同签名 APK 覆盖安装并启动成功，未卸载或清除用户数据；冷启动抓帧确认 01-C 图形、`观己` 字标和首页首帧按顺序衔接，无空白/黑屏，构建锁已释放。
 
 ---
 
@@ -10276,7 +10288,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - `styles.xml` 开屏动画时长调整为 320ms；浅色/深色品牌锁定均通过 `splash_wordmark` 颜色资源适配；前端缓存参数更新至 `v=157`，关于页版本为 v3.66。
 - 静态校验：13 个前端 JS `node --check`、开屏 vector/animator XML 解析和 `git diff --check` 通过；复用索引 6.1.1 已更新为“开屏专用合成 drawable + 单一原生时间线”规则。
 - APK：通过 `tools/build-apk.ps1 -Mode debug` 使用 `:app:assembleDebug --offline --build-cache` 构建；`versionCode=81`、`versionName=3.66`、包名 `com.guanji.app`，签名指纹 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`，构建摘要状态 `passed`。
-- 真机 `461QYFDN226NF`：统一钩子同签名覆盖安装并启动成功，未卸载/清除数据；冷启动关键帧确认图形与“观己”首帧同屏、聚焦后单次淡出进入首页；减少动态效果与深色主题抓帧均通过；logcat 未发现 FATAL/ANR，构建锁已释放。
+- 真机 `[序列号已省略]`：统一钩子同签名覆盖安装并启动成功，未卸载/清除数据；冷启动关键帧确认图形与“观己”首帧同屏、聚焦后单次淡出进入首页；减少动态效果与深色主题抓帧均通过；logcat 未发现 FATAL/ANR，构建锁已释放。
 
 ---
 
@@ -10346,7 +10358,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - 版本与缓存参数更新为 `versionCode=82`、`versionName=3.67`、前端 `v=159`；关于页和 README 已同步。
 - 静态校验：13 个前端 JS `node --check`、`git diff --check` 通过；浏览器首页冷加载采样确认 startup class 只出现一次、分层 opacity/transform 正常、900ms 后清理且无控制台错误。
 - APK：通过 `tools/build-apk.ps1 -Mode debug` 离线构建成功，`:app:assembleDebug`；包名 `com.guanji.app`，SHA-256 `221362EC235CC22E3E93E8BF378BFB5201615152151FFDC6FD2FE215555D239B`，稳定 Android Debug 签名指纹 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`，构建摘要 `debug/apk-build-summary.json` 状态 `passed`。
-- 真机：魅族 21（`461QYFDN226NF`）按统一钩子 `tools/build-apk.ps1 -Mode debug -Install` 完成同签名覆盖安装并启动；设备最终 `com.guanji.app` versionCode=82、versionName=3.67，签名与 APK 一致。构建摘要中的 `installedVersion=3.66` 为安装前预检快照。
+- 真机：魅族 21（`[序列号已省略]`）按统一钩子 `tools/build-apk.ps1 -Mode debug -Install` 完成同签名覆盖安装并启动；设备最终 `com.guanji.app` versionCode=82、versionName=3.67，签名与 APK 一致。构建摘要中的 `installedVersion=3.66` 为安装前预检快照。
 - 真机冷启动与 CDP 回归通过：约 350ms 仍是稳定原生 Splash，约 700ms 已进入真实首页；`#screen-home` 最终为 `class=screen`、`startupRevealDone=true`、3 张首页卡片可见；网页层临时采样的卡片透明度约 0.20 → 0.86 → 1.00，并在约 900ms 后归位。无白闪、黑闪、空窗、裁切。
 - 清空 logcat 后冷启动未发现 `FATAL EXCEPTION`、`ANR in` 或 AndroidRuntime 崩溃；进程和 `MainActivity` 保持运行。真机证据已保存至 `debug/guanji-205-090.png`、`debug/guanji-205-270.png`、`debug/guanji-205-350b.png`、`debug/guanji-205-700.png`、`debug/guanji-205-700c.png`。
 - 已生成并上传唯一实施记录 `debug/实施v3.67_#205_2026-08-30.md`；Dify `document_id=d05648ab-fdd9-4b1d-89e7-a2e7e96142a9`，索引状态 `completed/available`、`error=null`，分段数 8，内容校验包含 `v3.67` 与 `#205`。
@@ -10373,7 +10385,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - 删除首页启动动画专用 JS/CSS 触发与关键帧，保留 `renderHome()`、小组件异步同步和既有 Sheet/按钮转场动效；`StartupReady` 原生桥保留为兼容入口，不再参与首屏动画控制。
 - 版本更新为 `v3.69`（versionCode 84），前端缓存参数更新为 `v=163`；浏览器和 APK 已通过，真机因当前无在线设备暂未安装，待设备连接后补充最终证据与知识库回执。
 - 本次 APK 摘要：`debug/apk-build-summary.json`，构建状态通过、安装阶段因 `adb devices` 无在线设备而停止；SHA-256 `938BD52AB36BAE20DAD494775B16CB1831AF28C8B12247120BACED125DAC7664`。
-- 真机补验（2026-09-03）：设备 `461QYFDN226NF` 已按统一钩子同签名覆盖安装并启动；最终 `dumpsys package` 为 versionCode=84、versionName=3.69。冷启动抓帧 `debug/guanji-205-v369-120.png`、`debug/guanji-205-v369-380.png`、`debug/guanji-205-v369-800.png`：120ms 为同源系统背景，380ms 直接显示完整首页，800ms 保持最终首页，无产品层开场动画。
+- 真机补验（2026-09-03）：设备 `[序列号已省略]` 已按统一钩子同签名覆盖安装并启动；最终 `dumpsys package` 为 versionCode=84、versionName=3.69。冷启动抓帧 `debug/guanji-205-v369-120.png`、`debug/guanji-205-v369-380.png`、`debug/guanji-205-v369-800.png`：120ms 为同源系统背景，380ms 直接显示完整首页，800ms 保持最终首页，无产品层开场动画。
 - 真机 CDP 校验 `debug/verify-205-static-device.cjs`：`readyState=complete`、缓存 `163`、`homeClass=screen`、`hasStartupReveal=false`、`animatedElements=0`、`visibleCards=3`；目标应用 logcat 无 FATAL、ANR 或进程死亡记录。
 - 最终结论：#205 v3.69 浏览器、APK、真机和日志验证全部通过；本次无新增复用规则，沿用 6.1.1 同源启动背景与系统保护层规则。
 - 最终实施记录已上传 Dify：`实施v3.69_#205_2026-09-03.md`，`document_id=c072554b-1088-4e36-b4be-01683dc6f0d7`，索引 `completed/available`，7 个分段，内容校验包含 `v3.69` 与 `#205`。
@@ -10435,7 +10447,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - `www/css/screens.css` 新增 `#screen-home.greeting-intro` / `greeting-intro-active`，标题与提示分别使用 2px/3px 位移、opacity 和 `--ease-spring`，无 scale、blur、布局位移；减少动效直接保持最终态。
 - `MainActivity` 使用同源背景的系统 Splash，并以首帧信号优先、1200ms watchdog 放行；未恢复旧版品牌图形或独立 HTML 开屏。
 - 版本升级为 v3.70（versionCode 85），前端资源缓存参数为 `v=164`；`node --check`、`git diff --check`、浏览器回归、离线 APK 构建、真机安装/CDP 和 logcat 均通过。
-- 真机 `461QYFDN226NF`：包名 `com.guanji.app`、版本 3.70、稳定 Android Debug 签名一致；冷启动 120ms/300ms 同源背景、700ms 完整首页，进程无 FATAL/ANR。
+- 真机 `[序列号已省略]`：包名 `com.guanji.app`、版本 3.70、稳定 Android Debug 签名一致；冷启动 120ms/300ms 同源背景、700ms 完整首页，进程无 FATAL/ANR。
 - 实施记录：`debug/实施v3.70_#206_2026-09-03.md`；Dify `document_id=91329640-31db-4162-9f23-7ead709fb72f`，索引 `completed/available`，9 个分段，内容校验通过。
 
 ---
@@ -10501,7 +10513,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - `www/css/screens.css`：标题使用 `opacity .78 + translateY(6px) / 260ms`，提示使用 `opacity .72 + translateY(8px) / 300ms / 50ms delay`，只作用于真实首页文案。
 - 版本与资源：versionCode 86、versionName 3.71、前端缓存参数 `v=165`，已同步 `README.md` 与 `CHANGELOG.md`。
 - 浏览器回归：确认 v3.71、缓存 165、标题和每日话语完整，转场结束后无残留 class/动画。
-- 真机 `461QYFDN226NF`：包名 `com.guanji.app`，安装并启动成功；CDP 冷启动时序为 `prepare@325ms → splash-exit/play@542ms → active@543ms → finish@1103ms`，证明转场由系统 Splash 退出事件触发而非延迟兜底；logcat 未发现 FATAL/ANR。
+- 真机 `[序列号已省略]`：包名 `com.guanji.app`，安装并启动成功；CDP 冷启动时序为 `prepare@325ms → splash-exit/play@542ms → active@543ms → finish@1103ms`，证明转场由系统 Splash 退出事件触发而非延迟兜底；logcat 未发现 FATAL/ANR。
 - APK：`android/app/build/outputs/apk/debug/app-debug.apk`，SHA-256 `AD9C840AE3E7C30BBB3F92D44423F847FC15793DD39D81EC7C311AE7D1E97935`；统一构建钩子报告 passed，稳定调试签名指纹保持 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
 - 复用规则：已将系统 Splash、`StartupReady` 回调、6–8px 可感知参数和异步文案暂存边界归档至 `docs/REUSE-RULES.md` 6.1.1。
 - 实施记录：`debug/实施v3.71_#207_2026-09-03.md`。
@@ -10552,7 +10564,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - `www/css/screens.css`：删除 #207 问候标题/提示的动画规则及 keyframes，恢复默认首页样式。
 - 版本与资源：versionCode 87、versionName 3.72、前端缓存参数 `v=166`，已同步 `README.md` 与 `CHANGELOG.md`。
 - 浏览器回归：确认 v3.72、缓存 166，首页标题/每日话语直接显示，`animationName=none`、`transform=none`，无启动回调残留。
-- 真机 `461QYFDN226NF`：包名 `com.guanji.app`，安装并启动成功；CDP 确认首页最终状态稳定，标题与提示完整；logcat 未发现 FATAL/ANR。
+- 真机 `[序列号已省略]`：包名 `com.guanji.app`，安装并启动成功；CDP 确认首页最终状态稳定，标题与提示完整；logcat 未发现 FATAL/ANR。
 - APK：`android/app/build/outputs/apk/debug/app-debug.apk`，SHA-256 `50E2C64A8A4D0FD532849D451890F6CCDD1E6AFE138493747E67492C06C29F94`；统一构建钩子报告 passed，稳定调试签名指纹保持 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
 - 复用规则：已更新 `docs/REUSE-RULES.md` 6.1.1，明确系统 Splash 仅承担首帧保护，当前不维护产品层开屏动画。
 - Dify 知识库：文档 `实施v3.72_#208_2026-09-03.md`，`document_id=c4465a61-812b-4228-b739-555fcc41f4d9`；索引 `completed/available`、`error=null`，6 个分段，内容校验包含 `v3.72` 与 `#208`。
@@ -10638,7 +10650,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - `android/app/build.gradle`：versionCode/versionName 更新为 `88 / 3.73`；`README.md` 与 `CHANGELOG.md` 已同步 v3.73 条目。
 - `debug/verify-209-device.cjs`：新增真机 CDP 回归脚本，检查节点、文案、单行摘要、切换控件防挤压和默认 14 天。
 - 浏览器回归（390×844、360×800）：统计节点、文案、单行摘要、14/30 切换、无重叠和环比动画最终值通过，无控制台错误。
-- 真机 `461QYFDN226NF`（魅族 21）：CDP 检查 v3.73、统计标签、摘要单行、摘要不遮挡切换、控件不收缩、默认 14 天通过；统一构建钩子安装并启动成功。
+- 真机 `[序列号已省略]`（魅族 21）：CDP 检查 v3.73、统计标签、摘要单行、摘要不遮挡切换、控件不收缩、默认 14 天通过；统一构建钩子安装并启动成功。
 - APK：`android/app/build/outputs/apk/debug/app-debug.apk`，SHA-256 `AB82600231DD2273E2D9A1D9C8786571854B07C4BD56D24AB91D8AC90A0A997C`；包名 `com.guanji.app`；稳定调试签名指纹 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
 - 复用规则：继续复用 `StatsSnapshot`、`renderHome(snapshot)`、既有趋势切换和 `.chart-footer` flex 规则，本次无新增规则归档。
 - 实施记录：`debug/实施v3.73_#209_2026-09-03.md`。
@@ -10690,7 +10702,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - `android/app/build.gradle`：versionCode/versionName 更新为 `89 / 3.74`；`README.md` 与 `CHANGELOG.md` 已同步 v3.74。
 - `debug/verify-210-browser.cjs`、`debug/verify-210-device.cjs`：新增浏览器与真机间距回归脚本。
 - 浏览器 390×844：焦点到分割线 16px、分割线到统计行 16px、统计行到趋势卡片 24px，无重叠和控制台错误。
-- 真机 `461QYFDN226NF`（魅族 21）：CDP 以上间距、版本和文案全部通过；近期 logcat 无 FATAL/ANR。
+- 真机 `[序列号已省略]`（魅族 21）：CDP 以上间距、版本和文案全部通过；近期 logcat 无 FATAL/ANR。
 - APK：`android/app/build/outputs/apk/debug/app-debug.apk`，SHA-256 `3E5E45AB329482F79A9F68C773CECB29DE83E393665A0E29217D41E8D2BAC3DE`；包名 `com.guanji.app`；稳定调试签名指纹 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
 - 复用规则：继续复用 `.focus-meta`、`.rule`、`.stats-row`，本次无新增规则归档。
 - 实施记录：`debug/实施v3.74_#210_2026-09-03.md`。
@@ -10779,7 +10791,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - 已完成 N3 代码修改：新增共享间距、文字层级和卡片容器 token，并先迁移首页卡片与“我的”页 AI 设置代表卡片。
 - 已更新 Android versionCode/versionName 至 90/3.75，前端 CSS/JS 缓存参数至 `v=169`。
 - 浏览器验证：共享 token 已加载，首页与 AI 设置代表卡片迁移成功，玻璃模式材质覆盖保持，无页面错误。
-- APK/真机：统一构建钩子通过；真机 `461QYFDN226NF` 安装并启动成功，CDP 确认 token 与卡片样式，logcat 无 FATAL/ANR。
+- APK/真机：统一构建钩子通过；真机 `[序列号已省略]` 安装并启动成功，CDP 确认 token 与卡片样式，logcat 无 FATAL/ANR。
 - APK：`android/app/build/outputs/apk/debug/app-debug.apk`，SHA-256 `16EE1A85C45150D10AF8668016B5A44AFF1F68B1343EE9C813B768F11A376A8A`；稳定调试签名指纹 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
 - 复用规则：已更新 `docs/REUSE-RULES.md` 1.2.1，实施记录 `实施v3.75_#211-N3_2026-09-03.md` 已上传 Dify（`document_id=311c4dd8-79a6-45af-b2bc-359da650466b`，7 个分段）。
 
@@ -10795,7 +10807,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - 普通记录详情与计时汇总统一调用 `commitRecordChanges()`，按“落库 → 统计快照 → 首页/日历刷新”顺序完成提交，保留快速记录与计时记录两套入口。
 - 详情内容区与计时汇总内容区均保留滚动能力，底部操作区 `flex-shrink:0` 固定，并补齐安全区边界。
 - 浏览器验证：v3.76、缓存 `v=170`、两套流程各保存一次、首页刷新 2 次、记录数为 2，布局无错误。
-- APK/真机：统一构建钩子通过；真机 `461QYFDN226NF` 安装并启动成功，CDP 确认两处滚动区和固定操作区，logcat 无 FATAL/ANR。
+- APK/真机：统一构建钩子通过；真机 `[序列号已省略]` 安装并启动成功，CDP 确认两处滚动区和固定操作区，logcat 无 FATAL/ANR。
 - APK：`android/app/build/outputs/apk/debug/app-debug.apk`，SHA-256 `47DC0EC035B5C7BFEFBE68329E304F7C70701659A6925C36143FA2DA5CFE9389`；稳定调试签名指纹 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
 - 实施记录：`debug/实施v3.76_#211-N4_2026-09-03.md` 已上传 Dify并完成索引校验。
 
@@ -10811,7 +10823,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - 六张卡片继续共用既有 `report-card` 容器和 N3 视觉 token，卡片内部按整体、时段、状况、关联、变化、建议分别排版。
 - AI 就绪时保留本地事实，并在同一卡片内追加 AI 观察；未配置、失败或缓存过期时不影响本地洞察。
 - 浏览器验证：v3.77、缓存 `v=171`，本地/AI 两种状态均渲染六张卡片，AI 观察与事实同卡片，页面级 AI 入口保留，无页面错误。
-- APK/真机：统一构建钩子通过；真机 `461QYFDN226NF` 安装并启动成功，CDP 确认本地/AI 两种卡片状态和内容，无 FATAL/ANR。
+- APK/真机：统一构建钩子通过；真机 `[序列号已省略]` 安装并启动成功，CDP 确认本地/AI 两种卡片状态和内容，无 FATAL/ANR。
 - APK：`android/app/build/outputs/apk/debug/app-debug.apk`，SHA-256 `D46C4188ABE6DA16FF60D639EC6A8A48E57E2A7C680DA6C79AF530E86EC3D479`；稳定调试签名指纹 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
 - 实施记录：`debug/实施v3.77_#211-N5_2026-09-03.md` 已上传 Dify 并完成索引校验。
 
@@ -10827,7 +10839,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - 主题、记录方式、AI 提供商和加密方式明确为单选分段控件；开关统一补齐 `role=switch`、键盘操作和 `aria-checked` 同步。
 - 导航型 `row-btn` 继续使用右箭头表达进入下一层，与选择器和文本输入框保持视觉区分；记录设置/反馈设置与每日话语位置不变。
 - 浏览器验证：v3.78、缓存 `v=172`，四组分段控件、五个开关、右箭头和 AI 文本输入样式均通过，无页面错误。
-- APK/真机：统一构建钩子通过；真机 `461QYFDN226NF` 安装并启动成功，CDP 确认控件语义和样式，logcat 无 FATAL/ANR。
+- APK/真机：统一构建钩子通过；真机 `[序列号已省略]` 安装并启动成功，CDP 确认控件语义和样式，logcat 无 FATAL/ANR。
 - APK：`android/app/build/outputs/apk/debug/app-debug.apk`，SHA-256 `9DB180B1BE8FB1A1405F00A0E440B5B838A4B00B54F8E4A2DEB4467AFC4AA846`；稳定调试签名指纹 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
 - 实施记录：`debug/实施v3.78_#211-N6_2026-09-03.md` 已上传 Dify 并完成索引校验。
 
@@ -10845,7 +10857,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - 内容页和底部操作区同步 `aria-hidden`，列表容器设置可收缩的内部滚动约束，条目过多时不再挤出固定页脚。
 - 本机/服务器恢复提交统一复用 `commitRecordChanges()`，保持记录、首页、日历和小组件使用同一份快照刷新链路。
 - 浏览器验证：v3.79、缓存 `v=173`，9 个层级状态、aria 状态、4 个列表滚动区和固定页脚全部通过，无页面错误。
-- APK/真机：统一构建钩子通过；真机 `461QYFDN226NF` 安装并启动成功，CDP 确认备份层级、列表滚动与固定页脚，logcat 无 FATAL/ANR。
+- APK/真机：统一构建钩子通过；真机 `[序列号已省略]` 安装并启动成功，CDP 确认备份层级、列表滚动与固定页脚，logcat 无 FATAL/ANR。
 - APK：`android/app/build/outputs/apk/debug/app-debug.apk`，SHA-256 `DB04D18607E7A66587D8FF4DDE86249E61F28AF7B155D5BB22E7953115B65754`；稳定调试签名指纹 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
 - 实施记录：`debug/实施v3.79_#211-N7_2026-09-03.md` 已上传 Dify 并完成索引校验（`document_id=293b14e1-9d7a-475b-9f5f-45575bca14bb`，5 个分段）。
 
@@ -10861,7 +10873,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - 增加 `GuanjiDataStore` 统一数据契约，覆盖记录读写、统计快照和配置读写；启动加载已迁移到该契约，保留 Storage 加密/明文实现。
 - 旧 localStorage 键、AI 配置迁移、JSON/CSV 与历史字段均保持不变，未进行全量存储迁移。
 - 浏览器验证：v3.80、缓存 `v=174`，接口完整性、配置读写、旧记录键保留、StatsSnapshot 解耦和页面错误检查通过。
-- APK/真机：统一构建钩子通过；真机 `461QYFDN226NF` 安装并启动成功，CDP 确认统一接口和快照可用，logcat 无 FATAL/ANR。
+- APK/真机：统一构建钩子通过；真机 `[序列号已省略]` 安装并启动成功，CDP 确认统一接口和快照可用，logcat 无 FATAL/ANR。
 - APK：`android/app/build/outputs/apk/debug/app-debug.apk`，SHA-256 `15B1E86EF8DD9DFF0B4AA9B6F352D6516146616753566D05CFA9EDAEC67B59F4`；稳定调试签名指纹 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
 - 实施记录：`debug/实施v3.80_#211-N8_2026-09-03.md` 已上传 Dify 并完成索引校验（`document_id=9fb19849-5b10-4ac2-a5ea-df6a51677a91`，5 个分段）。
 
@@ -10875,7 +10887,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - 新增 `GuanjiNative` 原生能力适配层，覆盖安全存储、文件系统、WebDAV、通知、小组件、生命周期和权限；业务调用保持原路径。
 - 浏览器/旧桥缺少插件时统一返回 `unavailable`，调用异常返回 `bridge_error`，不阻断页面；未改变现有权限声明和数据协议。
 - 浏览器验证：v3.81、缓存 `v=175`，能力接口、非原生识别、缺失插件降级和页面启动全部通过。
-- APK/真机：统一构建钩子通过；真机 `461QYFDN226NF` 安装并启动成功，CDP 确认适配接口可用且异常安全返回，logcat 无 FATAL/ANR。
+- APK/真机：统一构建钩子通过；真机 `[序列号已省略]` 安装并启动成功，CDP 确认适配接口可用且异常安全返回，logcat 无 FATAL/ANR。
 - APK：`android/app/build/outputs/apk/debug/app-debug.apk`，SHA-256 `2BEC1A3FEA512754EACEFAAF99D7F2589AEA1BB56D596942CECC2B05B0D5B210`；稳定调试签名指纹 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
 - 实施记录：`debug/实施v3.81_#211-N9_2026-09-03.md` 已上传 Dify 并完成索引校验（`document_id=adca999f-2841-407b-865e-cfe81e0102f3`，5 个分段）。
 
@@ -10891,7 +10903,7 @@ AI 增强洞察成功生成后，在本机保留最近一次结构化结果。Ap
 - `GuanjiNative.homeSnapshot` 已接入 `app.js`/`records.js`：启动先渲染 WebView 快照，原生快照通过 `schemaVersion` 与 `revision` 校验后才可覆盖展示；原生桥不可用或读取异常时安全回退 WebView，记录变更后异步写入最新快照。
 - `MainActivity` 的自定义 Capacitor 插件改为按全限定名运行时注册，避免 AGP/Kotlin 干净构建时 Java 编译阶段对同模块 Kotlin 输出的脆弱 classpath 依赖；保留既有插件入口和跨版本偏好键。
 - 浏览器验证：`debug/verify-211-n10-browser.cjs` 通过（v3.82、`v=176`、原生快照接口、浏览器安全降级、统一 `StatsSnapshot`、无页面错误）。
-- APK/真机：统一构建钩子 `tools/build-apk.ps1 -Mode debug -Install` 通过并安装启动真机 `461QYFDN226NF`；CDP 验证原生插件注册、快照写入/读取往返和统计快照，logcat 无 FATAL EXCEPTION/ANR。
+- APK/真机：统一构建钩子 `tools/build-apk.ps1 -Mode debug -Install` 通过并安装启动真机 `[序列号已省略]`；CDP 验证原生插件注册、快照写入/读取往返和统计快照，logcat 无 FATAL EXCEPTION/ANR。
 - APK：`android/app/build/outputs/apk/debug/app-debug.apk`，versionCode `97`、versionName `3.82`，SHA-256 `0FC07F4B61FF4528755322C0C37C000C50FF95315058A00D5F5E5269EF43B040`；稳定调试签名指纹 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
 - 复用规则：复用 `StatsSnapshot`、`GuanjiNative`、既有 Capacitor 插件注册入口和构建钩子；本节点无新增跨功能规则归档。
 - 实施记录：`debug/实施v3.82_#211-N10_2026-09-04.md` 已上传 Dify 并完成索引校验（`document_id=e39e9b4d-622d-4a5e-8d1d-9bdb49350f2a`，`completed/available`，11 个分段，内容校验包含 `v3.82` 与 `#211`）。
@@ -11603,7 +11615,7 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 以当前 App v3.87 和个人行为模型方案 v4.1 为基线，将观己从记录与统计工具升级为隐私优先的个人长期行为观察系统，并完成 Kotlin-first Android 原生化。
 
-本总计划只负责路线、依赖、边界和整体验收；具体实施拆分为 #221–#252。每个子条目对应一个 P0 或具体版本节点，可单独实施、测试、发布和记录。
+本总计划只负责路线、依赖、边界和整体验收。数据/行为模型主线保留 #221–#236；原 #240–#248 UI 路线和旧工作区 #257–#270 实验路线已经失效，新的 UI 原生化 V2 由 #271–#281 承担。每个版本节点可单独实施、测试、验收和记录。
 
 ### 总体目标
 
@@ -11619,9 +11631,12 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 - 个人基线使用 56 天，即 8 个完整自然周；自适应观察窗口为 28 天；不足 56 天返回 insufficient。
 - Behavior Core 统一支持 male、female 和 legacy/null；不建立伴侣模式，不设置性别正常值或健康阈值。
 - v4.1 只预留性别架构字段；女性字段和文案研究通过后才进入 v4.3。
-- WebView 最终只保留关于、隐私、帮助和更新说明等静态页面，不再承担核心业务。
+- WebView 的最终去向分两步：在 #275–#280 原生化期间，玻璃模式继续由 WebView 唯一渲染，作为现有用户的兼容路径和对照基线；#281 删除全部旧 JS 核心后不再保留玻璃 WebView 核心回退。关于、隐私、帮助、更新说明和许可证等静态页面长期保留 WebView。玻璃版本在 #281 后另立独立原生重做计划，期间不通过旧 WebView 继续承载核心业务。
+- UI 原生化从 v4.1.5 的稳定提交重新开始；WebView v4.1.5 是唯一视觉、文案、状态和交互基线。
+- 原生运行时只保留 `MainActivity + NativeRoot` 一个可见宿主；Tab、页面、Sheet 和返回栈必须位于同一 Compose 根中，禁止页面级 `Native*Activity` 和透明 Activity 叠层。
+- v4.2.x 只做**非玻璃（经典/普通）模式**的视觉等价迁移，不做产品改版；#275–#280 期间玻璃模式继续使用 WebView 且不得新增原生玻璃实现，#281 收口全部旧 JS 核心后玻璃请求安全回落到 Native 经典界面。洞悉系统内容/信息架构改版和玻璃原生重做都必须在 #281 后另立独立计划。
 - AI 只接收聚合数据、BehaviorModelSnapshot 和 EvidenceGraph，不读取单条记录、精确时间、备注或完整时间线；无新增价值时不显示 AI 内容。
-- 不实施医学诊断、身体健康评分、成瘾自动判定、社区、排行、Google Play、iOS/HarmonyOS 实际迁移或未经验证的复杂机器学习。
+- 不实施医学诊断、身体健康评分、成瘾自动判定、社区、排行、Google Play、iOS/HarmonyOS 实际迁移或未经验证的复杂机器学习；本轮不实施原生玻璃材质。
 
 ### 复用映射
 
@@ -11639,7 +11654,7 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ### 总体依赖
 
-#221 P0 准入 → #222–#232 v4.0.x → #233–#239 v4.1.x → #240–#248 v4.2.x → #249–#252 v4.3.x
+#221 P0 准入 → #222–#236 数据/模型与 Room 权威 → #254 v4.1.5 稳定基线 → #272 重启审计 → #273–#281 UI 原生化 V2 → 新 v4.3 洞悉改版 → 女性模式研究与排期
 
 毕业设计不再作为本仓库的版本支线；毕业设计项目另行建立，不与 #220 或 v4.x 版本号、依赖和验收绑定。
 
@@ -11649,6 +11664,10 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 - 旧记录、v3.53/v3.87 备份、加密/未加密导出、WebDAV、AI 缓存和小组件状态可验证迁移。
 - 迁移失败不得静默生成空数据库，必须保留最后可信快照并可回滚。
 - 每个子版本都有独立实施、测试、稳定 APK、真机回归和实施记录。
+- #273–#281 必须使用 `docs/native-rewrite/MIGRATION-GATE.md`；同状态视觉对照未通过时不得升级版本、写成功报告或进入下一节点。
+- #275–#281 的 NativeRoute 只接管经典/普通（含浅色、深色和降低透明度回退）模式；玻璃模式必须保持 WebView 唯一渲染，不能以“视觉等价”名义提前制作原生玻璃。
+- 玻璃原生重做在 #281 完成后重新测绘、重新编号、重新建立视觉契约和验收门，不得复用经典迁移的容差或直接复制旧实验实现。
+- 任一时刻只允许一个可见页面宿主、一个 Tab 实例和一个 SheetHost；不得再用多个 Activity 拼接迁移页面。
 - P0-L SQLCipher 许可证、供应链、API 23+、魅族、ABI、体积、性能、WAL、异常退出和损坏恢复全部通过后，才进入 Room 权威迁移。
 - 发行版继续保持 Local-first；本仓库不接入毕业设计后端、不增加服务器统计快照或双构建要求。
 
@@ -11658,9 +11677,13 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 | --- | --- | --- | --- |
 | #221 | P0 | 协议、黄金测试集、桥契约、SQLCipher 准入 | 无 |
 | #222–#232 | v4.0.x | Kotlin 基础、个人模型、Evidence 与 AI | #221 |
-| #233–#239 | v4.1.x | Room 权威、统计、记录、计时、通知和性别字段 | #232 |
-| #240–#248 | v4.2.x | Compose 页面、核心业务迁移和 WebView 收敛 | #239 |
-| #249–#252 | v4.3.x | 女性模板、跨模式兼容和最终验收 | #248 + 研究准入 |
+| #233–#236 | v4.1.0–v4.1.3 | Room 权威、统计和记录写入链 | #232 |
+| #253–#254 | v4.1.4–v4.1.5 | 旧字段与日期迁移修复，形成 V2 稳定基线 | #236 |
+| #271–#272 | 重启阶段 | UI 原生化总计划、资产审计、归档与基线重置 | #254 |
+| #273–#281 | v4.2.0–v4.2.8 | 单宿主 Compose 经典模式视觉等价迁移与受控 WebView 兼容 | #272 |
+| 待新编号 | v4.3.x | 洞悉系统原生改版 | #281 |
+| 待新编号 | #281 后独立阶段 | 玻璃版 Native 重做（直接基于已验收 Native 经典界面） | #281 |
+| 待研究排期 | 后续版本 | 女性模板和跨模式兼容 | 洞悉改版稳定 + 研究准入 |
 
 ### 待确认问题
 
@@ -11670,14 +11693,16 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ### 验收要点
 
-- #221–#252 均有独立编号、版本标识、前置关系、实施清单和验收结果。
+- 当前有效节点均有独立编号、版本标识、前置关系、实施清单和验收结果；历史编号不得被复用为新含义。
 - 不存在长期并行的两套统计、缓存、加密密钥或 WebView 业务实现。
-- v4.2.8 后 WebView 只保留静态说明页，Room/Kotlin/Compose 成为唯一核心业务路线。
+- v4.2.8 后核心业务由 Kotlin/Room/Compose 承担；旧 JS 核心和玻璃 WebView 业务回退已删除，静态说明页长期由 WebView 承载。玻璃模式在独立原生重做完成前不作为旧 WebView 核心功能继续提供。
 
 ### 记录
 
 - 2026-09-05：将原 #220 展开为总计划，并拆分为 #221–#252 具体版本节点。
 - 2026-09-07：确认毕业设计版本移出本仓库长期路线；毕业设计另建项目，不再为 #221–#252 增加后端、双构建或审核节点。
+- 2026-09-14：因旧 UI 原生化出现多宿主、视觉漂移、WebView 回归和闸门自证问题，从 v4.1.5 重启；#240–#248 与旧实验 #257–#270 不再实施，新路线改为 #271–#281。
+- 2026-09-15：统一收紧 #275–#281 范围：NativeRoute 只做经典/普通模式；玻璃模式在 #275–#280 保留 WebView 唯一渲染，#281 删除全部旧 JS 核心后安全回落 Native 经典界面；玻璃原生重做在 #281 后直接基于 NativeRoute 另立任务。
 - 本总计划只描述长期路线，不直接修改业务代码、不执行版本升级、构建、安装、GitHub 推送或知识库上传。
 
 ---
@@ -12017,7 +12042,7 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 - 每个 `persistence` 指标新增 `changePoint`，输出候选起止自然周、方向、`evidenceBlockIds`、偏离周数、置信度和限制说明；EvidenceGraph 指标节点透传同一聚合对象，未引入原始记录、备注或精确时间线。
 - 更新 `BehaviorModelSnapshot`/`EvidenceGraph` Schema、桥接契约和复用索引；模型版本统一为 `4.0.6-change-point`。
 - 新增 `debug/verify-228-change-point.cjs`、`debug/verify-228-device.cjs` 与 `npm run verify:228`；离线 #221–#228、浏览器资源版本和真机 CDP 回归均通过。
-- 统一 APK 构建钩子完成同步、构建、签名校验、安装和启动：包名 `com.guanji.app`、versionCode `108`、versionName `4.0.6`、稳定 Android Debug 签名、魅族真机 `461QYFDN226NF`。
+- 统一 APK 构建钩子完成同步、构建、签名校验、安装和启动：包名 `com.guanji.app`、versionCode `108`、versionName `4.0.6`、稳定 Android Debug 签名、魅族真机 `[序列号已省略]`。
 - 真机结果：稳定/单次偏离不生成起点；重复偏离与回归输出正确起止周；首个偶发异常被忽略，后续连续偏离作为候选起点；方向混合返回不确定边界；无原始字段泄露或致命异常。
 - 最终 APK SHA-256：`B11E7D8A908E77B7C851D55E682A382E491ACEC18DE8061E89CC5FC85813E177`；前端脚本缓存参数更新至 `v=187`、样式资源更新至 `v=182`。构建摘要见 `debug/apk-build-summary.json`；实施记录见 `debug/实施v4.0.6_#228_2026-09-09.md`。
 
@@ -12060,7 +12085,7 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 - Kotlin `PersonalBaselineCalculator` 在 #227/#228 自然周证据块基础上输出 `event_cooccurrence` 与 `temporal_co_movement`，统一支持 `supports`、`contrasts`、`weakly_aligned`、`insufficient_relation`，证据不足显式保留限制说明。
 - `BehaviorModelSnapshot.relations` 与 EvidenceGraph 关系证据节点/边完成接线；关系节点绑定当前 `dataRevision`/`modelVersion`，不按卡片重复请求，不携带单条记录、备注或精确时间线。
 - 更新行为模型与 EvidenceGraph Schema、桥接契约和 `docs/REUSE-RULES.md` 复用索引；新增 `npm run verify:229`、`debug/verify-229-co-movement.cjs` 和 `debug/verify-229-device.cjs`。
-- `node --check`、离线 `verify:221` 至 `verify:229`、真机 #225–#229 CDP 回归均通过；魅族真机 `461QYFDN226NF` 验证支持、相反方向、共同出现和隐私边界。
+- `node --check`、离线 `verify:221` 至 `verify:229`、真机 #225–#229 CDP 回归均通过；魅族真机 `[序列号已省略]` 验证支持、相反方向、共同出现和隐私边界。
 - 统一构建钩子完成 `com.guanji.app` v4.0.7（versionCode 109）构建、稳定 Android Debug 签名校验、安装和启动；最终 APK SHA-256：`FB3AAF7612CE0BA3826C2AF854BC79187FD975E39F947087E1A8EAEA93BCD017`；前端脚本缓存参数 `v=188`、样式资源 `v=183`。构建摘要见 `debug/apk-build-summary.json`；实施记录见 `debug/实施v4.0.7_#229_2026-09-09.md`。
 - 实施交接记录 `HANDOFF.md` 已上传 Dify 并完成索引校验：`document_id=2e8e93a9-eb6e-4e25-9ad5-430d3752d1cf`，`completed/available`，9 个分段，`error=null`。
 
@@ -12104,7 +12129,7 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 - EvidenceGraph 导出新增可复用的新增价值 claim 类型集合；`insightHasAddedValue()` 对 `claims` 做类型门控，只有跨维度、时间比较、模式假设、竞争解释、反证、不确定性或观察建议等 claim 才显示 AI 单态；仅单证据重复事实会隐藏 AI 内容并保留本地洞察。
 - 缓存新增 `aiAddedValue` 字段，继续沿用现有加密缓存、免责声明、失败保留旧报告和无 AI 本地完整回退；协议与桥接文档已同步更新。
 - 新增 `npm run verify:230` 与 `debug/verify-230-device.cjs`；`node --check`、离线 `verify:221` 至 `verify:230` 全部通过。浏览器确认 v4.0.8、CSS `v=184`、脚本 `v=189`，无 AI 时六张本地卡片完整显示。
-- 统一钩子完成 `com.guanji.app` v4.0.8（versionCode 110）构建、稳定 Android Debug 签名校验和魅族真机 `461QYFDN226NF` 安装；真机 CDP 验证 `duplicateHidden=true`、`valueShown=true`、`noRaw=true`，无致命异常或 ANR。最终 APK SHA-256：`60D6C3ABD71E27302B257FA4959486C7796BFA5E7454642BE1A0F988BA3320FE`；签名：`0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
+- 统一钩子完成 `com.guanji.app` v4.0.8（versionCode 110）构建、稳定 Android Debug 签名校验和魅族真机 `[序列号已省略]` 安装；真机 CDP 验证 `duplicateHidden=true`、`valueShown=true`、`noRaw=true`，无致命异常或 ANR。最终 APK SHA-256：`60D6C3ABD71E27302B257FA4959486C7796BFA5E7454642BE1A0F988BA3320FE`；签名：`0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
 - 复用索引已新增“AI 证据增强与新增价值门控（#230）”；实施记录见 `debug/实施v4.0.8_#230_2026-09-09.md`。
 - 实施记录已上传 Dify 并完成索引校验：`document_id=c694245e-3818-418d-8c88-527141c5fa0d`，`completed/available`，9 个分段，`error=null`，内容校验包含 `v4.0.8`、`#230` 与最终 APK 指纹。
 
@@ -12345,12 +12370,14 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ---
 
-## 237. v4.1.4：计时与生命周期原生化 🆕 待实施
+## 237. v4.1.4：计时与生命周期原生化 ⚠️ 历史计划，移出当前 UI 主线
 
 ### 父计划与依赖
 
 - 父计划：#220
 - 前置任务：#236
+
+> 2026-09-14 路线重置：旧工作区存在该能力的实验实现，但尚未进入 v4.1.5 稳定基线。按 #272 的 B 类资产规则独立复核和移植，不再作为 UI 原生化的前置条件，也不得夹带旧页面 Activity。
 
 ### 需求
 
@@ -12378,12 +12405,14 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ---
 
-## 238. v4.1.5：通知与小组件原生化 🆕 待实施
+## 238. v4.1.5：通知与小组件原生化 ⚠️ 历史计划，移出当前 UI 主线
 
 ### 父计划与依赖
 
 - 父计划：#220
 - 前置任务：#237
+
+> 2026-09-14 路线重置：旧工作区存在该能力的实验实现，但尚未进入 v4.1.5 稳定基线。按 #272 的 B 类资产规则独立复核和移植，不再串联阻塞 UI 原生化。
 
 ### 需求
 
@@ -12411,12 +12440,14 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ---
 
-## 239. v4.1.6：性别架构字段预留 🆕 待实施
+## 239. v4.1.6：性别架构字段预留 ⏸ 历史计划，后移重排
 
 ### 父计划与依赖
 
 - 父计划：#220
 - 前置任务：#238
+
+> 2026-09-14 路线重置：字段草案保留为候选资产，但不进入 v4.2 视觉等价迁移；待 UI 原生化和洞悉改版稳定后重新编号、重新确认研究边界。
 
 ### 需求
 
@@ -12444,12 +12475,14 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ---
 
-## 240. v4.2.0：Compose 页面壳与观己设计系统 🆕 待实施
+## 240. v4.2.0：Compose 页面壳与观己设计系统 ⛔ 历史方案，已由 #271–#281 替代
 
 ### 父计划与依赖
 
 - 父计划：#220
 - 前置任务：#239
+
+> 禁止继续实施。本条目未定义单一可见宿主和逐页视觉证据，替代任务为 #273。
 
 ### 需求
 
@@ -12476,12 +12509,14 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ---
 
-## 241. v4.2.1：首页与日历原生化 🆕 待实施
+## 241. v4.2.1：首页与日历原生化 ⛔ 历史方案，已由 #275 替代
 
 ### 父计划与依赖
 
 - 父计划：#220
 - 前置任务：#240
+
+> 禁止继续实施。新任务必须先通过 #273/#274 的单宿主和共享 Tab 闸门。
 
 ### 需求
 
@@ -12509,12 +12544,14 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ---
 
-## 242. v4.2.2：记录与计时界面原生化 🆕 待实施
+## 242. v4.2.2：记录与计时界面原生化 ⛔ 历史方案，已由 #276 替代
 
 ### 父计划与依赖
 
 - 父计划：#220
 - 前置任务：#241
+
+> 禁止继续实施。新任务不得修改 WebView 记录模式语义，也不得使用透明 Overlay Activity。
 
 ### 需求
 
@@ -12544,12 +12581,14 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ---
 
-## 243. v4.2.3：洞悉与 AI 界面原生化 🆕 待实施
+## 243. v4.2.3：洞悉与 AI 界面原生化 ⛔ 历史方案，已由 #277 替代
 
 ### 父计划与依赖
 
 - 父计划：#220
 - 前置任务：#242
+
+> 禁止继续实施。#277 只迁移当前洞悉视觉；洞悉系统改版延后到 #281 完成之后。
 
 ### 需求
 
@@ -12578,12 +12617,14 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ---
 
-## 244. v4.2.4：我的页与设置页原生化 🆕 待实施
+## 244. v4.2.4：我的页与设置页原生化 ⛔ 历史方案，已由 #278 替代
 
 ### 父计划与依赖
 
 - 父计划：#220
 - 前置任务：#243
+
+> 禁止继续实施。替代任务必须复用同一个 NativeRoot、Tab 和 SheetHost。
 
 ### 需求
 
@@ -12612,12 +12653,14 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ---
 
-## 245. v4.2.5：备份、恢复与 WebDAV 原生化 🆕 待实施
+## 245. v4.2.5：备份、恢复与 WebDAV 原生化 ⛔ 历史方案，已由 #279 替代
 
 ### 父计划与依赖
 
 - 父计划：#220
 - 前置任务：#244
+
+> 禁止继续实施。替代任务不改变备份协议、加密格式和父子返回关系。
 
 ### 需求
 
@@ -12646,12 +12689,14 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ---
 
-## 246. v4.2.6：WebView 退出核心业务 🆕 待实施
+## 246. v4.2.6：WebView 退出核心业务 ⛔ 历史方案，已由 #280–#281 替代
 
 ### 父计划与依赖
 
 - 父计划：#220
 - 前置任务：#245
+
+> 禁止继续实施。V2 先切默认入口并观察，再在下一版本删除旧 JS 核心业务。
 
 ### 需求
 
@@ -12679,12 +12724,14 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ---
 
-## 247. v4.2.7：原生稳定性观察版本 🆕 待实施
+## 247. v4.2.7：原生稳定性观察版本 ⛔ 历史方案，已由 #280 替代
 
 ### 父计划与依赖
 
 - 父计划：#220
 - 前置任务：#246
+
+> 禁止继续实施。替代任务将稳定性观察与默认入口切换绑定，并保留受控回退窗口。
 
 ### 需求
 
@@ -12711,12 +12758,14 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ---
 
-## 248. v4.2.8：删除旧 JS 业务逻辑 🆕 待实施
+## 248. v4.2.8：删除旧 JS 业务逻辑 ⛔ 历史方案，已由 #281 替代
 
 ### 父计划与依赖
 
 - 父计划：#220
 - 前置任务：#247
+
+> 禁止继续实施。只有 #280 稳定期通过后，#281 才允许移除旧核心业务。
 
 ### 需求
 
@@ -12744,12 +12793,14 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ---
 
-## 249. v4.3.0：女性记录模板与情境字段 🆕 待实施
+## 249. v4.3.0：女性记录模板与情境字段 ⏸ 历史草案，待后续重新编号
 
 ### 父计划与依赖
 
 - 父计划：#220
 - 前置任务：#248 + 研究准入
+
+> 2026-09-14 路线重置：当前 v4.3.x 版本槽位优先留给 #281 之后的洞悉系统原生改版；女性模式须在洞悉改版稳定、内容研究通过后重新排期。
 
 ### 需求
 
@@ -12777,7 +12828,7 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ---
 
-## 250. v4.3.1：女性本地洞悉与 AI 表达 🆕 待实施
+## 250. v4.3.1：女性本地洞悉与 AI 表达 ⏸ 历史草案，待后续重新编号
 
 ### 父计划与依赖
 
@@ -12810,7 +12861,7 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ---
 
-## 251. v4.3.2：男性、女性、legacy 模式兼容 🆕 待实施
+## 251. v4.3.2：男性、女性、legacy 模式兼容 ⏸ 历史草案，待后续重新编号
 
 ### 父计划与依赖
 
@@ -12844,7 +12895,7 @@ AI 模式下隐藏的是重复的本地说明段，不是本地指标、图表�
 
 ---
 
-## 252. v4.3.3：全模式验收与长期维护切换 🆕 待实施
+## 252. v4.3.3：全模式验收与长期维护切换 ⏸ 历史草案，待后续重新编号
 
 ### 父计划与依赖
 
@@ -12995,7 +13046,1461 @@ Room 序列化应依据原始 JSON 是否存在统一字段，避免把旧记录
 - `www/js/app.js`：发现待恢复记录时不阻塞首屏，只提示用户从更新前可信备份恢复。
 - `www/js/webdav.js`：检测到异常日期时暂停自动和手动上传，防止覆盖服务器上的更新前可信备份；恢复仍复用现有加密 BackupEnvelope、WebDAV/本机恢复和 Room 原子替换链。
 - 新增 `debug/verify-254-date-migration.cjs` 与 `npm run verify:254`；全量 `verify:221`–`verify:236`、`verify:253`、`verify:254` 和浏览器回归均通过。
-- 统一构建钩子生成 `com.guanji.app`、versionCode 113、versionName 4.1.5 的 `app-debug.apk`，SHA-256 为 `B3B95834886E32246E065D360A7D170FD6D6974FAFF76A203BE45459B63BA20A`，签名指纹与已安装调试签名一致，已覆盖安装到真机 `3B163A002UT00000`。
+- 统一构建钩子生成 `com.guanji.app`、versionCode 113、versionName 4.1.5 的 `app-debug.apk`，SHA-256 为 `B3B95834886E32246E065D360A7D170FD6D6974FAFF76A203BE45459B63BA20A`，签名指纹与已安装调试签名一致，已覆盖安装到真机 `[序列号已省略]`。
 - 真机重启后 Room 与 WebView 均保持 42 条记录；最终 CDP 检查 `epochCount=0`、Room 状态 `COMPLETED`、`encrypted=true`。若其他设备仍存在 epoch 占位，需在“恢复数据”中选择更新前备份并输入创建备份时的加密口令完成按 ID 对齐恢复；应用不会根据记录 ID 或统计结果猜测日期。
+
+---
+
+## 271. UI 原生化 V2 总计划：从 v4.1.5 开始视觉等价迁移 🟡 执行中
+
+### 父计划与依赖
+
+- 父计划：#220
+- 稳定基线：#254 / v4.1.5 / commit `c113bcf4c7729d0978ded3f37f3ab76496334af1`
+- 子任务：#272–#281
+
+### 需求
+
+放弃在旧原生化工作树上继续补丁式修复，从 v4.1.5 重新开始 UI 页面移植。此次原生化只做 WebView 现状的**非玻璃（经典/普通）模式**视觉、交互和状态等价迁移，不改变产品内容、统计口径、记录逻辑、洞悉结构或 AI 策略。玻璃模式仅在 #275–#280 期间继续由 WebView 唯一渲染；#281 删除旧 JS 核心后，玻璃原生材质不属于 v4.2.x 交付内容，另从 NativeRoute 直接重做。
+
+### 唯一运行时架构
+
+```text
+MainActivity（唯一窗口级宿主，继续承载 Capacitor Bridge）
+└── NativeRoot（唯一 Compose 根）
+    ├── RouteHost
+    │   ├── LegacyWebViewRegion（尚未迁移的页面或区域）
+    │   └── NativeRoute（已验收的原生页面或区域）
+    ├── GuanjiBottomTabs（唯一实例）
+    └── SheetHost（唯一实例）
+```
+
+迁移期允许同一根内的分区式混合，例如“WebView 正文 + 原生 Tab”，但同一视觉区域只能有一个所有者。禁止新增页面级 `Native*Activity`、透明 Overlay Activity、第二个 Tab、第二个 SheetHost 或占位原生首页。
+
+### 复用与弃用
+
+- 直接复用：v4.1.5 Room/统计/行为模型/加密/备份协议、WebView 产品现状、稳定 APK 构建链。
+- 审查后移植：旧工作区 #255、#237、#238 的非 UI 能力，以及 #270 的采集方法和状态矩阵结构。
+- 仅作证据：#258–#260 原生截图、缺陷和失败报告、旧 Compose 页面里的数据适配片段。
+- 明确弃用：`NativeShellActivity`、页面级多 Activity、透明 Activity 叠层、旧宿主闸门和旧 P0-7 签收。
+
+详细资产边界见 `docs/native-rewrite/`。
+
+### 实施顺序
+
+#272 重启审计 → #273 单宿主/设计系统/闸门 → #274 Tab（经典模式）→ #275 首页/日历 → #276 记录/计时/详情 → #277 当前洞悉 → #278 我的/设置 → #279 备份恢复 → #280 默认切换与稳定观察 → #281 经典版 JS 核心收口。玻璃原生重做在 #281 后另立独立任务，不插入上述顺序。
+
+### 总闸门
+
+每个子任务必须执行 `docs/native-rewrite/MIGRATION-GATE.md`：
+
+1. 先测绘 WebView v4.1.5 同状态基线；
+2. 再实现 Compose；
+3. 验证唯一 Activity、route、Tab、Sheet 和返回关系；
+4. 浏览器/原生/真机同状态截图与 bounds 对照；
+5. 未达到视觉容差或出现业务回归时停止，不得进入下一版本。
+
+### 版本与编号原则
+
+- 复用产品版本槽位 v4.2.0–v4.2.8；这些版本由新代码重新产生。
+- 不复用旧任务编号；#240–#248 和旧工作区 #257–#270 永久保留历史含义。
+- 洞悉系统原生改版必须在 #281 后使用新的任务编号进入 v4.3.x。
+- 玻璃版 Native 重做必须在 #281 后使用新的任务编号独立排期；不得占用 #275–#281 的版本节点，也不得把旧 WebView 玻璃实现作为中间交付。
+
+### 总体验收
+
+- 用户从启动到所有核心流程始终处于同一窗口级宿主；
+- 原生经典页面与 v4.1.5 WebView 在结构、文案、数据、图标、字体、几何、材质、动效和返回关系上等价；
+- 玻璃模式在迁移期保持 WebView 页面、玻璃 CSS 和交互行为不变；验收只检查 WebView 回退唯一性，不要求 NativeRoute 绘制玻璃材质；
+- WebView 稳定路径在迁移期不被改坏；
+- v4.2.8 后核心业务只由 Kotlin/Room/Compose 承担；#281 同步删除玻璃 WebView 核心回退，静态说明页长期保留 WebView。玻璃模式在后置原生玻璃计划完成前暂不恢复为核心功能；
+- 洞悉内容改版、女性模式和其他产品扩展未混入本次迁移。
+
+---
+
+## 272. P0-R：旧原生化资产审计、归档与计划重置 ✅ 已实施（不改变版本号）
+
+### 父计划与依赖
+
+- 父计划：#271
+- 前置任务：#254
+
+### 需求
+
+在任何新 UI 代码开始前，保护旧工作区，筛选可复用资产，建立 v4.1.5 干净工作树，并重写原生化任务关系和硬闸门。
+
+### 实施清单
+
+1. 固定 v4.1.5 commit、包名、versionCode/versionName 和数据基线。
+2. 归档旧工作树，保留所有未提交代码、报告、截图和 #270 证据。
+3. 盘点旧 Native Activity、设计系统、视觉契约、采集脚本和非 UI 变更。
+4. 建立 A/B/C/D 资产取舍矩阵，禁止整体复制旧页面实现。
+5. 将 #240–#248 标为历史方案；保留 #255–#270 的历史编号含义。
+6. 创建 #271–#281 新路线和单宿主硬闸门。
+7. 新增机器检查，阻止 v4.1.5 重启基线混入旧 Native Activity。
+
+### 实施结果（2026-09-14）
+
+- 创建干净工作树 `%USERPROFILE%\Desktop\test\guanji-app-native-v2`，分支 `native-ui-rewrite-v2`，HEAD 为 v4.1.5 稳定提交。
+- 旧工作区保持不动，并归档至 `%USERPROFILE%\Documents\Codex\archives\guanji-app-native-ui-v1-working-tree-2026-09-14.zip`；SHA-256 为 `[本机归档 SHA-256 已省略]`。
+- 新增 `docs/native-rewrite/README.md`、`ASSET-INVENTORY.md`、`SALVAGE-MATRIX.md`、`FAILURE-RETROSPECTIVE.md`、`PLAN-MIGRATION-MAP.md`、`MIGRATION-GATE.md`。
+- 新增 `debug/verify-272-native-restart.cjs` 和 `npm run verify:272`，检查 v4.1.5 身份、旧 Activity 隔离、新编号和单宿主闸门。
+- 本阶段不修改业务代码、不升级版本、不构建 APK；它只建立下一阶段的可信开发入口。
+
+### 验收要点
+
+- 旧工作区和归档可恢复；
+- 新工作树只含 v4.1.5 稳定代码与本次规划/验证文件；
+- 新旧编号、资产边界和后续实施顺序无歧义；
+- `npm run verify:272` 与 `git diff --check` 通过。
+
+---
+
+## 273. v4.2.0：单宿主骨架、设计系统与 v4.1.5 视觉闸门 ✅ 已完成（脚手架/闸门）
+
+### 父计划与依赖
+
+- 父计划：#271
+- 前置任务：#272
+
+### 需求
+
+先建立唯一正确的页面宿主和可执行视觉规格，不迁移完整业务页面，不创建占位 Activity。
+
+### 实施清单
+
+1. `MainActivity` 保持唯一可见 Activity，在其根容器内接入一个 `NativeRoot`；未迁移内容通过 `LegacyWebViewRegion` 显示。
+2. 定义唯一 `RouteHost`、`GuanjiBottomTabs` 和 `SheetHost`，建立 route/返回/系统 Back 契约。
+3. 从 v4.1.5 CSS、浏览器 bounds、真机截图和 SVG 提取字体、行高、间距、圆角、阴影、玻璃、颜色、图标和动效 token。
+4. 重建 #270 方法：基线版本改为 v4.1.5，重新采集页面/组件/状态/动画证据，旧 `signed-off` 不继承。
+5. 建立页面文件白名单、同状态 fixture、截图 overlay/diff、Compose bounds 和前台 Activity 验证。
+6. 增加静态阻断：核心页面新增 `Native*Activity`、重复 Tab/SheetHost、透明 overlay theme 时失败。
+7. 提供只在调试构建出现的 NativeRoute 开关；公开路径保持 WebView，业务表现不变。
+
+### 验收要点
+
+- 真机只有 `MainActivity`，不存在第二原生壳或空页面；
+- WebView 原页面、记录流程、统计、洞悉、设置和备份全部无变化；
+- 视觉契约中的每个数值可追溯到 CSS/bounds/真机证据，而不是 Compose 猜值；
+- 闸门能主动拒绝多 Activity、重复可见区域和未签收页面；
+- v4.2.0 只交付基建与可验证规格，不伪称页面已经原生化。
+
+### 实施记录（已验收）
+
+- 已新增 `NativeRoot` 与 `NativeRootHost`，在唯一 `MainActivity` 内包裹现有 WebView；原生区域默认 `GONE`，不显示占位页面。
+- 已新增非渲染的 `RouteHost`、`GuanjiBottomTabs`、`SheetHost` 契约，并提供仅调试构建可用的 NativeRoute 开关；未创建页面级 Activity 或第二套路由。
+- 已接入 Compose 编译插件和最小 UI/Foundation/Runtime 依赖；未注册任何页面级 Native Activity。
+- 已新增 `verify:native-ui-v2` 与 `verify:native-ui-v2:preflight`，生成 `debug/visual-migration/#273-preflight.json`；迁移台账见 `docs/native-rewrite/MIGRATION-LEDGER.md`。
+- 已将 WebView 资源查询参数递增到 CSS 187 / JS 195，并同步关于页 v4.2.0 文案；业务逻辑未改动。
+- 静态闸门、Capacitor 资源同步、Gradle 离线构建和 APK 校验通过：`com.guanji.app` / v4.2.0 / versionCode 114，Android Debug 签名，摘要见 `debug/apk-build-summary.json`。
+- 已通过构建钩子显式 `-AllowDowngrade` 完成带数据保留的真机安装：设备 `[序列号已省略]` 从 versionCode 138 降至 114，未卸载、未清除数据；`firstInstallTime` 与数据目录保持不变。
+- 真机验收通过：前台 Activity 始终为 `com.guanji.app/.MainActivity`；UI 树可见 `android.webkit.WebView` 与 `screen-home`，原生区域未显示；日历入口可打开并返回；强制停止后重新启动恢复首页。
+- 证据文件：`debug/visual-migration/#273-device-home.png`、`#273-calendar-open.png`、`#273-after-back.png`、`#273-relaunch.png` 及对应 XML；构建摘要见 `debug/apk-build-summary.json`。
+- #273 的完成边界是单宿主/闸门/公开 WebView 回退，不等同于页面视觉等价迁移；#274 仍须按台账重新测绘后实施。
+
+---
+
+## 274. v4.2.1：同根共享 Tab 视觉等价迁移 ✅ 已完成
+
+### 父计划与依赖
+
+- 父计划：#271
+- 前置任务：#273
+
+### 需求
+
+在同一个 NativeRoot 中迁移底部 Tab，并让尚未迁移的 WebView 页面正文继续工作；不创建独立 NativeShell。
+
+### 实施清单
+
+1. 隐藏 WebView Tab 的视觉、点击和无障碍节点，只保留原生 `GuanjiBottomTabs` 一个所有者。
+2. 精确迁移外层宽度、页面边距、圆角、内部 padding、图标 SVG、文字字号/字重/行高和蓝色选中层。
+3. 精确迁移切换动画的位移、时长和缓动；禁止 ripple、黑色 pressed overlay、图标/文字 scale 和多余回弹。
+4. 建立原生 Tab 与 WebView route 的双向同步，重复点击、返回和恢复不产生两个选中态。
+5. 覆盖三项文案裁切、窄屏、大字号、手势导航、Flyme 底部小横条和横竖屏锁定。
+
+### 验收要点
+
+- Tab 在首页/洞察/我的之间切换时始终是同一个实例（记录仍由首页记录入口打开，不是 Tab 项）；重启后按 WebView 基线恢复默认首页，同时只保留一个选中态；
+- 三项尺寸、位置、图标、字体、圆角和选中层与 WebView v4.1.5 同状态等价；
+- 没有黑色覆盖、圆形裁切、缩放、ripple 或状态错位；
+- WebView 页面正文未被改坏；系统 Back 和重启保持单一选中态，重启默认路由与 WebView 基线一致。
+
+### 实施结果（2026-09-15）
+
+- 版本：v4.2.1 / versionCode 115；包名 `com.guanji.app`；唯一窗口宿主 `MainActivity` + 同根 `NativeRoot`。
+- WebView `#tabbar` 在原生接管后同步设置 `display:none`、`aria-hidden=true`、`inert`，旧节点不再出现在真机无障碍树；原生 Compose Tab 唯一渲染三项：首页、洞察、我的。
+- 几何直接复用 v4.1.5 CSS 契约（左右 12px、58px 高、底部 18px + 安全区、外圆角 26px、内容水平 padding 10px、选中层上下 5px）；真机 bounds `[33,2061][1047,2221]`，与同设备 WebView DOM `x=12,y=748.909,width=368.727,height=58` 换算误差小于 1dp。
+- 路由双向同步通过：原生点击洞察/我的/首页驱动既有 WebView Tab click；WebView 路由变化回传原生选中态；系统 Back、前后台恢复和重启均保持单一选中态，重启默认路由与 WebView 基线一致。
+- 动画采样通过：550ms `cubic-bezier(0.23,1,0.32,1)` 单一横向滑块；无 ripple、spring/bounce、缩放和黑色 pressed overlay。浅色、深色/玻璃态运行时桥接均已检查。
+- 验证：`npm run verify:272`、`npm run verify:273`、`npm run verify:274`、`npm run verify:274:device -- debug/#274-device-final-home.xml`、`npm run verify:native-ui-v2:preflight -- 274`、Kotlin 离线编译与统一构建钩子均通过；真机 `[序列号已省略]` 安装保留既有数据，未清除 WebView 数据。
+- 证据：`debug/#274-webview-baseline.png`、`debug/#274-device-final-home.png`、`debug/#274-device-insight.xml`、`debug/#274-device-restart.xml`、`debug/#274-tab-analysis-100ms.png`、`debug/#274-tab-analysis-600ms.png`、`debug/#274-device-dark-glass.png`、`debug/#274-webview-dark-check.png`、`debug/visual-migration/#274-preflight.json`、`debug/apk-build-summary.json`。
+- #274 主题/材质补救：WebView 初始化与主题切换继续回传最终材质事实；本阶段原生 Tab **只接管经典（普通）模式**，使用不透明同主题底色并移除边框，Android 宿主以 26dp 胶囊 outline + 10dp 阴影保持层级，消除正文分割线透出的白色细线。玻璃模式不进入本阶段原生迁移，切换后由 WebView Tab 唯一渲染，NativeRoot 保持单宿主并预留后续玻璃接入。保留 v4.2.1/versionCode 115，不抢占 #275 版本节点。
+- 补充证据：`debug/#274-final-classic-v4.png`、`debug/#274-final-classic-v4.xml`、`debug/#274-final-dark-classic-v4.png`、`debug/#274-final-dark-classic-v4.xml`、`debug/#274-final-glass-fallback-v4.xml`；历史玻璃对照截图仅作问题定位资料，不作为本阶段原生玻璃验收依据。
+- 实施报告已重新上传知识库：Dify document `1d5979a7-b3fe-41ef-8edb-5604c245f162`，状态 `completed/available`，12 个分段，正文项目名/版本/#274 校验通过。
+
+### #274 暴露问题沉淀（后续原生化任务强制继承）
+
+#### 问题摘要
+
+1. Tab 外层宽度、左右边距、胶囊圆角、内部 padding 和选中层尺寸曾与 WebView 不一致，甚至出现铺满屏幕。
+2. SVG 图标没有完整复用；文字字号、行高和 baseline 不一致，窄屏/大字号出现裁切、圆形遮罩和显示不全。
+3. Compose/Material 默认 ripple、pressed overlay、scale、spring 和最小触控尺寸泄漏，产生黑色半透明覆盖、图标文字缩放和多余回弹。
+4. 透明宿主与 WebView 背景叠加导致魅族真机白色细线、阴影丢失和层级错误；一度把阴影误做成边框或第二层壳。
+5. 经典、深色、玻璃三种材质的 owner 未提前冻结，原生 Tab、WebView Tab、玻璃桥和 blur 状态互相覆盖。
+6. 曾出现只验证静态文件/错误入口而未证明当前真机入口、route、主题和数据状态的情况，造成“脚本通过但用户看到另一套界面”。
+
+#### 后续强制规则
+
+- 尺寸、圆角、padding、图标 path、字号、字重、行高、baseline、阴影和动画必须逐项追溯到 v4.1.5 WebView CSS/DOM bounds/SVG/同设备截图；禁止从原生实现反推基线。
+- 每个视觉区域先登记 owner；同一状态只允许一个可见 Tab、页面或 Sheet。被接管的 WebView 节点必须同时隐藏、不可点击并退出无障碍树。
+- #275–#280 只接管经典/普通模式；玻璃模式继续由 WebView 唯一渲染，不新增 Native 玻璃材质或并行动画；#281 删除旧 JS 后玻璃请求回落 Native 经典，后置玻璃重做从 NativeRoute 直接开始。
+- Compose 必须显式关闭未在契约登记的 ripple、pressed overlay、scale、spring、默认最小尺寸和 elevation；动画只使用已采样的属性、时长和缓动。
+- 所有证据必须记录包名、版本、前台 Activity、route、主题、dataRevision、viewport/density/fontScale、Tab 数量、Sheet 层级和动画采样时刻。
+- 公共 Tab/主题/宿主改动必须重跑 #274 浅色经典、深色经典、窄屏、大字号、手势导航、魅族底部横条、重启和玻璃 WebView 回退用例；出现白条、黑色覆盖、裁切、缩放、未登记回弹、全屏 Sheet、底部悬空或双层时，当前节点不得签收。
+
+---
+
+## 275. v4.2.2：首页与日历视觉等价迁移 ✅ 已完成（视觉等价签收）
+
+### 父计划与依赖
+
+- 父计划：#271
+- 前置任务：#274
+
+### 需求
+
+在共享 Tab/NativeRoot 内迁移首页和日历 Sheet 的经典/普通模式，保持 v4.1.5 的数据、布局、图表、操作和动画。玻璃模式继续使用 WebView，不在本条目制作 Native 玻璃。
+
+### 实施清单
+
+1. 迁移问候、顶部统计、日历入口、趋势卡、14/30 与曲线/热力图切换、时段分布、最近记录和记录按钮。
+2. 图表逐项迁移：曲线 stroke/平滑方式、热力图等级、圆环粗细/颜色/图例、分割线和空状态。
+3. 最近记录保留原版编辑/删除入口、图标、呈现方式和确认流程。
+4. 日历作为同一 `SheetHost` 内的二级页面：只有一层内容壳；遮罩与面板按原时序独立动画；底部贴合安全区。
+5. 日期徽标使用最小宽度 + 横向 padding 和字形 baseline，不固定成会裁切数字的正方形。
+6. 校正系统栏、顶部间距、卡片间距、内边距、圆角、阴影、文字基线和记录按钮尺寸。
+7. 经典模式只验证浅色、深色和降低透明度回退；玻璃状态仅验证 WebView 仍为唯一渲染者且没有原生/网页双层重叠。
+
+### 验收要点
+
+- 首页每个卡片和元素都有同状态 bounds/字体/材质对照；
+- 趋势上方数据不裁切，曲线/热力图与时段圆环和 WebView 等价；
+- 日历无白条、三层壳、全屏卡片、底部悬空和徽标裁切；
+- 玻璃模式仍由 WebView 按 v4.1.5 原样显示，不出现 Native 玻璃壳或双重渲染；
+- 编辑、删除、日历返回、Tab 和小组件数据一致；
+- #259 中出现过的问题全部成为强制负面回归。
+
+### 本次实施记录（2026-09-15）
+
+- 复用 `MainActivity → NativeRoot → RouteHost/SheetHost` 单宿主链路；未新增 Activity，经典模式首页由 `NativeHomeSurface` 接管，玻璃模式仍由 WebView 唯一渲染。
+- 首页已接入问候、顶部统计、日历入口、趋势曲线/热力图、14/30 切换、时段分布、最近记录编辑/删除和记录入口；业务写入继续调用既有 JS/Room 权威链，不在 Compose 重写记录逻辑。
+- 日历作为 NativeRoot 内的单层底部 Sheet；日期徽标采用最小宽度与横向内边距；打开日历/记录 Sheet 时暂时隐藏独立 Native Tab，关闭后恢复，避免 Tab 压在 Sheet 上。
+- 针对首轮真机对照补齐：趋势曲线使用 WebView 同源 336×128 / TOP14 / BOT16 / 2.5px 平滑路径且不绘制日期点；数值标签上移 12dp；时段圆环使用 120 视口、r45、12px 线宽、4px 分段间隙并恢复列表分隔线；焦点区文案/分割线节奏、底部说明居中与滚动留白、日历按钮内边距和主按钮铺开比例均已修正。
+- 日历快照从仅最近 7 条扩展为全量轻量日期索引，日期差值改为真实年月日计算；真机已选择 9 月 14 日并显示该日 2 条记录，历史日期编辑/删除入口可见。
+- 新增 `debug/verify-275-home-calendar.cjs`，并通过 `npm run verify:275`、`npm run verify:273`、`npm run verify:274`、`npm run verify:274:material`。
+- 使用 `tools/build-apk.ps1 -Mode debug -Install` 构建并安装真机：`com.guanji.app`、`v4.2.2`、versionCode `116`；设备 `[序列号已省略]`。
+- 真机流程证据：`debug/visual-migration/#275-device-evidence.json`、`debug/#275-after-fix-home.png`、`debug/#275-final-home.png`、`debug/#275-after-fix-calendar.png`、`debug/#275-after-fix-calendar-history.png` 及对应 XML；同状态 WebView/Native 对照为 `debug/#275-webview-current-home.png`、`debug/#275-native-current-home-final.png`。
+- 当前状态已由用户完成视觉闸门签收：运行时归属、Sheet/Tab 层级、交互回归及同状态 WebView/Native 对照均通过；未据此升级版本号或发布发行版，#276 可按前置关系推进。
+
+### 日历二次修复（本次实施，待真机视觉验收）
+
+- 面板从固定 `584.dp` 改为自然高度 + 视口 `88%` 上限，并在内容区保留导航安全区；避免历史明细把底部操作推出可视区域。
+- 按 WebView 规则补齐拖拽区、标题区、分割线的真实上下间距；星期栏改为 7 列等宽网格，最后一行保留空槽位，避免日期横向漂移。
+- 当日明细改为最多两条高度、超出在明细区域内部滚动，不再直接截断；底部按钮恢复全局主/次按钮的 padding、阴影、边框和加号图标。
+- 日期数量徽标补齐 15dp 高度的文字行高和居中约束，保留最小宽度 + 横向 padding。
+- 恢复顶部小横杠的下拉关闭手势：热区和 WebView `initSheetDrag` 对齐，向下 90dp 关闭，未达阈值使用统一弹簧回位。
+- 最近记录编辑/删除按钮统一 16dp 内部绘制盒，图标 Canvas 改为 14dp 对称坐标，修复笔画越界导致的视觉偏移并保证按钮内居中。
+- 时段环图按 WebView 的 120 视图坐标统一缩放半径、线宽和分段间隙；修复原生固定使用 12dp/4dp 导致的环线约 0.8dp 变粗、分段间隙偏大的问题。真机像素复测后彩色环边界由 264px 收敛到 262px，与 WebView 基线一致。
+- 原待签收条件（无记录、两条记录、超过五条记录、历史月份四组同状态 WebView/Native 证据）已完成并由用户确认通过。
+
+### 视觉等价收尾（2026-09-15）
+
+- 用户已确认 #275 视觉验收通过；首页、时段分布、趋势图、日历 Sheet、记录入口和返回路径按 v4.1.5 WebView 基线完成签收。
+- 环图比例修正后的真机证据为 `debug/#275-time-ring-native-after-fix-scrolled.png`，彩色环边界 `262×262px` 与 WebView 基线一致。
+- #275 迁移台账已更新为 `verified`；后续 #276–#281 解除阻断，按各自前置任务继续推进。
+- 实施报告 `outputs/guanji-app_实施v4.2.2_#275_2026-09-15.md` 已上传 Dify；`document_id=7ff2a65c-e7d9-424b-a3b4-405aaa7dd498`，索引 `completed/available`，10 个分段，项目名/版本/#275 内容校验通过。
+
+### #275 暴露问题复盘与后续强制规则（2026-09-15）
+
+#### 已确认的实际问题与根因
+
+1. **入口和宿主混乱**：早期曾从占位 `NativeShellActivity`、独立页面宿主和 WebView 入口进入，导致用户看到空壳、两个原生界面或错误页面。根因是没有把“唯一入口、唯一可见宿主、当前 route”作为运行时前置条件。
+2. **大结构相似但视觉不等价**：首页/日历首轮实现只复刻了卡片大致结构，没有逐项使用 v4.1.5 WebView 的 DOM bounds、CSS、SVG、字体基线和动画时序，因此出现卡片位置、圆角、阴影、间距、字体、图表和按钮尺寸全面漂移。
+3. **图表规则被近似重写**：趋势曲线曾出现线宽、平滑方式、日期点和标签基线不一致；时段环图曾使用固定原生尺寸，造成环线过粗、间隙和整体边界偏差。修复后必须以 WebView 的 viewBox/坐标和同状态像素证据为唯一来源。
+4. **日历 Sheet 层级与测量错误**：`AnimatedVisibility` 父级调整、固定高度和重复壳层曾造成全屏化、顶部白条、底部悬空、阴影与面板不同步。Sheet 必须留在同一 `NativeRoot/SheetHost`，底部对齐和遮罩/面板动画分别验收。
+5. **Compose 默认行为泄漏**：出现过 ripple、黑色 pressed 覆盖、图标文字缩放、未登记回弹、徽标固定宽高裁切以及编辑/删除图标偏下。所有默认交互、最小尺寸、行高和弹簧都必须显式关闭或按 WebView 契约实现。
+6. **所有权和主题边界不清**：原生 Tab、WebView Tab、玻璃材质层曾互相覆盖，产生白线、阴影丢失和深色/玻璃不一致。#275–#280 只允许 Native 接管经典模式；玻璃由 WebView 唯一渲染，禁止第二层原生玻璃。
+7. **功能与视觉迁移耦合**：日历历史日期、编辑/删除、拖动关闭等逻辑一度只做了当前日期或新链路，导致行为与 WebView 不同。页面迁移只能调用既有 JS/Room 权威链，不能在 UI 层重算或改变记录语义。
+8. **静态验证与运行时状态脱节**：脚本可以证明类、文件和常量存在，却不能证明截图来自当前入口、同一数据状态和同一主题；因此必须把前台 Activity、route、Tab 数量、Sheet 层级、dataRevision、同状态截图和 UI 树一起作为证据。
+
+#### 后续原生化不可绕过的阻断条件
+
+- 实施前先锁定唯一入口和 owner 矩阵：同一状态只能有一个可见页面、Tab、Sheet 和遮罩；不得创建占位 Activity 或并行宿主。
+- 所有尺寸、字体、圆角、阴影、图标 path、图表线宽、滚动边界和动效必须能追溯到 WebView CSS/DOM/SVG/真机证据；不得从原生实现反推基线。
+- Compose 页面必须显式处理 `fillMaxWidth/weight/heightIn/verticalScroll`、Insets、长文案、大字号和徽标多位数；固定值只能作为视觉基准，不能成为溢出约束。
+- 默认 ripple、pressed overlay、scale、spring、最小触控 padding 和系统背景必须逐项关闭或登记；出现白条、黑色覆盖、裁切、缩放、未登记回弹、全屏 Sheet 或底部悬空立即退回当前节点。
+- 经典、深色、降低透明度和玻璃状态必须明确分流；经典迁移不得改动玻璃 WebView 路径，也不得把玻璃规则复制到 Native。
+- 每个页面先做基线测绘，再做静态骨架、交互和动画；同一 `dataRevision`、viewport、density、fontScale、主题、滚动位置和采样时刻下完成 WebView/Native/真机对照。
+- 只有运行时证据、视觉差异、返回栈、数据一致性和构建收尾全部通过，才能标记条目完成；静态脚本全绿不能替代视觉签收。
+- #275 的视觉签收只代表当前节点完成，不代表所有设备尺寸已认证；窄屏、大字号、安全区和不同品牌必须在后续共享组件回归中继续覆盖。
+
+---
+
+## 276. v4.2.3：记录、计时与详情视觉等价迁移 ✅ 已实施
+
+### 父计划与依赖
+
+- 父计划：#271
+- 前置任务：#275
+
+### 需求
+
+在现有 NativeRoot 中迁移直接记录、计时、补记、记录详情和保存汇总的经典/普通模式；不改变 WebView 的入口语义和两套记录逻辑。玻璃模式继续走 WebView 兼容路径。
+
+### 实施清单
+
+1. 先冻结 v4.1.5 中“开始计时/直接记录/就现在/补记”的文案主次、默认偏好和全部状态机。
+2. 迁移统一 observations 多选、日期时间、时长、备注、编辑、删除和保存；保留旧记录兼容字段。
+3. 所有页面/Sheet 继续使用同一 `RouteHost/SheetHost`，禁止透明 Activity；连续二级转场和返回来源必须与原版一致。
+4. 固定 footer、内部滚动、键盘 `adjustResize`、长标签、15 项状况、长备注和小屏布局逐态验证。
+5. 保存只调用现有 RecordEvent/Room 权威链；不在 UI 层重算日期、offset、统计或小组件。
+6. #260 暴露的“WebView 模式被改坏、补记主次变化、多个原生页面分离”全部纳入阻断用例。
+7. 经典 NativeRoute 不引入玻璃材质、backdrop 或第二套玻璃动画；玻璃状态保持 WebView 唯一所有者。
+
+### 验收要点
+
+- WebView 路径在迁移期仍保持 v4.1.5 行为；
+- 两套记录入口和所有详情流程都能完成并返回正确父级；
+- 页面几何、字体、控件、滚动、footer、键盘和转场通过视觉等价；
+- 新增/编辑/删除/计时完成后 Room、首页、日历、统计、小组件一致；
+- 重复点击、前后台、进程恢复和跨午夜不重复保存。
+- 玻璃模式记录流程与 v4.1.5 WebView 行为保持一致，未产生原生/网页双写。
+
+### 实施记录（2026-09-15）
+
+- 在现有 `MainActivity → NativeRoot → RouteHost/SheetHost` 单宿主中接入 `NativeRecordSurface`，覆盖直接记录、计时、补记、编辑、详情、备注和保存汇总；没有新增页面 Activity 或透明 Overlay。
+- 记录写入继续复用既有 `__guanjiNativeCommitRecord` → `commitRecordChanges` → Room/JS 权威链；日期、`occurredAtMs`、时区、observations、备注和旧记录兼容字段仍由既有数据层归一化，Native UI 不重复计算统计或小组件。
+- 计时开始、结束、取消和 Activity 重建恢复均已接入统一通知桥；真机重启后计时仍显示进行中，结束并保存后首页计数更新且未重复保存。
+- 记录时间页、补记页和详情页采用同一底部 Sheet/返回来源路径；详情内容区可滚动，footer 固定，长标签和 15 项“发生前状况”均可显示。经典模式迁移，玻璃模式仍由 WebView 唯一渲染。
+- 静态闸门：`npm run verify:272`、`verify:273`、`verify:274`、`verify:275`、`verify:276` 全部通过；未改变 v4.1.5 WebView 记录入口源码。
+- 构建与安装：`tools/build-apk.ps1 -Mode debug -Install`；包名 `com.guanji.app`，v4.2.3，versionCode 117，设备 `[序列号已省略]`，签名与已安装调试包一致，构建摘要见 `debug/apk-build-summary.json`。
+- 真机证据：`debug/#276-record-time-final.png`、`#276-backfill-final.png`、`#276-edit-details.png`、`#276-details-scroll.png`、`#276-timer-running-pre-restart.png`、`#276-timer-after-restart.png`、`#276-timer-summary-final.png`、`#276-timer-saved-final.png`、`#276-edit-saved.png` 及对应 XML；汇总索引见 `debug/visual-migration/#276-device-evidence.json`。
+- 回归补丁后再次验收：记录 Sheet 保留首页背景并使用同根遮罩；计时页/汇总页补齐深蓝渐变与勾/加号；时长滑块支持拖动实时显示；自定义状况弹层改为单层内嵌遮罩并验证新增选项。最新证据见 `#276-postbuild-*.png/xml`，Dify 报告 16 个分段全部 `completed`。
+- 2026-09-16 后续回归修复：拖拽手势仅绑定 72dp 抓手热区（不拦截详情滚动），短距离使用无回弹弹簧回位；Sheet 退场补齐面板自身淡出；直接填写返回恢复“就现在/00:00”；补记日期时间本地化粗体；计时呼吸点按 WebView 1.6s 缩放/透明度曲线；自定义状况支持确认删除且默认项不可删除。真机证据见 `debug/native277-*.png/xml`，构建仍为 v4.2.3 / code117。
+- 迁移台账已将 #276 标记为 `verified`；#277–#281 仍按前置关系保持 `pending`。
+
+---
+
+## 277. v4.2.4：当前洞悉页视觉等价迁移 ✅ 已实施
+
+### 父计划与依赖
+
+- 父计划：#271
+- 前置任务：#276
+
+### 需求
+
+只把 v4.1.5 当前洞悉页的经典/普通模式迁移到 Compose；不在本版本升级卡片信息架构、AI 推理能力或洞悉文案。玻璃模式继续由 WebView 展示，玻璃原生重做另行排期。
+
+### 实施清单
+
+1. 迁移当前六张卡片、图表、空/不足数据、AI 配置态、生成/重新生成、免责声明和错误态。
+2. 本地事实与 AI 内容的显示规则完全沿用 v4.1.5，不借原生化重新设计。
+3. 复用 Kotlin BehaviorModelSnapshot/EvidenceGraph/缓存契约；AI 网络迁移只在既有 core-ai 契约内完成。
+4. 精确迁移卡片圆角、阴影、二级内容、字体层级、图表和底部按钮。
+5. 建立无 AI、已配置未生成、生成中、成功、部分卡失败、缓存命中和离线状态对照。
+
+### 验收要点
+
+- 相同数据修订下 WebView/Native 的卡片、图表和文本内容一致；
+- AI 不读取单条记录/备注/精确时间，不因 UI 迁移改变隐私边界；
+- 状态观察、关联观察和可选建议不再出现空数据回归；
+- 本版本没有混入 v4.3 洞悉系统改版。
+- 本版本没有混入 Native 玻璃卡片、玻璃材质桥或玻璃专属视觉规则；玻璃 WebView 回退通过即可。
+
+### 实施记录（2026-09-16）
+
+- 在现有 `MainActivity → NativeRoot → NativeRegionSurface` 单宿主中接入 `NativeInsightSurface`，迁移当前经典/普通洞悉页；没有新增 Activity、占位壳或平行 Tab 宿主。
+- 洞悉页面消费 `records.js → getNativeInsightContext()` 提供的一次性聚合快照和脱敏 AI 状态，覆盖整体观察、时段观察、发生前状况、变化/关联、可选建议、AI 配置/生成/缓存/错误等状态；不读取单条记录、备注、附件、精确时间或密钥。
+- AI 配置与生成按钮回到既有 JS/AI owner，继续复用缓存、免责声明、隐私过滤和 Provider 逻辑；本版本没有混入 v4.3 洞悉系统改版。
+- 真机 v4.2.4 / code118（`[序列号已省略]`）完成首页→洞悉、滚动、重新生成进入 loading、返回首页流程；证据索引为 `debug/visual-migration/#277-device-evidence.json`。
+- `npm run verify:277`、`verify:275`、`verify:276`、`verify:273`、`verify:native-ui-v2:preflight -- 277` 及 JS 语法检查均通过；构建摘要为 `debug/apk-build-summary.json`。
+- 实施报告：`outputs/guanji-app_实施v4.2.4_#277_2026-09-16.md`；复用规则已新增至 `docs/REUSE-RULES.md` 8.3；台账已将 #277 标记为 `verified`。
+
+### #277 补充回归（2026-09-16，v4.2.4 / versionCode 119）
+
+- 定位确认：WebView 的 `records.js` 快照中已经存在 `cooccurrence` 和 `labels`，原生问题不是数据源缺失，而是 Native 只按原始 key 读取、没有处理 key→label 映射，也没有区分空数组、数据不足和结构损坏。现改为一次快照读取、严格字段/类型校验，并分别呈现 `empty`、`insufficient`、`error`、`ready` 四种状态。
+- AI 建议恢复 WebView 的来源层级：每条建议正文前以内联 `AI 建议` 标签呈现；“想再聊聊什么？”及预设问题、回答状态由既有 `ai.js` owner 维护，Native 通过 `insight-ask` 动作桥调用，不复制 AI 网络、缓存或过滤逻辑。
+- 洞悉 Typography 已集中为 `InsightTypography` token，覆盖页面标题、卡片、指标、共同出现、变化、建议、AI 动作、免责声明和追问区域；CSS→Compose 对照表落盘于 `docs/native-rewrite/INSIGHT-TYPOGRAPHY-MAP-277-FOLLOWUP.md`。
+- 资源缓存标识更新至 JS 203/CSS 192；保持公开版本 `v4.2.4`，仅递增 versionCode 至 119，避免与计划中的 #278 `v4.2.5` 冲突。
+- 静态检查：`npm run verify:277`、`verify:275`、`verify:276`、`verify:273`、`verify:native-ui-v2:preflight -- 277` 与 JS 语法检查全部通过。
+- 构建/真机：`tools/build-apk.ps1 -Mode debug -Install` 成功；`com.guanji.app` 已安装并启动于魅族 MEIZU 21（`[序列号已省略]`），签名与已安装调试包一致；共同出现映射、AI 建议标签、追问回答和返回流程证据见 `debug/visual-migration/#277-followup-device-evidence.json`。
+- 本地实施报告：`outputs/guanji-app_实施v4.2.4_#277-补充_2026-09-16.md`。Dify MCP 未加载，REST 回退已重试两次且均返回 HTTP `502 Bad Gateway`（nginx），未取得 `document_id`；已保留本地报告，待服务恢复后可用同一唯一文件名重试。
+- #277 后续 Typography/来源契约修复：正文与辅助文字统一复用 WebView `--ink-2/#8E8E93`、`--ink-3/#C7C7CC`；“想再聊聊什么？”问题胶囊改为 38px 最小高度、9px 15px 内边距、1px 分割线、999px 圆角和内容自适应宽度；新增 `docs/native-rewrite/INSIGHT-DATA-SOURCE-CONTRACT-277.md`，冻结当前 `NativeHomeSnapshot` 兼容桥与后续 `NativeInsightSnapshot` 目标，作为 #281 删除 JS 洞悉核心的前置闸门。
+
+### #277 补充回归 2（2026-09-16，v4.2.4 / versionCode 120）
+
+- 按 WebView CSS 重新校准经典洞悉正文与辅助文字：浅色模式统一 `--ink-2/#8E8E93`、`--ink-3/#C7C7CC`，深色模式使用对应 token；所有字号、字重、行高和字距继续只从 `InsightTypography` 读取。
+- “想再聊聊什么？”区域保留 WebView 原文和点击桥；三个问题胶囊取消整行铺满，改为内容自适应宽度、1px `--line` 边框、999px 圆角、9px/15px 内边距、38dp 最小高度，并禁用系统 ripple。
+- #270 数据来源契约已冻结并修正当前版本号；明确 NativeInsightSurface 目前消费 `NativeHomeSnapshot` 兼容投影，NativeInsightSnapshot 直连仍是后续洞悉原生化任务和 #281 删除 JS 核心的前置条件。
+- 静态回归：`verify:277`、`verify:275`、`verify:276`、`verify:273`、`verify:native-ui-v2:preflight -- 277` 与 JS 语法检查全部通过。
+- 稳定构建：`tools/build-apk.ps1 -Mode debug -Install` 成功，`com.guanji.app` v4.2.4/code120 已安装并启动于魅族 MEIZU 21（`[序列号已省略]`）；APK SHA-256 `32575613153B92A0CABB8F8851A779AA59AC92A4A40F580D9C8596F9F1224CAE`，签名指纹与已安装调试包一致。
+- 真机证据：`debug/device-evidence/guanji-277-insight.png`、`guanji-277-insight-bottom.png`、`guanji-277-ask2.png`、`guanji-277-ask3.png` 及对应 XML；汇总索引为 `debug/visual-migration/#277-followup2-device-evidence.json`。
+- 实施报告：`outputs/guanji-app_实施v4.2.4_#277-补充2_2026-09-16.md`。Dify 已接收并完成索引（document_id `665890b6-e7b6-4f58-957c-d54dcf15c290`，`completed/available`），分段内容验收通过。
+
+### #277 补充回归 3（2026-09-16，v4.2.4 / versionCode 121）
+
+- 按 WebView `screens.css` 的真实间距重新校准 AI 增强观察卡：标题间距 4dp，标题至动作区 12dp，动作区固定 46dp，动作区至免责声明 12dp，免责声明水平内缩 4dp；不再在各个 Composable 中凭感觉堆叠 Spacer。
+- 重新生成分析改为局部状态替换：已有 AI 分析和介绍文字在 loading 期间继续保留，仅将原按钮区域替换为 14dp/2dp/800ms 线性旋转 spinner，免责声明按 WebView 状态门控暂时隐藏；完成后按钮与免责声明恢复，卡片高度不跳变。
+- WebView `ai.js` 的 loading 分支同步保留已有报告的介绍标题，避免原生与 WebView 在加载期间出现内容差异；失败/缓存/隐私边界继续复用原有 AI owner。
+- 版本仅递增 versionCode 120→121，versionName 仍为 `4.2.4`；CSS/JS 缓存标识更新为 194/205，数据来源契约当前实现版本同步为 code121。
+- 静态回归：`verify:272`、`verify:native-ui-v2:preflight -- 277`、`verify:277`、`verify:275`、`verify:276`、`verify:273`、两份 Node 语法检查和 `git diff --check` 均通过。
+- 稳定构建/真机：`tools/build-apk.ps1 -Mode debug -Install` 成功；`com.guanji.app` 已安装并启动于魅族 MEIZU 21（`[序列号已省略]`）；APK SHA-256 `BCCA4D126D265CEA77077EEB3031AF4874EF94010E5136B88C2208A0F738D9F2`，调试签名指纹 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
+- 真机证据：就绪态 `debug/device-evidence/guanji-277-followup3-bottom3.png/.xml`；加载态 `.../guanji-277-followup3-recheck-120ms.png` + `.../guanji-277-followup3-recheck-250ms.xml`；完成恢复态 `.../guanji-277-followup3-afterwait.png/.xml`；汇总索引为 `debug/visual-migration/#277-followup3-device-evidence.json`。真机帧与 UI dump 均验证加载态保留内容、显示 spinner、隐藏免责声明并恢复按钮/免责声明。
+- 实施报告：`outputs/guanji-app_实施v4.2.4_#277-补充3_2026-09-16.md`。Dify 已接收并完成索引（document_id `644412ea-57bb-45d5-afdb-e41290827838`，`completed/available`），分段数 11，首段与版本/回归结论分段内容验收通过。
+
+### #277 补充回归 4（2026-09-16，v4.2.4 / versionCode 122）
+
+- AI 增强观察卡片按其他洞悉卡片的密度重新校准：Native 内边距 22dp，WebView 内边距 22px；“AI 增强观察”至介绍 12dp/px，介绍至动作区 16dp/px，动作区固定 46dp/px，动作区至免责声明 16dp/px。
+- 重新生成分析 loading 恢复 WebView 的完整反馈：原有 AI 内容和介绍继续保留，按钮原位置显示左对齐的 14dp/px、2dp/px、800ms spinner 与灰色小字“正在生成 AI 增强观察…”，免责声明暂时隐藏，完成后按钮与免责声明恢复。
+- Native 新增 `InsightLoadingState`，继续复用既有 `InsightLoadingSpinner`、AI owner、缓存、隐私过滤与失败状态；未新增 Activity、Sheet、数据源或动画体系。
+- `www/js/ai.js`、`www/css/screens.css` 与 Native 状态契约同步；`debug/verify-277-insight.cjs` 增加 loading 文案、固定动作区和版本标识断言；历史 `verify:274` 版本范围扩展到当前 4.2.x 迁移线。
+- 版本仅递增 versionCode 121→122，versionName 仍为 `4.2.4`；CSS/JS 缓存标识更新为 195/206，数据来源契约当前实现同步为 code122。
+- 静态回归：`verify:272`、`verify:native-ui-v2:preflight -- 277`、`verify:277`、`verify:275`、`verify:276`、`verify:273`、`verify:274`、两份 Node 语法检查和 `git diff --check` 均通过。
+- 稳定构建/真机：`tools/build-apk.ps1 -Mode debug -Install` 成功；`com.guanji.app` v4.2.4/code122 已安装并启动于魅族 MEIZU 21（`[序列号已省略]`）；APK SHA-256 `22284257D8244F725C31ABB3EDC41E12DA8E77BD142EBCB8447582011BC416D6`，调试签名指纹 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
+- 真机证据：就绪态 `debug/device-evidence/guanji-277-followup4-ready-afterwait.png/.xml`；加载态 `debug/device-evidence/guanji-277-followup4-loading-320ms.png/.xml`；汇总索引为 `debug/visual-migration/#277-followup4-device-evidence.json`。加载截图和 UI dump 均验证提示文案、左对齐、内容保留、免责声明隐藏和恢复态。
+- 浏览器回归：CUA 已读取 WebView 洞悉页 DOM 并核对动作卡 computed CSS（padding 22px、标题上间距 12px、主区域 gap 16px）；隔离浏览器没有 AI-ready fixture，动态 loading 点击由真机证据和源码断言覆盖。
+- 实施报告：`outputs/guanji-app_实施v4.2.4_#277-补充4_2026-09-16.md`。本轮将“异步卡片局部 loading、语义状态轮询、版本断言同步、Dify 三阶段回执”沉淀为跨任务规则，见 `docs/REUSE-RULES.md` 8.4、`docs/native-rewrite/RECORD-277-FOLLOWUP4-RETROSPECTIVE.md` 和 `docs/native-rewrite/NATIVE-MIGRATION-CHECKLIST.md` 的 #277 清单；Dify REST 已接收（document_id `0f45d33f-57a6-4a96-826f-155a05941afb`、11 段），但 DashScope embedding 返回 `SSLEOFError` 导致索引 `error/error`，待服务恢复后重试。
+
+---
+
+## 278. v4.2.5：我的、设置与 AI 设置视觉等价迁移 🟡 实施完成，待视觉签收
+
+### 父计划与依赖
+
+- 父计划：#271
+- 前置任务：#277
+
+### 需求
+
+迁移我的页及其设置卡片的经典/普通模式，保持当前信息密度、字段显隐、开关、状态和安全行为。玻璃模式继续使用 WebView，待 #281 后再从原生经典界面直接重做。
+
+### 实施清单
+
+1. 迁移外观、记录设置、反馈设置、实况通知、AI 设置、数据与隐私、危险操作和关于入口。
+2. AI Provider/Base URL/模型/API Key 的新建、保存态、编辑态、异步回填、连接测试和不自动聚焦完全复现。
+3. API Key、Base URL 和模型在保存态按既有规则隐藏，旋转/返回/重启不泄露。
+4. 复现经典浅色/深色与降低透明度回退下的开关、分段控件、状态点、标题/副标题间距和小字可读性；玻璃状态只验证 WebView 回退和单一所有者。
+5. 静态关于/隐私/许可页可继续由同一 Activity 内的 WebView 路由承载，不为它们创建独立页面 Activity。
+
+### 验收要点
+
+- 设置值升级前后不丢失、不被空文本覆盖；
+- AI 已配置老用户打开页面时字段状态正确；
+- 滚动、键盘、返回、状态提示、经典和大字号通过对照；玻璃模式保持 WebView 回退且无双层；
+- 不出现第二套设置存储或明文日志。
+
+### 实施记录（2026-09-16）
+
+- 新增 `NativeSettingsSurface`，由同一 `MainActivity → NativeRoot` 承担“我的/设置”经典模式；玻璃模式仍回退 WebView，静态关于/隐私/许可页不新建 Activity。
+- 复用 WebView 现有 CSS/JS/安全存储规则：主题、记录方式、提醒、实况通知、反馈偏好、每日话语、数据范围、保护模式及备份入口均通过安全快照和 `window.__guanjiNativeSettingsAction` 转发；AI Provider/Base URL/模型/API Key 新建、保存态、编辑态、测试态保留原有 SecureStorage 与脱敏策略，空密钥不会覆盖旧密钥。
+- 视觉契约已固化至 `docs/native-rewrite/SETTINGS-CONTRACT-278.md`，覆盖页面安全区、22px 边距、16px 卡片圆角/阴影、20px/26px 内边距、分段控件、文字层级、AI 编辑态和 WebView 弹层所有权。
+- 静态门禁：`verify:272`、`verify:native-ui-v2:preflight -- 278`、`verify:278`、`verify:277`、`verify:276`、`verify:275`、`verify:274`、Node 语法检查与 `git diff --check` 均通过；`:app:compileDebugKotlin --offline` 通过。
+- 稳定构建/安装：`tools/build-apk.ps1 -Mode debug -Install` 成功，生成 `com.guanji.app` v4.2.5/versionCode 123，已安装并启动于魅族 MEIZU 21（`[序列号已省略]`）；APK SHA-256 `D2255B5C32769B71D54F6C160182CF08402E91EF7047DC85404A7034C61D72C2`，调试签名指纹 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
+- 真机证据：`debug/278-device-home.png`、`debug/278-device-settings.png`、`debug/278-device-settings.xml`、`debug/278-device-settings-scroll.png`、`debug/278-device-settings-scroll.xml`，已确认“我的”路由、滚动容器、主题/记录/提醒/实况通知/AI 设置/数据与隐私等节点存在，API Key 不出现在 UI dump。
+- 追加修复并复测：设置页接入 `NativeRoot` status-bar inset，避免标题被系统状态栏覆盖；`debug/278-device-settings-dark.png` 验证深色切换，`debug/278-device-settings-light-restored.png` 验证恢复浅色。
+- 当前仍需补齐同状态浏览器与真机并排截图的人工视觉签收；本轮 CUA 浏览器连接不可用，因此台账保持 `implemented_pending_visual_signoff`，未将 #278 虚报为视觉 `verified`。Dify 报告上传待服务可用后重试。
+
+### #278 后续校准（2026-09-16，保持 v4.2.5）
+
+- 按 WebView 逐卡片契约收口设置页节奏：`SettingsMetrics` 统一页面边距、卡片间距、标题/分组/行/说明/分隔线间距；分段未选中底色改为 WebView `--bg-elev`（浅色 `#E5E5EA`、深色 `#2C2C2E`），开关固定 46×27dp、滑块 21dp。
+- 修复“玻璃效果”状态重复渲染：WebView 只在标题同行显示“实验性”，Native 不再把它作为副标题再次绘制。
+- 实况通知测试区改为 WebView 同款扁平层级，移除额外包框；快照接入“未测试/测试中/已支持或普通通知”状态与结果文案，按钮位置保持稳定。
+- AI 设置保留 WebView 实际结构（Provider 分段 + Base URL/模型/API 密钥文本字段）；源码审计确认基线没有独立“模型选择分段控件”，因此未凭空新增控件。测试连接按钮、分割线、编辑/保存态和脱敏快照继续复用既有 JS/SecureStorage owner。
+- 数据与隐私、危险操作恢复按 WebView 行列表显式分隔；“清除全部数据”保持 WebView 黑色文字，不使用 Material destructive 色。
+- 关于卡片复用项目 01-C 图标资源，恢复 WebView 的两条隐私说明；避免 Compose 直接加载 API 26 自适应 XML 导致真机崩溃。
+- 设置点击采用 Native 乐观状态 + 80ms 合并快照回读，避免等待桥接/持久化后才反馈；API Key 仍不进入快照、日志或 UI dump。
+- 验证：`verify:272`、`verify:native-ui-v2:preflight -- 278`、`verify:278`、`verify:277/276/275/274/273`、`node --check www/js/app.js`、`git diff --check` 均通过；`tools/build-apk.ps1 -Mode debug -Install` 成功安装于魅族 MEIZU 21（`[序列号已省略]`），v4.2.5/versionCode 124，APK SHA-256 `94EFA1F36F13FFAAAD6C6FECCB83374071E09EB73EE08E6245C0223EC2CB9305`，调试签名 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`；干净启动、进入“我的”和滚动回归无 FATAL/ANR。
+- 真机证据：`debug/278-followup-settings-runtime.png/xml`、`debug/278-followup-settings-runtime-scroll.png/xml`。浏览器 CUA 本轮不可用，故保持 `implemented_pending_visual_signoff`，不将未完成并排视觉签收写成已验证；Dify 上传待服务恢复后幂等重试。
+
+### #278 设置细节回归（2026-09-17，versionCode 125）
+
+- 严格按 WebView CSS/DOM/JS 复核并收口：共享分段滑块、磨砂强度、提醒时间输入、实况通知三行结果、AI 设置 Provider/API Key/状态点/数据范围、开关与危险行 Typography、关于图标与阴影。
+- 不引入基准不存在的模型选择器；Provider 三项常显，模型仍是 WebView 的文本字段。API Key 仍不出快照，空值保存保持已有密钥。
+- 数据与隐私弹层动作明确标记为当前阶段刻意的 WebView fallback，后续由 #279 负责，不在本轮擅自重写。
+- 版本保持 `4.2.5`，versionCode 递增至 `125`，CSS/JS 缓存标识 `v=198 / v=209`；静态门禁、APK 构建和真机回归已完成，浏览器同状态并排视觉签收仍待 CUA 会话可用后进行。
+
+### #278 衍生问题与收尾：原生日历/记录弹层与 Tab 层级（2026-09-17）
+
+状态：`implemented_pending_visual_signoff`（代码、静态门禁、构建与魅族真机链路已完成；待浏览器同状态并排视觉签核）
+
+#### 问题与边界
+
+- 原生日历 Sheet、记录 Sheet 与 Native Tab 分属 `NativeRoot` 的同一宿主，但此前把弹层打开等同为“移除 Tab”，与 WebView 的 `tabbar → backdrop → sheet` 层级不一致，也造成首帧和异步桥接期间的层级闪变。
+- 本衍生项只处理经典/普通模式下的原生日历与原生记录弹层；“数据与隐私”等仍由 WebView 承载的弹窗不纳入本次收尾。
+
+#### 已实施的收口规则
+
+1. 保留单一 `NativeRoot`、单一 `NativeRegion`、单一 Native Tab，不新增 Activity、第二套 Tab 或并行 Sheet 宿主。
+2. 弹层打开时 Tab 继续保留在视觉层，并由 NativeRegion 的遮罩覆盖；Tab 仅关闭点击、焦点和无障碍子树，不能被异步 `setNativeTabEnabled(true/false)` 抢回交互权。
+3. NativeRoute 内以固定顺序绘制页面、内联 Tab、遮罩/Sheet；弹层不提升整个页面宿主，不切换 Tab 宿主。Tab 在遮罩下保持渲染，由 Sheet/遮罩覆盖并禁用交互。
+4. 日历/记录入口只切换局部 Compose 弹层状态；关闭时移除遮罩/Sheet 并恢复 Tab 交互，不隐藏、重建、换宿主或重新绑定 Tab。
+5. 复用规则同步更新至 `docs/REUSE-RULES.md` 1.3.3 与 `docs/native-rewrite/NATIVE-MIGRATION-CHECKLIST.md`，后续原生弹层必须检查“视觉保留、遮罩覆盖、不可交互、关闭后恢复”。
+
+#### 验收与收尾
+
+- 静态门禁：`verify:native-ui-v2:preflight -- 278`、`verify:278`、`verify:276`、`verify:275`、`verify:274`、Kotlin 编译和 `git diff --check` 均需通过。
+- 真机验收：魅族设备分别检查首页→日历、首页→记录的立即帧与延迟帧；确认 Tab 在遮罩下可见、不可点击，Sheet 卡片位于最前；返回后 Tab 恢复点击和无障碍状态。
+- 未完成浏览器 CUA 并排签收前，#278 状态保持 `implemented_pending_visual_signoff`，不得宣称视觉验收完成。
+- 本次收尾已在 v4.2.5（versionCode 126）完成构建并安装到魅族 MEIZU 21（`[序列号已省略]`）；APK SHA-256 为 `E615542DE2572297737B654F57921EDBEBB9516DCD686DCA21DD4CEFDBDCF6E4`，调试签名指纹与既有正式调试包一致。
+- 静态复核结果：`verify:native-ui-v2:preflight -- 278`、`verify:278`、`verify:276`、`verify:275`、`verify:274`、`node --check www/js/app.js`、`git diff --check` 均通过；离线 Kotlin 编译与稳定构建钩子均通过。
+- 真机证据：`debug/278-modal-home.png/xml`、`debug/278-modal-calendar-immediate.png`、`debug/278-modal-calendar-delayed.png/xml`、`debug/278-modal-record-immediate.png`、`debug/278-modal-record-delayed.png`、`debug/278-modal-home-after-record.png/xml`；确认立即/延迟帧的遮罩与 Sheet 层级、Tab 视觉保留、关闭后 Tab 恢复。
+
+#### #278 记录/日历/图标问题复核（2026-09-17，保持 v4.2.5；其中独立弹层宿主方案已废弃）
+
+- **记录弹层与 Tab（历史尝试，禁止复用）**：曾尝试以独立 `NativeModalRegion` 覆盖 `NativeTabRegion`；真机证明第二个全屏 ComposeView 会产生白/灰清屏层，因此该方案已废弃。当前唯一有效方案见“#278 Tab 连续性最终收口”：同一 Compose 树按 `页面 → Tab → 遮罩/Sheet` 绘制。
+- **常驻所有权补强**：记录、日历、删除和计时恢复路径不再发送 `setNativeTabEnabled(false)`；`NativeRoute` 接管经典页面后，Tab 的存在由路由所有权维持，旧的异步 false 请求只能影响交互门禁，不能在弹层关闭后遗留隐藏状态。
+- **日历入场动画**：`NativeCalendarSheet` 复用 WebView `playSheetOpen(..., { noBounce: true })` 的 320ms `cubic-bezier(0.22,1,0.36,1)`，将 `graphicsLayer` 放在 `shadow/clip/background/padding` 之前，使整张卡片（含阴影和背景）从底部整体进入；不增加缩放、回弹或额外遮罩。
+- **关于卡片图标**：`NativeBrandIcon` 改为直接加载 `R.drawable.guanji_icon_01c`（由 `www/assets/guanji-icon-01c.svg` 转录的项目 01-C vector），不再把仅前景切片 PNG 放大后套壳，避免与当前启动器/关于页图标构图不一致。
+- 静态回归：`verify:275`、`verify:278`、`verify:276`、`verify:native-ui-v2:preflight -- 278`、`node --check www/js/app.js` 与 `git diff --check` 均通过；`verify:276` 额外检查弹层期间 Tab 保留、不可交互以及 Sheet `translationZ` 层级。
+- 稳定构建/真机：`tools/build-apk.ps1 -Mode debug -Install` 成功，`com.guanji.app` v4.2.5/versionCode 126 已安装并启动于魅族 MEIZU 21（`[序列号已省略]`）；最新 APK SHA-256 `BE832C3D233E7C8464B9F8547C94BE60EF45B444F1659B4E3581C71E5F509389`，调试签名指纹保持 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`。
+- 最新真机证据：`debug/278-record-immediate-latest.png`、`debug/278-record-delayed-latest.png`、`debug/278-record-latest.xml`（记录弹层/Tab 层级与 Tab 节点保留）；`debug/278-calendar-immediate-final.png`、`debug/278-calendar-delayed-final.png`（日历动画立即帧/稳定帧）；`debug/278-about-latest2.png`（关于卡片使用当前 01-C 图标）。浏览器 CUA 并排签收仍不可用，状态继续保持 `implemented_pending_visual_signoff`。
+
+#### #278 关闭动画补丁（2026-09-17，保持 v4.2.5；历史尝试，已废弃）
+
+- 根因：此前通过 `NativeRegion` 的 modal elevation 覆盖 Tab；弹层关闭时 elevation 回落，硬件合成层发生重排，用户看到 Tab 从隐藏到显现的假动画。该路径与 WebView 只动画 backdrop/sheet、Tab 始终位于底层的规则不等价。
+- 历史修复尝试：曾新增 `NativeModalRegion` 前景 Compose 宿主；该路径随后引发全屏白/灰清屏层，已撤销，不得复用。
+- 保留结论：关闭流程不得在 `record-exit-complete`、`calendar-close` 或保存延迟中冗余调用 `bindNativeTabBridge()`。最终层级和门禁以“#278 Tab 连续性最终收口”为准。
+
+#### #278 白色/灰色全屏背景回归修复（2026-09-17，保持 v4.2.5；同树结论保留，页面宿主抬层方案已废弃）
+
+- **现象**：记录或日历 Sheet 弹出后，Sheet 上方只剩均匀灰色/白色背景，首页卡片消失；当弹层宿主 elevation 降低时又会出现 Tab 压在 Sheet 上方。
+- **根因**：第二个全屏 `ComposeView` 即使设置透明背景，在魅族/Android 的合成路径上仍会先清空自己的全屏画布；半透明遮罩因此合成到窗口底色，而不是合成到首页 `NativeRegion`，造成底层页面被遮挡。这不是 WebView 不支持，而是跨宿主合成边界错误。
+- **修复演进**：记录与日历的 `NativeModalSurface` 改为和 `NativeRegionSurface` 在同一个 `ComposeView` 渲染树中合成，旧 `nativeModalRegion` 仅保留为 `GONE` 迁移探针；阶段性“提升整个 `nativeRegion`”仍会造成 Tab 关闭后单独显现，已由后续固定绘制顺序方案取代。
+- **返回路径**：补充原生日历的系统返回处理；记录/日历关闭均只移除同树局部状态，不隐藏或重新绑定 Tab。
+- **真机证据**：`debug/record-same-tree.png`、`debug/calendar-same-tree2.png`、`debug/record-back-final.png`、`debug/backtest.png`、`debug/record-final.xml`；魅族 MEIZU 21（`[序列号已省略]`）验证首页在遮罩下可见、Sheet 覆盖 Tab、返回后首页与 Tab 恢复。
+- **门禁**：`npm run verify:276`、`npm run verify:278`、`npm run verify:275`、`npm run verify:274`、`npm run verify:native-ui-v2:preflight -- 278`、离线 Kotlin 编译和 `tools/build-apk.ps1 -Mode debug -Install` 均通过；版本保持 `4.2.5` / `versionCode 127`，未引入新 Activity。
+
+#### #278 Tab 连续性最终收口（2026-09-17，保持 v4.2.5 / code 127）
+
+- **用户复现**：记录 Sheet 打开时看似覆盖 Tab，但关闭后仍能看到 Tab 由隐藏态单独显现；此前只验证打开态和关闭终态，未对关闭过程逐帧验收。
+- **根因**：同树合成后仍在弹层生命周期内把整个 `nativeRegion` 从页面层提升到独立 `nativeTabRegion` 之上。页面宿主的不透明背景在打开期间盖住 Tab；关闭完成后 elevation 回落，Tab 才重新露出，因此即使没有调用 `GONE`，视觉上仍等同于隐藏/再显示。
+- **最终结构**：NativeRoute 内按 `页面 → 唯一内联 NativeBottomTabs → NativeModalSurface` 固定绘制。弹层只改变局部遮罩/Sheet 状态，不再修改页面宿主 elevation、Tab 可见性或 Tab 宿主；弹层期间 Tab 保持渲染但禁用点击与无障碍。独立 `nativeTabRegion` 只服务尚未迁移的 WebView route，并与内联 Tab 严格互斥。
+- **红灯门禁**：新增 `npm run verify:278:tab-continuity`，显式阻止 modal-dependent page elevation、Tab visibility rebinding 和缺失交互门禁；`verify:276` 同步检查固定绘制顺序和关闭路径不重绑。
+- **真机逐帧验收**：魅族 MEIZU 21 上的 `debug/tab-continuity-after.mp4` 与 `debug/tab-continuity-after-original-sheet.png` 显示，记录 Sheet 下移时 Tab 在其后方连续揭示，不存在 Sheet 已消失后 Tab 才单独出现的阶段；`debug/tab-continuity-record-open-after.png/xml` 证明打开态 Tab 不进入可操作/无障碍树。日历打开/关闭与 `MainActivity` 前台、无 FATAL/ANR 回归通过。
+
+#### #278 问题复盘与长期规则（2026-09-17）
+
+本节是对 #278 整个原生化过程的收口，不新增产品需求；后续原生任务必须把以下问题当作硬性回归项。
+
+##### 一、问题分类与根因
+
+1. **视觉等价偏差**：页面初版大量依赖 Compose/Material 默认 Typography、Button、Segmented 控件、圆角、阴影和间距，导致字号、字重、颜色、内外边距、卡片尺寸、图标和底部操作区与 WebView 不一致。根因是先实现“能显示”，后补视觉，没有先冻结 WebView 的 CSS/DOM/运行时 bounds 契约。
+2. **宿主与坐标问题**：曾创建独立全屏 Compose 弹层宿主，或通过提升整个页面宿主 elevation 覆盖 Tab，造成白/灰清屏层、Sheet 与 Tab 重叠、页面偏移和关闭时 Tab 假显现。根因是把“视觉覆盖”误实现为“宿主切换”，没有固定单根绘制顺序。
+3. **状态和所有权分散**：记录、日历、Tab、WebView bridge 各自维护可见性与返回状态，旧异步回调可能在弹层关闭后重新绑定或隐藏 Tab。根因是没有把 `NativeRoot` 设为唯一 route/overlay owner，也没有区分“存在于视觉树”和“允许交互”。
+4. **动画/手势不等价**：打开/关闭动画曾只验证终态，未验证过程帧；出现额外回弹、Tab 重新出现、Sheet 高度/阴影不同步、小横杠拖动和返回时序偏差。根因是没有按 WebView 时序采样，也把页面/宿主动画和局部 Sheet 动画混在一起。
+5. **安全区与键盘/底部区域风险**：底部 Tab、固定 footer、Sheet 和 Navigation Bar 曾出现贴底、白条、遮挡或重复消费 inset 的风险。根因是安全区责任没有集中到同一宿主，页面与弹层各自猜测 padding。
+6. **数据与界面边界混淆**：部分修复倾向回退到 WebView 聚合快照或只做 UI 兜底，容易把“无数据、数据不足、读取异常”混为一谈。根因是原生数据模型、快照 revision、加载态和失败态没有在页面契约中明确分层。
+7. **验收和报告失真**：只看打开/关闭最终截图时，无法发现 Tab 在中间阶段被覆盖；历史报告还曾把阶段性“抬高页面宿主”写成最终规则。根因是缺少过程态证据、红灯脚本和“历史尝试已废弃”的报告标记。
+
+##### 二、后续原生化不可违反的规则
+
+- **先测绘，后实现**：先读取 WebView HTML/CSS/JS、选择器、运行时 bounds、字体和动画关键帧，形成页面契约；不得凭感觉反复试 `padding`、固定 dp 或 Material 默认参数。
+- **单一页面宿主**：核心页面、唯一活动 Tab、遮罩和 Sheet 必须归属于同一 `NativeRoot`；不得新增平行 Activity、透明占位壳或第二个全屏 Compose 弹层。
+- **固定绘制顺序**：NativeRoute 必须按 `页面 → 唯一内联 Tab → 遮罩/Sheet` 绘制。弹层只改变局部状态，不改变页面宿主 elevation、可见性、Tab 宿主或路由所有权。
+- **覆盖不等于隐藏**：弹层期间 Tab 保持同一 Compose 节点和 bounds，只关闭点击、焦点、语义和无障碍；遮罩/Sheet 负责覆盖重叠区域。关闭时不得隐藏、重建、换宿主或重新绑定 Tab。
+- **过程态验收**：所有进入/退出、拖动、回弹、键盘、遮罩和返回流程必须采集连续帧；终态截图不能代替动画过程验收。至少检查“打开立即帧、稳定帧、关闭中间帧、关闭完成帧”。
+- **状态单一来源**：页面 route、Sheet stack、Tab interaction gate、dataRevision 和 loading/error 状态由 `NativeRoot`/UseCase 集中管理；组件只消费状态和发送事件，不自行决定宿主显隐。
+- **自定义而非默认样式**：Material3 的 Button、Tab、Slider、Dialog、ripple、scale、spring、elevation 和 typography 必须显式覆盖；只有 WebView 明确存在时才允许引入。
+- **数据状态三分法**：`empty`、`insufficient`、`error` 必须有不同模型和 UI；原生化不能用 WebView 快照掩盖模型读取错误，也不能把正常无数据显示成异常。
+- **文档追溯**：历史失败方案必须标记“已废弃”；最终规则只能引用最新复盘报告与 `docs/REUSE-RULES.md`，实施报告、代码注释和 verifier 不得保留可被误读的旧指令。
+
+##### 三、#278 回归清单（后续每个原生页面必跑）
+
+- [ ] WebView 与 Native 同视口、同主题、同字体缩放、同 fixture 对照。
+- [ ] 页面主标题、正文、辅助文字、按钮、图标、卡片圆角/阴影/间距逐项对照。
+- [ ] 入口、弹层、子页、系统 Back、手势 Back 和来源页返回关系一致。
+- [ ] 打开立即帧、延迟稳定帧、关闭中间帧、关闭完成帧均无白屏、灰屏、黑色覆盖、Tab 假显现或层级跳变。
+- [ ] Tab/Sheet 只有一个活动 owner；弹层期间 Tab 不可点击但仍在视觉树，关闭后无重新绑定动画。
+- [ ] 小横杠拖动、遮罩点击、按钮点击、键盘弹出/关闭和固定 footer 均保持 WebView 行为。
+- [ ] Safe Area/Navigation Bar/IME 只消费一次，窄屏、大字号、魅族手势导航和至少一个其他品牌通过。
+- [ ] 空数据、数据不足、真实错误、加载中、成功、重试、Activity 重建和进程恢复分别验证。
+- [ ] 修改后必须重跑已修问题；不得以新截图覆盖旧失败证据，不得跳过 `verify:278:tab-continuity`。
+
+##### 四、实施完成标准
+
+只有同时满足以下条件，原生任务才可标记完成：
+
+1. WebView 契约、复用映射和迁移台账已更新；
+2. 静态 verifier、编译和稳定 APK 构建通过；
+3. 真机过程态证据通过，而不只是终态截图；
+4. 数据、返回、键盘、安全区和无障碍回归通过；
+5. 新增规则已同步到 `docs/REUSE-RULES.md` 与迁移清单，历史错误方案已标记废弃。
+
+---
+
+## 279. v4.2.6：备份、恢复与 WebDAV 视觉等价迁移 🟡 主体已实施，新增收口待完成
+
+### 父计划与依赖
+
+- 父计划：#271
+- 前置任务：#278
+- 版本执行说明：本补充项仍归属 #279 的职责与验收，但实施时必须沿用当前不低于 v4.2.7 的代码和数据基线，不允许为了匹配条目版本号降级安装、回退 versionCode 或从旧提交重新实现。
+
+### 需求
+
+迁移备份与恢复首页、本机文件管理、服务器备份管理、本机恢复、服务器恢复、WebDAV 配置和导出流程的经典/普通模式；只换 UI，不改协议。玻璃模式继续使用 WebView，不在本条目制作 Native 玻璃。
+
+### 实施清单
+
+1. 按现有父子层级映射到一个 `SheetHost`/route stack，一级任务与二级流程使用各自已确认的动画和返回关系。
+2. 保留最新备份、三条可见历史区、内部滚动、固定 footer、配置未完成态和服务器错误态。
+3. 保留本机/服务器、加密/未加密文件名、BackupEnvelope、未知字段、v3.53/v3.87/v4.1.5 恢复兼容。
+4. WebDAV 未配置时配置页必须处于正确层级，不被遮罩或父级卡片覆盖。
+5. 逐项迁移图标、经典卡片阴影、标题/小字颜色和间距；玻璃可读性沿用 WebView 既有 CSS，不复制为 Native 规则。
+
+### 验收要点
+
+- 所有入口、父子返回、列表滚动和固定操作区与 WebView 等价；
+- 文件数量大时页面不变形，配置页不被遮挡；
+- 上传、下载、恢复、取消、失败重试和回滚不改变数据协议；
+- 加密/明文、本机/服务器和旧版本备份均通过真实文件回归。
+- 玻璃模式备份/恢复仍由 WebView 唯一渲染，未出现 Native 卡片叠层。
+
+### 新增待办：导出、清除与演示数据恢复的 Native UI 收口 ✅ 已实施（破坏性真机动作待用户确认）
+
+#### 问题与决策
+
+经典/普通模式下，“导出数据”“清除全部数据”“恢复演示数据”虽然从 `NativeSettingsSurface` 进入，但当前仍通过 `window.__guanjiNativeSettingsAction` 点击 WebView DOM 入口，再由 `exportBackdrop`、`dialogBackdrop` 或 `restoreBtn` 承接。这会在 Native 正文、WebView 弹层和独立 Native Tab 之间切换宿主，已经造成：
+
+- 导出 Sheet 与底部 Tab 重叠，按钮被遮挡；
+- 清除确认弹窗打开时页面跳回 WebView 顶部，Tab 层级错误；
+- 清除弹窗受 `restoreNativeSettingsAfterDelegatedAction()` 的 20 秒截止时间影响，即使仍处于打开态也会被重新显示的 Native 设置页盖住，看起来像自动消失；
+- 恢复演示数据没有 Native 页面或弹层，而是短暂让出 Native 正文、执行 WebView `renderHome()` 后再恢复，容易产生闪烁、滚动位置变化和错误的页面归属感；
+- WebView 多个 backdrop 可以同时残留，缺少唯一弹层 owner。
+
+本补充项在 #279 内解决上述问题：三项功能的**界面、路由、弹层状态和 Tab 层级改为 Native 单宿主持有**；导出、加密、文件分享、WebDAV 删除、记录清空和演示数据生成协议仍复用现有 JS/Capacitor owner，不在 #279 重写数据协议。为避免 #280/#281 再重写一次调用层，#279 同时建立最终形态的 `DataMaintenanceGateway` 接口，并先接入 `LegacyJsDataMaintenanceAdapter`；#280 冻结和统一接口规则，#281 只替换为 Kotlin 实现并删除旧 JS Adapter。
+
+#### 复用映射
+
+| 需求元素 | 现有规则/组件 | 代码位置 | 采用方式 |
+| --- | --- | --- | --- |
+| 导出任务 Sheet | #279 备份任务 Sheet 的单宿主路由、固定 footer、安全区、入退场动效和状态区 | `NativeRoot.kt`、`NativeBackupSurface.kt`、`www/css/sheets.css` | 在已验收备份实现与新导出实现之间提取小而深的 `NativeTaskSheetScaffold`，只封装宿主、动画、安全区、Header/Footer 和局部状态插槽；不得把 `NativeBackupSurface` 本身当作通用接口，也不得泄漏备份 route/业务状态 |
+| 清除确认弹窗 | `页面 → Tab → 遮罩/Sheet` 固定绘制顺序与 #276 弹层门禁 | `NativeRoot.kt`、`docs/REUSE-RULES.md` 1.3.3 | 复用 NativeRoot 的弹层宿主、遮罩、返回和安全区规则；不把清除 Dialog 塞进备份恢复路由，也不复制第二套弹层宿主 |
+| 导出协议 | `runDataExport()`、`exportEncryptedBackupFile()`、Filesystem/Share | `www/js/ui-sheet.js`、`www/js/secure.js` | 改为显式命令桥调用，不再通过 `exportBtn.click()` 或显示 `exportBackdrop` |
+| 清除协议 | WebDAV 可选删除、`Storage.saveRecords([])`、`afterRecordsChanged()`、AI 缓存失效 | `www/js/ui-sheet.js` | Native 只提交已确认的 `clearLocal/clearServer` 意图；既有 owner 执行并回传成功/失败，不再显示 `dialogBackdrop` |
+| 恢复演示数据协议 | `buildDemoRecords()`、`Storage.saveRecords()`、`afterRecordsChanged()` | `www/js/ui-sheet.js` | 数据协议仍复用 WebView owner，但由 Native 任务 Sheet 承担确认；完成后回传结果和状态，不切换页面宿主 |
+| 恢复演示数据 | #279 统一任务 Sheet、#280 快照 revision 去重和局部状态规则 | `NativeDataMaintenanceSurface.kt`、`NativeSettingsSurface.kt`、`MainActivity.java` | 与导出/清除共用确认 Sheet；执行完成后把状态显示在 Sheet Header 右侧，关闭后保留设置行状态 |
+| 状态回传 | #280 异步回调、revision 去重和局部状态规则 | `MainActivity.java`、`NativeSettingsSurface.kt` | 使用显式 `started/success/error/cancelled` 回调刷新脱敏快照；禁止用 DOM 可见性轮询猜测动作是否结束 |
+| 业务边界 | #279 的 WebDAV/文件/恢复协议复用与 #281 JS 核心收口边界 | `docs/native-rewrite/DATA-PRIVACY-ROUTE-MAP-280.md`、`IMPROVEMENTS.md` | 只复用宿主、视觉、状态和协议入口；导出、清除、演示恢复不共享备份业务模型，实际 JS/Capacitor owner 在 #281 再迁入 Kotlin/Room |
+| 任务上下文 | 已有设置/备份脱敏快照与 revision 规则 | `NativeSettingsSurface.kt`、`NativeBackupSurface.kt`、`MainActivity.java` | 只提供 `hasRecords/recordCount`、`secureMode`、`webDavConfigured/canDeleteServerBackup`、`dataRevision` 等渲染和决策所需事实；原始记录、口令、密钥、WebDAV 凭据和文件内容不得跨入 Compose |
+
+#### 实施清单
+
+1. 先冻结现有备份 Sheet 的同状态回归证据，再从其稳定边界提取 `NativeTaskSheetScaffold`（宿主、底部安全区、固定 footer、入退场动效、返回和局部状态插槽）；同一变更中让备份与导出共同消费该外壳，避免“只抽取不回接”形成第三套规则。备份业务内容继续留在 `NativeBackupSurface`，导出保持独立一级任务。
+2. 在 `NativeRoot` 建立唯一的设置任务状态，例如 `None / Export / ClearConfirm / RestoreConfirm`；导出、清除、恢复 Sheet 与原生设置页、内联 Tab 保持在同一个 Compose 渲染树中。
+3. `NativeSettingsSurface` 的三条入口不再进入 `delegated` WebView fallback：
+   - `export` 打开 Native 导出 Sheet；
+   - `clear` 打开 Native 清除确认 Dialog；
+   - `restore` 打开 Native 恢复确认 Sheet，确认后调用明确的数据命令。
+4. Native 导出 Sheet 1:1 复用 WebView `exportBackdrop` 的标题、说明、加密/明文分流、卡片内容、固定 footer、关闭和系统分享返回行为；只复用任务外壳，不复用服务器备份列表或 WebDAV 管理组件；空记录时沿用“还没有记录可导出”，不打开空 Sheet。
+5. Native 清除 Dialog 1:1 复用 WebView `dialogBackdrop` 的文案、按钮、加密态和“同时删除服务器备份”条件；只复用 NativeRoot 弹层宿主，不复用备份 Sheet 的复杂内容；打开弹窗不得执行清除，只有确认后才调用数据命令。取消、系统返回和遮罩关闭均保持设置页原滚动位置和状态。
+6. 恢复演示数据沿用既有数据协议，但通过统一 Native 任务 Sheet 进行确认；完成后刷新 Native 首页/洞悉/设置快照，失败时保留现有数据并显示明确错误。Sheet Header 右侧显示终态状态，关闭后设置行继续保留状态。
+7. 建立小而深的 `DataMaintenanceGateway`：输入使用封闭的命令类型 `PrepareExport / RunExport / ClearAllData / RestoreDemoData`，输出统一为 `Started / Completed / Cancelled / Failed`；每个命令携带唯一 `requestId`，完成结果携带新的 `dataRevision`，禁止以松散字符串、DOM selector 或页面可见性作为业务协议。
+8. 经典 NativeRoute 下停止为这三项调用 `suppressNativeHome(true)`、`restoreNativeSettingsAfterDelegatedAction()`、`exportBackdrop` 和 `dialogBackdrop`；WebView 直接入口仅为 #281 前的玻璃/旧兼容路线保留，不能被经典 NativeRoute 间接触发。
+9. 增加唯一弹层互斥：导出、清除和其他设置弹层任一打开时，不能再叠加第二个 backdrop/Sheet；返回键优先关闭当前 Native 弹层，再处理设置页和 Tab 导航。
+10. 更新 `DATA-PRIVACY-ROUTE-MAP-280.md`、功能矩阵和迁移台账：将三项从 `webview-fallback` 改为 `native-ui-js-protocol`，并明确 #281 的最终 Kotlin/Room 收口责任。
+11. 增加专项验证脚本和真机证据，阻止仅凭 `verify:279` 静态通过就标记完成；#279 新增项通过前不得完成视觉签收，也不得把 #280 稳定观察视为已覆盖这三条链路。
+12. `LegacyJsDataMaintenanceAdapter` 只能直接调用无 UI 的既有业务函数，不得再执行 `element.click()`、显示 WebView backdrop 或轮询 DOM；Adapter 是迁移期实现，Compose 只依赖 `DataMaintenanceGateway`，不能感知 JS 函数名。
+13. 清除与恢复演示数据增加幂等门：同一 `requestId` 只允许提交一次，运行期间禁用重复点击；Activity 重建、回调重试和快照刷新不得再次执行命令。失败必须保留原数据，只有成功结果才能更新 revision 和可见状态。
+
+#### 验收要点
+
+- “导出数据”最终由 Native Sheet 渲染，Native 调用链中不再点击 `exportBtn`，Sheet 与底部 Tab 不重叠、不穿透，关闭或系统分享返回后仍停留在原设置位置。
+- “清除全部数据”由 Native Dialog 渲染；设置页滚动到中部后打开、等待超过 25 秒、取消或返回，滚动位置均不变化，弹窗不会无操作消失，Tab 不可点击且不会覆盖弹窗。
+- 只有确认清除后才修改数据；WebDAV 未配置/已配置、明文/加密、只清本机/同时清服务器、成功/失败均保持原协议结果，失败不得误报成功或提前清空 UI。
+- “恢复演示数据”由 Native 确认 Sheet 承载，不切换到 WebView、不重建设置页、不改变滚动位置；成功后首页、洞悉、小组件和设置快照一致，失败时旧数据保持不变。
+- 导出覆盖 0 条、明文 CSV、加密备份、系统分享取消/成功/失败；清除与演示恢复覆盖取消、确认、进程重启和旧数据兼容。
+- 真机 UI 树中只有一个活动 Tab 和一个前景弹层 owner；不存在 `Native + WebView backdrop` 同时可见，日志无 FATAL/ANR，经典浅色/深色、窄屏、大字号和魅族 Flyme 均通过。
+- 三项功能复用了 #279 的任务 Sheet/弹层宿主、动画、安全区、footer 和结果回传，不复制第二套通用组件；同时保持导出、清除、演示恢复的业务模型彼此独立。
+- 同一命令在日志和真机回归中只有一个 `requestId`、一次副作用和一次终态回调；旋转/重建、快速双击、回调丢失重连均不得导致重复导出、重复清除或重复恢复演示数据。
+- `NativeTaskSheetScaffold` 回接后，既有备份首页、二级备份卡片、滚动、固定 footer、入退场动画和 safe-bottom 必须全部通过回归；若抽取导致已验收备份视觉变化，立即停止抽取而不是继续修补新外壳。
+
+#### 与 #280/#281 的边界
+
+- #279 解决 Native UI、路由、层级、交互状态和结果回传，并建立 `DataMaintenanceGateway + LegacyJsDataMaintenanceAdapter`；记录权威仍是 Room，但导出/清除/演示恢复的流程编排暂由兼容 Adapter 调用既有 JS/Capacitor 协议。
+- #280 负责把同类原生桥收敛为分领域 Gateway，冻结命令包络、结果包络、revision、幂等和隐私边界，并完成稳定观察；不得再新增直接 `window.__guanji*` 调用。
+- #281 只负责在已冻结 Gateway 后替换 Kotlin/Room/Filesystem/WebDAV Adapter，并在验收通过后删除对应 JS Adapter、DOM 入口和 fallback bridge；不得因为 #279 已无 WebView 弹层，就把旧 JS 核心误判为已删除。
+- 暂无其他待确认问题。
+
+### 实施记录（2026-09-18，Native 数据维护收口）
+
+- 三条入口已从 `NativeSettingsSurface` 接入同一 `NativeRoot` 弹层宿主：导出使用 `NativeDataMaintenanceSurface(EXPORT)`，清除使用 `NativeDataMaintenanceSurface(CLEAR)`，恢复演示数据使用 `NativeDataMaintenanceSurface(RESTORE)` 并在完成后把状态保留到设置行；经典 NativeRoute 不再点击 `exportBtn`、`restoreBtn`，也不再打开 `exportBackdrop`/`dialogBackdrop`。
+- 建立 `DataMaintenanceGateway` 与 `LegacyJsDataMaintenanceAdapter`。Compose 只提交封闭命令和唯一 `requestId`；兼容 Adapter 复用既有 `runDataExport()`、`runClearAllData()`、`runRestoreDemoData()`，结果仅回传状态、错误码和 `dataRevision`，不跨越原始记录、口令、密钥、WebDAV 凭据或文件内容。
+- 清除服务器选项由脱敏设置快照决定；重复提交由 requestId 幂等门阻断；上传/导出/清除/恢复的任务状态与设置页、Tab 和 Sheet 生命周期分离，避免旧的 20 秒 delegated 恢复计时覆盖弹层。
+- 通过 `debug/visual-migration/#279-native-maintenance-evidence.json` 固化真机证据：导出、清除和恢复 Native 面板可见、旧 WebView backdrop 不在 UI 树、Tab 保持底层节点且不可操作、无 FATAL/ANR。为保护真实数据，本轮未提交“清除全部数据”或“恢复演示数据”确认副作用；恢复入口已实际打开统一 Native 确认 Sheet 并走取消路径。
+- 兼容层仍是迁移期实现：#280 负责冻结分领域 Gateway、命令/结果/revision/幂等协议；#281 才替换 Kotlin/Room/Filesystem/WebDAV owner 并删除 JS Adapter。该收口不宣称旧 JS 核心已删除。
+
+### 实施记录（2026-09-18，三类维护 Sheet 视觉统一与遮罩回归修复）
+
+- 导出、清除和演示数据恢复共用 `NativeSettingsSheetPrimitives.kt`：Header、内容模块、Divider/footer、关闭按钮分别复用备份与恢复的 `nativeBackupColors`、`backupModule`、`BackupCloseButton` 和 `BackupFooterButton`；三类任务仍由同一个 `NativeDataMaintenanceSurface` 承载，不复制三套 Compose/Material3 外观。
+- 统一了外层 22dp 圆角/阴影、Header 顶部留白、内容水平内边距、底部安全区、固定 footer 与遮罩层；业务 body 和 Gateway 命令保持各自独立。
+- “恢复演示数据”的状态文字已由标题下方移到标题右侧，保持单行、省略和固定 Header 高度；真机 UI 树确认状态显示为 `恢复演示数据  演示数据已恢复`，关闭按钮位置不受状态更新影响。
+- 真机回归中发现原 scrim 使用 `clickable(enabled = false)` 会让点击穿透到 WebView 旧 backdrop，表现为清除入口打开旧安全弹窗。已改为无 indication 的消费型 scrim，避免 Native Sheet 与 WebView 弹层混合响应；导出和清除面板均确认不出现 `exportBackdrop/secBackdrop/dialogBackdrop`。
+- 静态门禁、Kotlin 编译、APK 安装及魅族真机回归通过：`npm run verify:279`、`npm run verify:native-ui-v2:preflight -- 279`、JS syntax check、`git diff --check`；版本保持 `4.2.7` / versionCode `129`，最终 APK SHA-256 为 `A699F26C7A9FFBC17B7F06D6B737CFD6B0CE6FEA1AA1BC4D119979529D14937A`。
+- 本轮未点击“清除全部数据”或“恢复演示数据”确认按钮，避免破坏真实记录；导出面板取消路径、清除确认面板展示/取消路径、恢复确认 Sheet 展示/取消路径和标题状态同排均已验证。破坏性动作仍按用户确认后的专项验收执行。
+
+### 实施记录（2026-09-18，安全状态与清除收口）
+
+- 定位确认：原先“已加密 → 未加密”被 `secure-mode` delegated 分支转发到 `window.__guanjiNativeSettingsAction`，最终点击 WebView 的 `.seg` 并打开旧 `secBackdrop`。现改为 Native `NativeSecureModeSurface`，取消、遮罩、返回和加载状态均由 `NativeRoot` 持有；只有确认后才调用既有 `secureDisable()`，完成回调后才刷新 `secureMode`。
+- “清除全部数据”继续复用统一 `NativeSettingsSheetHeader` 状态槽：清除前/处理中/完成状态均保持 Header 高度稳定，完成文案为“已清理”，底部不再重复渲染结果；“同时删除服务器备份”选择点使用蓝色 accent。
+- 迁移边界已同步到 `docs/native-rewrite/DATA-PRIVACY-ROUTE-MAP-280.md`：安全确认 UI 已是 Native，解密业务暂由 Legacy JS owner 承担；数据范围选择器仍是明确的 WebView fallback。
+- 静态门禁、Kotlin 编译、统一 APK 构建、安装启动和魅族真机取消路径通过；版本保持 `4.2.7` / versionCode `129`，最终 APK SHA-256 为 `8C62E48DA4753459AD8BB120FE917EA384D20F7DE8FE35A123F109E36B21D00E`。
+- 本轮未提交清除、恢复演示数据或关闭加密确认，避免修改真实数据；证据索引更新于 `debug/visual-migration/#279-native-maintenance-evidence.json`。
+
+### 实施记录（2026-09-17）
+
+- 经典/普通模式已接入单 `MainActivity` / `NativeRoot` 内的备份路由栈：备份首页 → WebDAV 配置 / 本机文件管理 / 恢复来源，子级返回和关闭均回到原设置页，不创建第二个 Activity、Tab 或 Sheet Host。
+- 新增 `NativeBackupSurface.kt`，保留最新备份、三条可见历史区、内部滚动、固定 footer、未配置 WebDAV 和空文件状态；图标改为 Compose Canvas 矢量绘制，避免系统字体/Emoji 在不同设备漂移。
+- 备份上下文、WebDAV 配置、上传、自动同步、删除和恢复动作均复用既有 JS/Capacitor 协议，不复制加密、文件名或 `BackupEnvelope` 规则；玻璃模式继续保留 WebView 唯一渲染。
+- 已通过 `npm run verify:279`、`npm run verify:native-ui-v2:preflight -- 279`、`node --check www/js/app.js`、Kotlin 编译和统一 APK 构建；版本 `versionCode 128 / versionName 4.2.6`，真机 `[序列号已省略]` 安装启动通过。
+- 真机证据索引：`debug/visual-migration/#279-device-evidence.json`。本条目仍需用户对照 WebView 完成最终视觉签收后，才可将台账状态改为 `verified`。
+
+---
+
+## 280. v4.2.7–v4.2.8：默认原生入口、分领域接口收口与跨设备稳定性观察 🟡 接口收口已实施，弹性布局、视觉一致性与完整稳定性观察待收口
+
+### 父计划与依赖
+
+- 父计划：#271
+- 前置任务：#279
+
+### 需求
+
+在所有核心页面的经典/普通模式逐项签收后，将默认 UI 切换到同一 MainActivity/NativeRoot 的原生路线；同时把迁移期散落的全局 JS 函数、DOM 点击、可见性轮询和字符串动作收敛到稳定的分领域 Gateway。玻璃模式在此期间继续走 WebView 兼容路径，待 #281 后从原生经典界面直接重做。
+
+### 实施清单
+
+1. 默认经典 route 进入 NativeRoot；静态说明页和玻璃模式仍可使用 WebView，但玻璃模式不得与 NativeRoute 重叠渲染。
+2. 回退开关只切 UI 实现，不切领域权威；记录写入与统计始终以 Room/Kotlin 为唯一来源，设置、密钥和备份继续遵守各自已确认的安全存储与文件协议。
+3. 覆盖冷启动、热启动、前后台、进程死亡、跨午夜、通知、小组件、WebDAV、AI、低内存和离线。
+4. 覆盖魅族 Flyme、至少一个其他 Android 品牌、API 23+、窄屏、大字号、深色、经典降低透明度、玻璃 WebView 回退、减少动效和手势导航。
+5. 收集 ANR/FATAL、启动耗时、内存、数据库、快照 revision 和 UI route 诊断证据。
+6. 不建立一个包揽所有业务的“大一统 Bridge”。按稳定业务边界定义 `RecordFlowGateway`、`InsightGateway`、`SettingsGateway`、`BackupGateway`、`DataMaintenanceGateway`；各 Surface 只依赖自身 Gateway，公共层只复用 `CommandEnvelope(requestId, dataRevision)` 与 `CommandResult(status, dataRevision, error)`。
+7. 对每个 Gateway 提供迁移期 JS Adapter；Adapter 可以调用既有无 UI JS/Capacitor 协议，但不得点击 DOM、操纵 WebView backdrop、切换页面宿主或用轮询猜测完成状态。所有读取使用异步单次请求和 revision 去重，所有写入使用显式结果回调。
+8. 建立接口所有权矩阵，明确区分：记录持久化权威为 Room；设置分别由 Native preferences/SecureStorage 等对应存储持有；备份由 BackupEnvelope/Filesystem/WebDAV 协议持有；迁移期 JS 仅是流程 Adapter，不等于第二份数据权威。
+9. 先收口 #279 的高风险 `DataMaintenanceGateway` 与 `BackupGateway`，再逐域替换 settings/record/insight 的直接桥调用；一次只迁移一个 Gateway 并运行该域回归，禁止在一个提交中重写全部桥。
+10. 更新 `MIGRATION-LEDGER.md`、route map、功能矩阵和维护手册，逐项登记 Interface、当前 Implementation、#281 目标 Implementation、输入输出、错误码、隐私边界和删除条件。
+11. 将 `GuanjiShadowDatabase` 等仍使用“影子库/不承担权威”的过期注释与 v4.1.3 后 Room 权威事实统一；只修正文档和命名认知，不在 #280 改变已验证的数据格式。
+
+### #280 新增收口：跨设备弹性布局稳定化（基于 #273–#279 已完成资产的修订版） 🆕 待实施
+
+> **2026-09-19 方案边界修订**：#273–#279 已经完成并冻结单一 NativeRoot、Tab 安全区、记录内容滚动与固定 footer、日历明细内部滚动、SettingsMetrics，以及 #279 三类输入型 Sheet 的 IME/键盘适配。#280 不再重复建设这些能力，只补齐统一窗口度量、跨设备约束和自动响应式验收。后续实施必须优先复用既有组件和规则。
+
+#### 已完成资产冻结清单
+
+| 已完成能力 | 来源 | #280 处理方式 |
+| --- | --- | --- |
+| 单一 `MainActivity → NativeRoot → SheetHost` 宿主 | #273、`MIGRATION-GATE.md` | 保持不变，不创建第二宿主 |
+| Tab 宽度、圆角、图标、阴影、动画和底部安全区 | #274、`TAB-CONTRACT-274.md` | 保持视觉契约，只统一页面 Tab reserve |
+| 首页滚动、日历高度边界、当日明细内部滚动 | #275、`NativeHomeSurface` | 保留现有结构，只接入统一可用窗口区域 |
+| 记录内容滚动、固定 footer、抓手、返回、计时首帧 | #276、`RECORD-276-RETROSPECTIVE.md` | 保留现有结构，只清理跨设备高度公式 |
+| 洞悉纵向滚动、AI 卡片局部状态 | #277、`INSIGHT-DATA-SOURCE-CONTRACT-277.md` | 只修窗口和宽度约束，不在 #280 做洞悉改版 |
+| 设置页 `SettingsMetrics` 和共享控件 | #278、`SETTINGS-CONTRACT-278.md` | 保留设计 token，不新建替代 Scaffold |
+| 任务 Sheet、固定 footer、HOME `wrapContentHeight`、列表滚动 | #279、`BACKUP-RESTORE-CONTRACT-279.md` | 只扩展可用高度，不改变已验收卡片几何 |
+| 本机/服务器口令与开启加密的 IME 策略 | #279、`NativeSheetInput`、`REUSE-RULES.md` 8.9 | 冻结并做跨设备回归，不重新实现输入组件 |
+
+#### 触发原因与问题定性
+
+OnePlus PLZ110（1216×2640、560dpi、约 347dp 宽、手势导航）在直接记录与计时首帧中复现了备注区/footer 被压缩、`00:00` 末位换行等问题。OnePlus 上的局部修复已经落地，但尚待统一构建和跨设备签收。进一步只读审计确认，当前剩余问题不是 #279 输入能力缺失，而是部分 Surface 仍使用不同的窗口度量、固定高度或原始 px 传递，导致已完成的弹性组件没有在所有设备上使用同一可用区域。
+
+当前已确认的结构性风险包括：
+
+1. `NativeDataMaintenanceSurface`、`NativeSecureModeSurface`、`NativeSecureEnableSurface` 使用 `bottomInset / 3` 把物理像素换算成 dp；设备 density 不是 3 时必然产生跨机偏移。
+2. `NativeRecordSurface` 仍存在 `sheetMaxHeight - 180.dp` 一类依赖特定页面结构的固定减法；内容、字体或可用窗口高度变化后会压缩备注区或固定 footer。
+3. `NativeBackupSurface`、数据维护和安全输入 Sheet 使用固定 `560/720dp` 最大高度；它们没有统一依据当前窗口、status/navigation/IME insets 和 WebView 视觉上限共同决定可用高度。
+4. `NativeHomeSurface`、`NativeInsightSurface` 仍以固定顶部/底部 padding 代替 `NativeRoot` 的系统栏与 Tab 预留契约；不同品牌、刘海/挖孔、手势/三键导航下可能出现顶部白条、底部遮挡或整体位置漂移。
+5. 页面、Sheet、输入区和 footer 分别消费 `navigationBarsPadding()`、`imePadding()`、原始 px 或手工 offset，存在重复消费与完全未消费并存的风险。
+6. 当前 `verify:276`、`verify:280` 可以在上述风险仍存在时全部通过，说明现有闸门只验证结构、路由和功能接线，没有验证真实跨设备约束。
+
+因此 #280 在进入 #281 前必须新增“跨设备弹性布局收口”阶段；不能只保留 OnePlus 上的两个局部补丁，也不能继续用不同设备逐个追加 `Spacer`、固定 dp、负 offset 或页面专属高度公式。#280 不重做 #279 的输入/IME、Footer 或 Sheet 视觉能力。
+
+#### 复用映射
+
+| 需求元素 | 现有规则/组件 | 代码或文档位置 | 本次采用方式 |
+| --- | --- | --- | --- |
+| 系统栏与窗口度量 | 单 `MainActivity → NativeRoot`、Insets 只消费一次 | `NativeRoot.kt`、`docs/native-rewrite/NATIVE-MIGRATION-CHECKLIST.md` D 节、`RECORD-276-RETROSPECTIVE.md` 3.6 | 由 Root 建立唯一 `NativeWindowMetrics`，页面不再读取原始 px、猜 density 或自行查询系统栏 |
+| 页面正文与底部 Tab 预留 | #274 原生 Tab、#275 首页经典模式 | `NativeBottomTabs.kt`、`NativeHomeSurface.kt`、`MIGRATION-GATE.md` | 由 Root 提供统一 status/top、page horizontal、Tab reserve 和可滚动正文边界；不替换各页面已有结构 |
+| Bottom Sheet 单宿主 | #276/#278 的 `页面 → Tab → 遮罩/Sheet` 固定绘制顺序 | `NativeRoot.kt`、`NativeRecordSurface.kt` | 保留现有唯一宿主和动效，只替换内部测量策略，不新建 Activity、第二 SheetHost 或平行弹层 |
+| 固定 footer 与内容滚动 | #276 记录、#279 备份/任务 Sheet | `NativeRecordSurface.kt`、`NativeBackupSurface.kt`、`NativeSettingsSheetPrimitives.kt` | 扩展现有容器的可用高度参数；Header/Footer 保持原 owner，中间内容按剩余空间滚动，不创建平行 Sheet 组件 |
+| 输入框和键盘 | #279 统一输入型 Sheet、`NativeSheetInput` | `NativeSettingsSheetPrimitives.kt`、`NativeSecureEnableSurface.kt` | 冻结既有路由专属 IME 策略；#280 只做跨设备回归和 Insets 兼容修复，不新建第二套输入组件 |
+| 页面视觉基准 | WebView CSS、#270 bounds、设计 token | `www/css/responsive.css`、`theme.css`、`docs/visual-equivalence/`、`docs/contracts/native-visual-contract.md` | 继续用 CSS/bounds 决定理想尺寸、圆角和间距；把它们转为 min/preferred/max 约束，不把单设备 px 直接写成全局固定 dp |
+| 回归阻断 | `verify:276`、`verify:280`、Native migration preflight | `debug/verify-276-record-flow.cjs`、`debug/verify-280-settings-regression.cjs` | 新增响应式静态闸门、窗口矩阵测试和真机 bounds 断言；任一裁切/重叠失败即阻止 #280 签收和 #281 启动 |
+
+本阶段不新增第二套视觉体系。只有“统一窗口度量、弹性页面/Sheet 容器、响应式验收器”是现有规则无法完整承担的新增基础设施；卡片、字体、颜色、圆角、动画、图标和业务状态继续复用已确认的 WebView/Native 契约。
+
+#### 设计原则与硬边界
+
+1. **固定组件，弹性容器**：图标、圆角、按钮基准高度、视觉间距可以使用来源明确的 dp；页面总高、Sheet 可用高、内容区高度、footer 位置和系统栏间距必须由约束计算。
+2. **视觉等价不等于固定坐标**：在 WebView 基准设备上保持原有位置和节奏；在窄屏、短屏、大字体或不同系统栏设备上允许内容区缩短并滚动，但禁止缩小到裁切、重叠或改变业务层级。
+3. **单点读取、单次消费**：status/navigation/IME insets 只在 Root/统一 Host 转换为 dp；子页面消费已经命名的安全区域，不接收含义不明的 `Int bottomInset`，不再除以常量 density。
+4. **Header/Footer 稳定**：Sheet 的 Header、固定操作区和 safe-bottom 不随正文数据量、loading 或字体变化被压缩；可变内容只在中间滚动区重排。
+5. **文字优先保持语义**：计时数字、关键指标、Tab 标题和操作按钮必须显式定义 `maxLines`、`softWrap`、overflow 与窄屏降级策略；不得依赖首次测量后偶然恢复。
+6. **复用优先**：#279 已确认的 `NativeSheetInput`、双阶段 `BringIntoViewRequester`、LOCAL/SERVER 内部可收缩视口、SECURE_ENABLE 整卡片位移和 `inputFooterGap` 都是冻结规则，不得在 #280 另起实现。
+7. **不通过隐藏问题适配**：不得用隐藏系统栏、降低字体、删减内容、缩短文案、强制横屏、整页缩放或关闭系统字体缩放掩盖布局问题。
+8. **不改变业务和视觉基线**：本阶段只解决窗口约束、Insets、跨设备稳定性和既有组件的边界计算；不修改统计口径、数据协议、导航关系、动画设计、经典模式视觉、#279 IME 策略或玻璃模式范围。
+
+> **组件边界说明**：本节早期草案中的 `GuanjiScreenScaffold`、`GuanjiAdaptiveSheet`、`GuanjiFixedFooterSheet`、`GuanjiImeAwareInputSheet` 不作为新增组件名称。实施时只扩展现有 `NativeRoot`、`SheetHost`、`NativeRecordSurface`、`NativeBackupSurface`、`NativeSettingsSheetPrimitives` 和 `NativeSheetInput`。
+
+#### P0：冻结与建立失败基线
+
+1. #280 弹性布局收口完成前暂停 #281，不继续迁移或删除旧 JS 核心。
+2. 保存 OnePlus 当前问题状态的截图、UI dump、窗口尺寸、density、fontScale、导航模式、status/navigation inset 和前台 route；保留魅族 21 与魅族 18s 的既有通过证据作为非回归基线。
+3. 新增只读响应式审计并先保持红灯，至少识别：
+   - `bottomInset / 固定数字` 等硬编码 px→dp 换算；
+   - 页面级 `可用高度 - 固定 dp` 魔法公式；
+   - 未接入 Root status/navigation 契约的整页 Surface；
+   - 只有固定 `maxHeight`、没有窗口约束的 Sheet；
+   - 外层和内层重复消费 navigation/IME inset。
+4. 当前已知 9 个结构性风险全部登记到 #280 响应式问题矩阵，修复前不得通过调整检查阈值或加入例外白名单变绿。
+
+#### P1：统一窗口与安全区契约
+
+1. 在 `NativeRoot` 建立不可变窗口快照 `NativeWindowMetrics`（最终命名可按项目规范调整），至少包含：
+   - `widthDp`、`heightDp`、`density`、`fontScale`；
+   - `statusTopDp`、`navigationBottomDp`、`imeBottomDp`；
+   - `isImeVisible`、方向、手势/三键导航可观测信息；
+   - 当前 Tab 预留高度和页面可用内容矩形。
+2. Root 接收 Android 原始 px，并使用当前 `Density` 转换一次；页面、Sheet 和组件只接收明确的 dp 字段或统一 `WindowInsets` 策略。
+3. 删除所有 `/ 3`、按品牌判断、固定状态栏高度和重复 `navigationBarsPadding()/imePadding()`；确有组件自身需要 inset 时必须在契约中登记 owner。
+4. 增加单位测试：560dpi 下 56px 导航栏必须转换为 16dp；其他测试 density 也必须按比例稳定，防止再次写入常量除数。
+
+#### P2：扩展既有布局原语（不建立平行组件）
+
+1. **扩展 `NativeRoot` 窗口快照**：统一提供窗口宽高、density、fontScale、status/navigation/IME Insets、Tab reserve 和可用内容矩形；不替换现有宿主。
+2. **扩展现有 SheetHost 与 `NativeSettingsSheetPrimitives`**：增加当前窗口最大可用高度和内容视口边界；保留 Header、Footer、动画、遮罩、圆角、阴影和路由。
+3. **保留既有 Footer/滚动关系**：记录、备份、设置和数据维护继续使用各自已验收的固定 Footer 与内部滚动；只把可用高度从统一窗口快照传入，保留 `min-height: 0` 语义。
+4. **冻结 #279 输入型 Sheet**：`NativeSheetInput`、单次外层 `imePadding`、LOCAL/SERVER 内部可收缩滚动和 SECURE_ENABLE 整卡片上移均不重做；#280 只做跨设备回归和 Insets 兼容修复。
+5. **复用已有单行关键文本规则**：沿用 OnePlus 修复中的 `maxLines = 1`、`softWrap = false` 和有限字号收缩，用于 `00:00`、统计数字、徽标和关键按钮；不建立全局重新缩放字体系统。
+
+#### P3：按风险逐域迁移现有 Native 页面
+
+1. **记录域（最高优先级）**
+   - 移除 `sheetMaxHeight - 180.dp` 等页面级固定减法；
+   - 时间页、直接填写、补记详情、编辑详情统一为 Header/可滚动内容/footer 约束；
+   - 计时运行页和结束页使用真实 status/navigation 安全区；`00:00`、长时计时和按钮在约 320–412dp 宽度均不换行、不裁切；
+   - 回归备注、15 项状况、长自定义标签、键盘、日期/时间选择和返回来源。
+2. **数据维护与安全域**
+   - `NativeDataMaintenanceSurface`、`NativeSecureModeSurface`、`NativeSecureEnableSurface` 只替换原始 px、`bottomInset / 3` 和固定高度上限为统一 metrics；
+   - 导出、清除、恢复演示数据、开启/关闭加密复用 #279 已确认的 Native 调用链、临时反馈生命周期和输入策略；
+   - 不新建输入 Sheet，不改变取消/确认和真实数据 owner。
+3. **备份与恢复域**
+   - 一级首页、服务器备份、本机文件、恢复来源、本机恢复、服务器恢复和 WebDAV 配置继续复用 #279 已验收的同一 Sheet 外壳和输入规则；
+   - 只将固定 `560/720dp` 上限与真实可用窗口结合；历史列表继续内部滚动，HOME `wrapContentHeight` 和 16dp 节奏保持不变；
+   - 保留当前动画、路由、Gateway、备份协议和破坏性操作边界。
+4. **首页与日历域**
+   - 首页和日历不新建 Scaffold；只让现有页面消费 Root 提供的 status top、Tab reserve 和可用内容区域；
+   - 三项顶部数据、趋势切换、环形图、最近记录和关于文案在窄屏/长文案下保持层级；
+   - 日历 Sheet 根据可用高度分配月历、当日明细滚动区和底部按钮，不重复消费 navigation inset。
+5. **洞悉与我的域**
+   - 洞悉页只接入统一 status/top 与 Tab reserve；长 AI 正文、共同出现组合和建议卡片继续使用已有内容滚动；
+   - 我的页保留 `SettingsMetrics` 视觉节奏，只接入统一窗口契约；长标题、状态小字、API 设置和二级 Sheet 纳入大字体与窄屏回归。
+6. **Bottom Tab 与 Root**
+   - 保留 #274/#278 已确认的宽度、阴影、图标、滑块和动效；只统一页面为 Tab 预留空间的方式；
+   - 弹层期间仍保持同一 Tab 节点位于遮罩下，不因响应式改造重新引入隐藏/重建或第二宿主。
+
+#### P4：响应式自动闸门
+
+1. 在 `verify:280` 或其前置专项脚本中加入静态硬失败：
+   - Native Surface 出现固定 density 除数；
+   - 出现未登记的 viewport 魔法减法；
+   - 整页 Surface 未使用统一 Root metrics；
+   - 输入型 Sheet 未按 #279 路由契约使用既有 IME 策略，或错误地同时使用整卡片 offset 与内部 IME padding；
+   - footer 位于正文滚动容器内部或与正文共同重建；
+   - 新增绕过公共原语的页面专属安全区实现。
+2. 建立 Compose bounds/截图矩阵，至少覆盖：
+   - 宽度：320、347、360、393、412dp；
+   - 高度：短屏、当前 OnePlus 约 754dp、常规和高屏；
+   - fontScale：1.0、1.15、1.30；
+   - 导航：手势、三键；
+   - IME：关闭、打开并聚焦最低输入框；
+   - 主题：浅色、深色、降低透明度；玻璃仍按既定 WebView 回退边界验证；
+   - 数据：空、普通、密集、长文案、多位数字。
+3. 自动断言至少包括：
+   - 所有可见节点 bounds 位于窗口/Sheet 可视范围内；
+   - Header 与 footer 不相交，正文不覆盖 footer；
+   - footer 底边位于导航安全区之上，Tab reserve 只计算一次；
+   - Sheet 不全屏化、不悬空、不超出顶部安全界限；
+   - 关键单行文字不换行、不裁切；允许换行的正文没有截断；
+   - LOCAL/SERVER/SECURE_ENABLE 按 #279 路由专属 IME 契约验证，焦点字段与主要确认按钮可达，关闭键盘后恢复稳定位置；
+   - 相同状态在窗口变化前后 route、dataRevision 和业务状态不改变。
+4. 响应式闸门必须与 `verify:274/275/276/277/278/279/280` 同时通过；不得用“主设备截图看起来正常”替代矩阵结果。
+
+#### P5：真机验证矩阵与数据保护
+
+1. 魅族 21：作为既有视觉与动画回归基准，覆盖首页、记录、日历、洞悉、我的、备份和 #279 输入型 Sheet；输入页面只做回归，不重新调参。
+2. OnePlus PLZ110：作为约 347dp 窄屏/560dpi/手势导航主力机，重点验收已完成的记录局部修复、Footer、`00:00` 和现有 #279 输入规则；真实数据测试前继续确认 WebDAV 备份可恢复。
+3. 魅族 18s/API 33 或模拟矩阵：覆盖旧系统/API、深色、三键导航、冷启动恢复以及 #279 输入规则的非回归。
+4. 主力机禁止执行清除全部数据、覆盖恢复或会改变真实记录的 fixture；破坏性流程使用隔离设备/测试包/可恢复 fixture，只验证主力机的展示、取消和路由。
+5. 每个证据必须记录设备、分辨率、density、fontScale、导航模式、系统栏 Insets、IME 状态、版本、route、dataRevision、截图和 UI bounds。
+
+#### P6：与视觉等价迁移的关系
+
+1. 视觉参数继续以 v4.1.5 WebView、#270 测绘和已签收 Native 页面为基准；响应式修复不得借机重新设计卡片、字体、动画或信息层级。
+2. 基准窗口中误差继续遵循共享组件 ≤1dp、页面容器 ≤2dp、动画关键帧 ≤3dp；非基准窗口重点验证约束关系、可达性和不裁切，不要求把所有元素固定在同一物理坐标。
+3. 如果 WebView 本身在某个极端宽高/fontScale 状态也存在裁切，先登记为基线缺陷；不得为了“1:1”把已知裁切复制到 Native，也不得未经确认自行重做视觉。此类情况单独回到 #280 评审。
+
+#### P7：完成条件与 #281 阻断关系
+
+只有同时满足以下条件，#280 才能由 `implemented_pending_stability_signoff` 改为 `verified`：
+
+- 已知 9 个结构性红灯清零，且不是通过白名单或放宽阈值消除；
+- 所有已原生化核心页面接入统一窗口/Insets 契约；已完成的页面容器、Footer、Tab、SettingsMetrics 和 #279 输入组件保持原 owner，不被平行组件替换；
+- OnePlus 当前两个问题以及首页白条、深色背景、Sheet/footer/IME 历史问题均进入 Regression Checklist；
+- 自动窗口矩阵、现有视觉闸门、领域功能测试、构建和无 FATAL/ANR 检查全部通过；
+- 魅族与 OnePlus 至少各完成一轮真机布局验收，破坏性流程在隔离环境完成；
+- `MIGRATION-LEDGER.md`、`NATIVE-MIGRATION-CHECKLIST.md`、`docs/REUSE-RULES.md` 和 #280 实施报告同步记录冻结资产、唯一 owner、适用边界和证据路径；
+- 在不修改 Compose 调用方布局的前提下，#281 可以仅替换 Legacy JS Adapter 为 Kotlin/Room/Filesystem/WebDAV Adapter。
+
+任一条件未满足时：
+
+- #280 保持待收口；
+- 不进入 #281；
+- 不发布“原生化稳定完成”的发行版；
+- 新发现的同类设备问题继续归入 #280 响应式问题矩阵，不另起分散编号。
+
+#### #280 新增阻断分支：跨设备视觉一致性收口（VC0–VC6） 🆕 执行中（VC0–VC3 已完成；VC4–VC6 待实施）
+
+##### 2026-09-30 审查修订 R1（ideas-contract/v2）
+
+- 条目编号：`#280/VC0–VC6`（沿用 #280，不新增待办编号）；契约修订：`R1`。
+- 决策状态：`confirmed`；实施状态：`in-progress`；验证档位：`native-visual`。
+- 用户目标：完成 VC3-R2 后续的跨设备视觉一致性收口，并确保 VC4–VC6 不重复 VC3 的证据、设备、状态和执行器错误。
+- 已确认决策：VC0–VC3（包括 VC3-R2 可变字体单一路径）已完成；VC4–VC6 尚未实施；#280 总计划仍未完成，不能以 VC 分支进度替代 P0–P7/R9-A 收口，也不能进入 #281。
+- 实施范围：只更新 VC4–VC6 的输入基线、阴影实验、几何保护、跨设备证据协议、自动闸门和最终签收条件；VC0–VC3 的历史结果作为只读证据保留。
+- 非目标：不改 App 代码、字体、版本、APK、数据或 UI；不重做 P0–P7、R9-A、Sheet/IME/Tab；不恢复 API26 WebView fallback 测试；不把 VC3 旧静态字体计划继续当成待实施工作。
+- 依赖：VC0–VC3 已签收；VC4 启动前完成新基线与契约预检；#280 P0–P7/R9-A 仍按原独立验收条件收口。
+- 当前事实与证据：本地 `IMPROVEMENTS.md` 的 VC3-R2 收尾记录、`docs/native-rewrite/VC3-R2-VARIABLE-FONT-280.md`、实施报告及 `docs/REUSE-RULES.md`；Dify 检索成功但返回了旧静态字体方案摘要，因此仅作历史索引，当前状态以本地 VC3-R2 签收记录为准。
+- 历史问题防复发：保留每次失败 Run；版本/SHA/fixture 不匹配不合并；区分产品失败与证据/环境失败；隔离 QA fixture 并保护真实数据；分批两设备采集时不声称同时在线；临时设备状态必须逐项恢复；验证器必须拒绝旧报告、缺证据和硬编码通过。
+- 复用映射：`www/css/theme.css` 的 `--shadow-1..4` 与实际 selector → VC4 阴影输入；VC3-R2 `NativeTypography` → 唯一字体 owner；`NativeWindowMetrics`、R9 Footer/唯一滚动区和 #279 输入型 Sheet → 几何/IME 冻结基线；按需新增的 NativeShadow 只能负责绘制。
+- 实施清单：VC4 建立 post-VC3 基线并按组件族选型；VC5 运行几何/功能回归，不重做弹性布局；VC6 先用负例证明验证器 fail-closed，再分批完成三设备同态视觉矩阵和独立人工复核；最后再与 #280 P0–P7/R9-A 独立结果合并签收。
+- 验收契约：每个视觉样本须绑定相同 APK SHA、fixture 内容哈希、状态、route、theme、fontScale/字体轴和采样时点；保留既有视觉阈值；三设备视觉与路由/生命周期结论分开；VC6 自动闸门、人工复核及 #280 弹性布局签收均通过，才允许 #280 整体完成。
+- 禁止事项：不得将旧 4.2.10 红灯当作当前基线；不得用不同设备真实记录冒充同 fixture；不得修改用户真实数据；不得因阴影/字体改动修改 Insets、Footer、Sheet 高度或滚动 owner；不得放宽阈值/设备白名单/复用旧报告；不得重新引入 API26 WebView fallback 验收。
+- 文件范围：本轮只修改本文件 `IMPROVEMENTS.md`；后续实施如需更新视觉契约或验证器，必须按对应实施契约另行限定文件白名单。
+- 停止条件：构建/版本/SHA、fixture 内容哈希、主题、路由、fontScale/字重、设备状态任一不匹配；用户数据可能被写入；恢复设备状态失败；或 VC4 改动影响已冻结的几何关系时，停止并保留失败证据。
+- 回滚路径：撤回当前 R1 计划增量即可；不删除、覆盖或改写 VC0 红灯、VC3-R2 及既有实施报告。
+- 阻塞决策：暂无。性能/包体数值在无用户确认预算前只记录为观测基线，不擅自新增数值门槛。
+
+本修订优先于本分支内与之冲突的旧计划文字；旧方案及运行记录保留为历史，不改写历史结果。
+
+##### VC3 复盘形成的后续硬规则
+
+1. **证据必须绑定当前构建**：每份 VC4–VC6 报告均记录版本、versionCode、APK SHA-256、设备/API/density/fontScale/字重设置、主题、导航模式、路由、fixture ID 与内容哈希、dataRevision、脚本版本、采集时间。只要 APK SHA 或 fixture 不同，就不能合并成同一视觉矩阵。
+2. **分清测试结论**：路由/生命周期矩阵只能证明 Native 页面可达和状态连续，不能替代同 fixture 的视觉等价；性能观察、人工视觉复核、自动像素/Bounds 闸门也分别报告，不互相代替。
+3. **失败分类要准确**：执行器启动错误、UIAutomator idle 超时、截图缺失、测试选择器错误等先归类为证据/环境失败，不报成产品回归；修复采集器后保留原始失败报告并生成新 Run，不覆盖旧证据。产品断言失败仍为阻断，不得降级成环境问题。
+4. **同态与隐私**：三设备用于视觉比较时必须使用相同、隔离、可复现的 QA fixture；不得把每台设备自己的真实记录称为同 fixture，也不得对主力机真实记录执行增删改、导入/恢复/清除。最多两台设备可同时连接时，分批采集并用同一构建/fixture manifest 合并，不能声称设备同时在线。
+5. **采集器健壮性**：只保存批准的证据；临时路由、fontScale、计时状态和 ADB 转发必须在 `finally` 清理，并逐项验证。一个清理检查失败不能跳过其他独立清理。恢复失败即停止，不继续下一设备。
+6. **状态与闸门一致**：JSON/报告的 `status`、`nextGate`、版本和证据路径必须互相一致；验证器要拒绝旧版报告、缺失报告、空证据、fixture/SHA 不匹配及被硬编码为通过的条件。VC3 的 API26 WebView fallback 继续为“不适用/不纳入验收”；API26 Native 页面和可变字体运行验证保留。
+
+> 本分支属于 #280，不创建新的顶级编号，也不替代 #280 弹性布局主线 P0–P7 的独立验收；其签收状态以父计划最新台账为准。它与弹性布局形成两个必须同时通过的验收维度：弹性布局负责“位置、尺寸、滚动和安全区关系成立”，本分支负责“字体、字重、阴影、边框和视觉重量在不同设备上保持一致”。
+
+##### 目标与边界
+
+目标：在相同 APK、fixture、主题、route、dataRevision、fontScale 和字重设置下，魅族 21、魅族 18s、OnePlus PLZ110 的经典 Native 页面具有一致的文字层级、字重、baseline、卡片阴影、边框、圆角和视觉重量；不同屏幕尺寸只发生合理的响应式宽高和滚动区域变化。
+
+本分支不处理：
+
+- 玻璃模式重构；
+- v4.3 洞悉信息架构改版；
+- 统计、备份、AI、Room、Gateway 或迁移协议；
+- 重新实现 Sheet、IME、Tab 或弹性布局；
+- 强制所有设备使用相同物理像素坐标；
+- 关闭用户的 fontScale 或无障碍加粗设置。
+
+##### 基线状态与边界
+
+- `4.2.10/code132` 的 VC0 红灯（标题字形覆盖差异 `7.95%`、阴影轮廓差异 `15.11%`）是不可变历史基线，只用于说明 VC 分支的起因；不得将其与 VC3-R2 之后的构建混为同一轮，也不得覆盖原始报告。
+- VC3-R2 已于 2026-09-29 签收：当前基准为 `4.2.12/code134`、minSdk 26、Noto Sans SC Sans2.004 可变字体单一路径；两台魅族与 OnePlus 的 VC3 字体复核及三设备 P5 路由/生命周期合并验收通过。详见 `docs/native-rewrite/VC3-R2-VARIABLE-FONT-280.md` 与 VC3-R2 收尾报告。
+- VC3-R2 的路由/生命周期报告不等于相同数据 fixture 的视觉证明。VC4 开始前，必须从已签收报告和当前 APK 重新核对构建身份，并为 VC4–VC6 建立新的 post-VC3 视觉基线；每台设备必须记录相同 APK SHA-256 和 fixture 内容哈希。
+- 当前阴影跨设备差异仍需用 post-VC3 基线实测确认；不得把旧 `7.95%/15.11%` 数字描述成当前构建的实测值。
+- 记录详情三设备 Footer、卡片底部和安全区 bounds 的通过结论仅属于 R9-A 弹性布局专项，不代表 VC4–VC6 或 #280 完成。
+
+##### 复用映射与新增例外
+
+| 需求 | 既有资产 | 本次处理 |
+| --- | --- | --- |
+| WebView 字体/阴影基准 | `www/css/theme.css` 的 `--font`、`--shadow-1` 至 `--shadow-4` | 作为唯一视觉来源，不凭设备截图猜值 |
+| 视觉等价闸门 | `MIGRATION-GATE.md`、`NATIVE-MIGRATION-CHECKLIST.md`、#270 测绘 | 继续使用同视口、同状态、同 fixture 对照 |
+| 窗口与安全区 | `NativeWindowMetrics` | 保持唯一 owner，不因视觉修复重新计算 Insets |
+| 记录详情 | `SubcomposeLayout`、选项区唯一滚动、Footer 固定、20dp 底部节奏 | 冻结，不用字体/阴影改动掩盖布局问题 |
+| 设置/备份/输入 Sheet | `SettingsMetrics`、#279 `NativeSheetInput` 和统一 Sheet primitives | 只替换渲染 token，不新建 Sheet/IME 实现 |
+| Tab | #274 `TAB-CONTRACT-274.md` 与现有 Native Tab | 初期冻结，只有专项证据失败才单独迁移 |
+
+VC3-R2 已建立并签收 `NativeTypography`，它是当前字体、变量字重轴和语义 TextStyle 的唯一 owner；VC4 不再新建或复制字体体系。当前若源码仍没有稳定的 CSS 多层阴影 Native owner，VC4 才允许新增最小 `NativeShadowTokens` / `NativeShadow`。该 owner 只承接 CSS 阴影映射，不得复制颜色、间距、圆角或业务样式规则，也不得改变布局测量。
+
+##### VC0：冻结成果并建立红灯基线
+
+1. 固定当前 `4.2.10 / code132` 作为内部视觉基线，不改变版本号。
+2. 为三台设备登记分辨率、density、fontScale、`font_weight_adjustment`、API、主题、导航模式、route、dataRevision、fixture、截图和 UI dump。
+3. 把现有两设备字体/阴影脚本扩展为三设备同状态检查，保留失败证据；不得通过放宽阈值或设备白名单变绿。
+4. 在视觉试点前运行 `verify:274–280`、记录详情布局、IME、路由和现有回归闸门，任何既有红灯都阻断后续渲染迁移。
+
+##### VC1：建立视觉契约
+
+新增 `docs/native-rewrite/CROSS-DEVICE-VISUAL-CONTRACT-280.md`，登记：
+
+- `pageTitle`、`cardTitle`、`body`、`secondaryBody`、`meta`、`button`、`metric`、`badge`、`input`、`tab`、`timer` 等字体角色；
+- 每个角色对应的 WebView selector、font-size、font-weight、line-height、letter-spacing、颜色 token、Compose 当前实现、目标 token、换行规则；
+- `shadow-1` 至 `shadow-4` 的 offset、blur、spread、alpha、浅色/深色值、圆角和使用组件；
+- 必须一致的边距、padding、圆角、边框、Header/Footer、按钮高度和 Sheet 悬浮距离；
+- 允许自适应的卡片总宽度、Sheet 高度、滚动视口和正文换行高度。
+
+页面尺寸不同不等于视觉回归。若固定组件关系正确而总卡片宽度随 viewport 变化，应判定为正常响应式行为。
+
+##### VC2–VC3：已完成并由 VC3-R2 收口（旧计划保留为历史）
+
+- VC2 的候选评估、字体来源/许可证/兼容性审查已收口；后续实现选择并签收的是 VC3-R2 的单一 Noto Sans SC Sans2.004 可变字体路径。VC2 原有“静态字体 + API23 fallback”的文字已被用户确认的 VC3-R2 决策替代，不再作为待实施或验收条件。
+- VC3 T0–T3 与旧静态字重阶段的报告保留为历史证据；VC3-R2 重新验证并签收当前字体路径。不得再要求 API24/25 安装当前版本或 API26 WebView fallback；API26 Native Compose/可变字体仍属于最低系统运行验证。
+- VC3-R2 的应用内许可证、NOTICE、包体/冷启动/内存核验已经在 2026-09-29 收尾报告中完成。未来发布时仍按发布流程随 APK 提供 `THIRD_PARTY_NOTICES.md`，这不是 VC4 阴影实现的重复工作。
+- 本小节仅纠正 VC 计划当前状态，不改写 VC2/VC3 的历史实施记录；VC4 开始后可复用 VC3 的字体资产、哈希、许可证据与 `NativeTypography`，但视觉截图/bounds 必须重新按 post-VC3 基线采集。
+
+##### VC4：确定性阴影与边框渲染（VC3 后基线）
+
+实施前置：先把 `docs/native-rewrite/CROSS-DEVICE-VISUAL-CONTRACT-280.md` 中的字体事实更新为 VC3-R2 的变量字体/轴映射与当前 Typography owner，并冻结新的 post-VC3 基线 manifest；记录当前 APK SHA、QA fixture 内容哈希、theme、route、fontScale/字体轴、导航模式及设备渲染参数。旧 VC0 报告只读保留。
+
+1. 从 WebView `shadow-1` 至 `shadow-4` 及实际组件 selector 建立输入映射；明确每层背景/边框/内容遮罩，按 density 转换到 dp，并使用固定圆角与背景，避免以整卡颜色/文字差异污染阴影测量。
+2. 按组件族逐项比较 Compose elevation、Canvas/离屏参数化阴影、alpha mask/NinePatch；记录裁切边界、blur 扩散、偏移、alpha、角部连续性、浅/深色和动画帧稳定性。Tab 不混入普通卡片实验，最后单独决定是否需要专门渲染。
+3. 每次只试一个组件族；先首页常规卡片，再记录详情 Sheet、设置、备份/任务 Sheet、洞悉卡片。每批用相同 fixture/状态、相同 APK 构建和三设备分批证据复核；候选原型不等于通过或选型决定，选型依据和不采用方案都要记录。
+4. 优先复用现有 CSS token、Compose clipping/shape 与页面组件；如现有代码没有统一 Native 阴影 owner，可新增最小 `NativeShadowTokens/NativeShadow`，但不复制颜色、间距、圆角或业务样式，不声称该 owner 已存在。
+5. 阴影/边框只影响绘制，不参与测量；不得通过增加 padding、改 `NativeWindowMetrics`、Sheet 高度、Footer reserve 或 Tab 几何来补偿渲染。每个组件族完成后立即运行 #274–#280 与 R9-A 回归，失败只回退当前渲染批次。
+6. APK 增量、冷启动、帧时间、内存及动画稳定性先作为带设备/构建标识的观察数据记录；本计划不自行编造数值性能预算。发现用户可感知卡顿、崩溃、资源失控时停止该候选并提交决策，不以视觉分数覆盖稳定性问题。
+
+##### VC5：几何保护与回归复核（只验证，不重做弹性布局）
+
+固定关系必须保持：
+
+- 共享组件 bounds 误差 ≤1dp；
+- 页面容器关系误差 ≤2dp；
+- 记录详情 Footer 到卡片底部继续为 `20dp ±2dp`；
+- 卡片外部继续保持导航安全区加 `12dp` 悬浮距离；
+- Header、正文和 Footer 不相交；
+- Sheet 不因阴影扩大实际测量高度；
+- 选项区仍是唯一滚动 owner，Footer 不参与滚动。
+
+允许差异：
+
+- 卡片总宽度随屏幕宽度变化；
+- Sheet 总高度随可用窗口变化；
+- 正文换行导致的内容高度变化；
+- 选项滚动视口随屏幕高度变化。
+
+如果字体或阴影改动使 R9-A bounds 失败，立即回退本批渲染改动，不能修改 `NativeWindowMetrics`、Footer、Sheet 高度或滚动 owner 来掩盖。VC5 复测范围还必须覆盖 VC3 后当前真实实现：可变字体所有登记的 `wght` 轴值、API26 Native 首开/进程重建、fontScale 1.0/1.15/1.30 与用户无障碍设置；VC5 不测试 API26 WebView fallback。VC5 通过只能说明视觉渲染没有破坏几何与现有功能，不替代 P0–P7/R9-A 独立签收。
+
+##### VC6：视觉自动闸门与三设备签收
+
+1. 新增或修订 `npm run verify:280-rendering`，并由 `npm run verify:280` 统一调用；先验证闸门本身对合成负例 fail-closed（旧版本、APK SHA 不同、fixture 内容哈希不同、route/state/theme/fontScale 不一致、缺证据、证据路径失效、空/未完成状态、误报 `sameFixture` 均须失败）。不得通过硬编码状态、旧报告或把采集器失败标成通过。
+2. 视觉矩阵每个样本都检查三设备**相同 APK SHA、相同 QA fixture 内容哈希、相同 fixture state、route、theme、fontScale/字体轴、导航模式和采样时点**下的：
+   - 字体覆盖与文字 bounds；
+   - baseline、字宽、行高和关键单行文本；
+   - 卡片/Sheet/Tab 阴影轮廓；
+   - 圆角、边框和实底颜色；
+   - Header/Footer/Sheet/Tab 叠加关系。
+3. 必须将“视觉等价矩阵”和“路由/生命周期矩阵”分开报告；后者不得携带或暗示 `sameFixture`。严格视觉模式需匹配 fontScale、字体轴、主题和状态；无障碍模式保留用户设置，只检查无裁切、无重叠、信息层级和操作可达。
+4. 保留既有已确认阈值：字形覆盖差异 ≤5%、baseline ≤1dp、阴影轮廓差异 ≤10%、关键单行文本零裁切/零异常换行、Footer/Tab/Sheet 重叠为 0、新增 FATAL/ANR 为 0。不能因新字体/新阴影而临时放宽阈值；如果度量算法确需修订，必须另留对照和审查记录，不得把算法变化伪装为产品变绿。
+5. 三台设备最多同时连接两台时，按设备批次采集；每批输出不可变 manifest，最终合并器核对同一 APK SHA、fixture 哈希和所有必需设备，不得要求同时在线，也不得把不同 APK/fixture 的跨批结果拼成一轮。
+6. 自动闸门通过后仍需独立人工复核代表性裁图；自动通过不能替代裁切、字形、阴影边缘与可读性的人工验收。执行器 `setup refresh had errors` 或工具超时作为 `blocked-environment/evidence-failure` 单独记录并重试/修复采集链路，不算产品通过或失败；恢复后必须产出新的有效 Run。
+7. 不得用放宽阈值、删除失败设备、白名单、旧版本报告或主力机主观截图替代矩阵结果。
+
+##### 性能、体积与回滚
+
+- VC3-R2 已完成的可变字体包体、冷启动/内存及许可/NOTICE 评估引用其已签收报告，不在 VC4 重复执行或误报待完成；VC4 对新增阴影实现只记录新增 APK 体积和实测渲染/动画性能，先作为观测数据，除非用户另行确认预算，不设新数值门槛。
+- 字体不允许运行时联网下载；阴影资源如使用位图/离屏缓存，必须有明确生命周期与复用策略，不得在每次重组中创建大型 Bitmap 或重复离屏绘制。
+- 每个阴影组件族独立改动、独立回归；出现几何或功能回归时只回退当前渲染批次，保留失败 manifest 与旧实现证据。
+- 不设置运行时设备特判；无法稳定实现的阴影先保留旧实现并保持对应视觉闸门红灯，不伪装为完成。
+
+##### 与 #280、#281 的完成关系
+
+只有同时满足以下条件，#280 才能从 `implemented_pending_stability_signoff` 变为 `verified`：
+
+- P0–P7 弹性布局和 R9-A 通过；
+- VC0–VC6 视觉一致性和 R9-B 通过；
+- 三设备同 fixture 的字体、阴影、卡片关系和功能回归通过；
+- #274–#279 的 Tab、动画、Sheet、IME、记录详情和备份规则继续通过；
+- 字体许可证与第三方声明完整；
+- VC3-R2 的字体/许可/性能既有证据保持可追溯；VC4–VC6 新报告绑定 post-VC3 构建身份与相同 fixture，不混用历史静态字体结果；
+- 无新增数据、路由、Gateway、FATAL、ANR 或明显性能回归；
+- #281 可以在不修改 Compose UI、布局和视觉 token 的前提下继续替换底层 Adapter。
+
+任一条件未满足时，#280 保持待收口，不能进入 #281，也不能发布“原生化稳定完成”的发行版。
+
+### 验收要点
+
+- 用户流程不依赖 WebView；WebView 仅作为迁移期间的参考/测试入口，不把 API26 WebView fallback 纳入验收。VC6 只检查 Native 生产路由与视觉矩阵；任何残留 WebView 用户路由须单独标记为迁移缺口，不能假定“玻璃用户兼容路径”仍是已确认产品决策，玻璃原生重构按既定后续计划处理；
+- 回退不会生成第二份数据、重复记录或不同统计；
+- 连续两轮稳定性验证内无阻塞级数据、生命周期、视觉或设备兼容问题：至少一轮覆盖同机冷/热启动、跨进程和破坏性操作，一轮覆盖第二机型或 API 兼容矩阵；不强制额外发布两个公开版本；
+- 经典 NativeRoute 不再通过 `element.click()`、WebView backdrop 或 DOM visibility polling 驱动核心功能；Gateway 的 request/result/revision 可在日志和测试中完整追踪，且日志不含记录正文、密钥、口令或 WebDAV 凭据；
+- 所有 Gateway 都有唯一 owner 和替换清单；没有 Surface 直接依赖 `window.__guanji*` 函数名，也没有为了“统一”产生一个巨型万能接口；
+- 未通过时保持当前 v4.2.x 修复线继续收口，不进入 #281。
+
+### 接口切换顺序
+
+```text
+#279：Compose UI
+  → Domain Gateway（最终接口）
+  → Legacy JS Adapter（迁移期实现）
+
+#280：冻结分领域 Gateway、清除 DOM/轮询耦合、完成两轮稳定性验证
+
+#281：Compose UI
+  → 同一 Domain Gateway（接口不变）
+  → Kotlin/Room/Filesystem/WebDAV Adapter（最终实现）
+  → 删除 Legacy JS Adapter
+```
+
+该顺序的目的不是保留 WebView 核心，而是让 UI 迁移与业务 owner 切换通过可验证的 Seam 解耦。#281 如果需要修改 Compose 页面才能替换 Adapter，说明 #280 的接口仍泄漏实现细节，必须退回 #280 修正，不能边删 JS 边改 UI。
+
+### #280 当前实施记录（功能回归与构建通过，完整验收待收口）
+
+> 以下记录是新增“分领域接口收口”前的阶段性实现证据，不等于 #280 最终接口验收。DOM 轮询、delegated fallback 与导出 WebView backdrop 均属于待替换的临时机制；不能因为它们曾通过构建或真机回归，就作为 #281 删除 JS 的前提。
+
+- 已定位设置页回归根因：代理 WebView 弹层或旧入口执行后，`nativeHomeSuppressed` 缺少统一回收路径，导致原生设置页可能永久隐藏；已在 `MainActivity.restoreNativeSettingsAfterDelegatedAction()` 增加基于现有 WebView 弹层 DOM 状态的限时轮询，并覆盖入口不存在/动作返回无效的失败路径。
+- 已恢复即时交互反馈：`NativeSettingsSurface` 先用 `NativeSettingsData.optimistic()` 更新当前 UI，再异步回写既有 JS/Capacitor 存储；按钮使用短按下透明度反馈，不把数据库或 DataStore 读取放在点击首帧之前。
+- 已为 `NativeBackupSurface` 的一级→二级、二级→一级路由复用 WebView 的“原位切换 + Sheet 自然高度过渡”规则：内容只做短淡入/淡出，外层 `animateContentSize` 负责 220ms 高度变化，不擅自增加横向 push；继续使用单 `MainActivity → NativeRoot`，不创建第二套 Tab、Sheet 或 Activity。
+- 已建立 `debug/visual-migration/#280-settings-feature-matrix.json` 与 `docs/native-rewrite/SETTINGS-REGRESSION-280.md`；矩阵覆盖外观、记录、提醒、反馈、AI、安全、备份/恢复、导出、危险操作和静态介绍入口，并明确返回/重进/重启验收。
+- 已加入 `npm run verify:280` 静态阻断脚本，检查单宿主、无密钥过桥、代理动作恢复、即时反馈、二级路由动效、同源图标和 v4.2.7/code129 缓存版本。
+- 已修复备份首页“只剩恢复数据”的结构性回归：`AnimatedContent` 的单内容槽现在由唯一 `Column(fillMaxWidth())` 承载所有备份视图，避免多个顶层 Composable 叠放后由最后一个节点覆盖服务器、本机和上传入口。WebView 的完整功能树已映射到 `debug/visual-migration/#280-data-privacy-feature-map.json`，并由 `docs/native-rewrite/DATA-PRIVACY-ROUTE-MAP-280.md` 明确 Native 与 WebView fallback 的边界。
+- 2026-09-17：按备份与恢复卡片计划完成一轮结构化修复：卡片改为自适应高度并限制内容区滚动；同步/服务器/自动同步/上传/本机/恢复按 WebView 分组呈现；统一复用同源 SVG 图标、模块卡片阴影/边框、footer 分隔线和等宽按钮；服务器、本机列表分别区分 loading/empty/error，并提供失败后的“重新读取”；一级/二级页面共用同一套可拖拽下方 Sheet 入场/退出动效，避免另起 Activity 或第二套宿主。
+- 2026-09-17：加密选项改为只接受权威 `secureMode` 快照，不再在点击时乐观显示“已加密”；取消口令流程不会留下假状态。备份动作增加 refresh 回路，关闭/返回延迟与 Sheet 退出动画一致。当前版本仍为 `4.2.7 (129)`，未扩大玻璃模式范围。
+- 2026-09-17：定位本机文件列表仍显示“旧版本数据源暂不可用”的真实根因：`__guanjiNativeBackupContext()` 是异步 Promise，直接作为 `evaluateJavascript` 返回值会被 WebView 序列化为 `{}`，Native 因而误判为旧桥不可用。新增只读 `GuanjiNativeBackup.onContext` 回调，在 Promise 完成后回传脱敏文件/状态快照；真机已读到下载目录 14 个文件，loading/ready/error/legacy-unavailable 状态保持可区分。
+- 2026-09-17：魅族真机已验证备份首页五组入口、`本机文件管理`、`恢复数据 → 恢复来源` 及返回链路；当时导出入口按阶段性 #280 矩阵保留 WebView/Capacitor `exportBackdrop` fallback，关闭后恢复 Native 设置页。该 fallback 现已被 #279 新增收口任务明确替代，不能作为最终边界保留。最新本机文件证据：`debug/visual-migration/#280-backup-local-final.png`、`#280-backup-local-final.xml`（14 个下载目录文件，内部历史列表滚动）。服务器实际上传/删除、文件选择器恢复和分享回收仍列为完整矩阵的待验收项，不能仅以静态检查视为完成。
+- 2026-09-17：静态检查 `npm run verify:280`、`node --check www/js/app.js` 通过；统一构建钩子完成 `4.2.7 (129)` debug APK 构建、签名校验、安装与启动。魅族真机 `[序列号已省略]` 已验证：设置页可进入/滚动、深色主题与快速记录跨进程重启保持、备份卡片打开/关闭不再穿透触发下层 AI 编辑，详见 `debug/visual-migration/#280-device-evidence.json`。当前仍未将本条目标记为完成：完整 21 项功能矩阵、破坏性操作、AI 网络路径和同状态 WebView/原生视觉对照尚未全部签收；#279 的视觉签收状态保持不变。
+- 2026-09-17：修复本轮两个视觉回归：NativeBackupSurface 将导航栏 safe-bottom 从 footer 按钮内边距移到整张 Sheet 与屏幕之间，footer 恢复 WebView 的固定按钮节奏；NativeSettingsSurface 的“修改口令”改用与其他 `.row-btn` 相同的 14sp 行标题 token。4.2.7 (129) 未变更，已重新构建并安装真机验证；证据：`debug/visual-migration/#280-backup-home-safe-bottom.png`、`debug/visual-migration/#280-settings-secure-change-title.png`。
+- 2026-09-17：按本轮问题拆分完成两项修复：① `NativeBackupHeader` 恢复 WebView `.sheet__header` 的 `padding: 20px 20px 16px`，一级与所有二级备份卡片共用同一顶部留白，不新增横杠或返回箭头；②首次打开仍可显示 loading 快照，但上传、刷新、自动同步和删除改为保留当前 Sheet 的增量快照，不再重新发布整张卡片的 loading 状态。Header subtitle 与首页状态区增加稳定占位，上传仅切换局部“上传中…”状态，避免加载完成或上传后整张卡片下沉。`verify:280` 新增对应静态闸门；魅族真机对 opening/ready/uploading/upload-ready 及服务器二级卡片完成 bounds 截图对照，证据：`debug/visual-migration/#280-backup-opening.png`、`#280-backup-ready.png`、`#280-backup-uploading.png`、`#280-backup-upload-ready.png`、`#280-backup-server-manage-header.png`。
+
+---
+
+- 2026-09-18：完成 #280 分领域接口收口的第一轮落地：`NativeMigrationContracts.kt` 新增 `GatewayCommand`、`GatewayResult`、`GatewayRevisionGate` 与 `SettingsGateway`、`BackupGateway`、`RecordFlowGateway`、`InsightGateway` 契约；`MainActivity` 为每个领域绑定唯一 `LegacyJs*Gateway` Adapter，Native Surface 不再直接散落调用迁移期 JS 函数。设置/备份读取改为异步单次请求并携带 `dataRevision`，备份 Promise 通过 `GuanjiNativeBackup.onContext` 回执，旧回调不能覆盖新 revision；动作统一通过显式 callback 返回，不传递 API Key、口令、原始记录或文件正文。
+- 2026-09-18：新增 `docs/native-rewrite/GATEWAY-CONTRACTS-280.md`，同步更新 `DATA-PRIVACY-ROUTE-MAP-280.md`、`MIGRATION-LEDGER.md`、`docs/REUSE-RULES.md` 和 #280 功能矩阵，明确 #281 只替换 Adapter、不改 UI 调用方。`npm run verify:native-ui-v2:preflight -- 280`、`npm run verify:280`、`npm run verify:279`、`npm run verify:276`、`node --check www/js/app.js`、`git diff --check` 均通过；统一构建钩子完成 4.2.7/code129 debug APK 构建、签名校验、安装与启动。魅族真机 `[序列号已省略]` 当前 `MainActivity` 正常恢复，无 FATAL/ANR 记录；证据：`debug/visual-migration/#280-device-evidence/`、`debug/apk-build-summary.json`。
+- 2026-09-18：完成当前设备可执行的稳定性第一轮：魅族真机热恢复、后台回前台、force-stop 后冷启动均恢复同一 `MainActivity`/NativeRoot；设置页、备份首页、服务器备份二级页可进入并按“服务器备份 → 备份首页 → 我的”返回；备份首页五组入口完整可见，未发现 FATAL/ANR。证据：`debug/visual-migration/#280-stability-round1/`。第二设备/API 兼容矩阵、真实 WebDAV/AI 网络和破坏性操作仍未执行，避免改变用户真实数据。
+- 2026-09-18：完成 #280 稳定性第二轮：新设备 `[序列号已省略]`（魅族 18s、Android API 33）原先为 v3.87，已通过统一构建钩子升级并安装 v4.2.7/code129；force-stop 冷启动、后台回前台、首页 → 我的 → 数据与隐私 → 备份与恢复 → 服务器备份 → 返回链路均恢复同一 `MainActivity`/NativeRoot，备份首页完整五组入口可见，未发现 FATAL/ANR。证据：`debug/visual-migration/#280-stability-round2/`。不同厂商/API 家族、破坏性清除/恢复、真实 WebDAV/AI 网络和完整 21 项矩阵仍待后续隔离验收，#280 保持 `implemented_pending_stability_signoff`，不提前进入 #281。
+- 2026-09-18：根据第二设备复现结果修复深色模式系统栏与首页底色回归：WebView CSS 主题事实现在由 `NativeRoot.setNativeTabTheme` 同步 Android 状态栏、导航栏、分隔线和系统图标对比度；`NativeHomeSurface` 根节点显式绘制深色/浅色主题背景，Native Compose 宿主保持透明，避免固定启动背景穿透。仍保持原有非 edge-to-edge 内容几何，不通过隐藏系统栏掩盖问题。v4.2.7/code129 已重新构建、安装并在 `[序列号已省略]` 冷启动验证；证据：`debug/visual-migration/#280-stability-round2/dark-mode-window-fix.json`、`dark-mode-after-fix-screen.png/xml`。#280 仍待完整稳定性矩阵签收。
+- 2026-09-18：修复第二设备复现的“时段分布无数据显示”回归：Kotlin 行为快照经 JSON 往返后不再携带 JS 不可枚举的 `__statsContext`，旧 `syncNativeHomeSnapshot()` 将缺失上下文误判为空记录并把 `timeBuckets` 覆盖为全 0。现在缺少运行时上下文时按当前记录、`generatedAtMs` 和统计时区重建轻量 `StatsContext`，保留 Kotlin 聚合计数权威；CDP 真实启动链由“源记录 62 条/时段全 0”恢复为 `清晨 3、上午 0、下午 7、傍晚 14、深夜 38`，真机首页时段分布环形图与明细均显示。`verify:280`、统一 APK 构建/安装、魅族 18s 冷启动与无 FATAL/ANR 通过；证据：`debug/visual-migration/#280-stability-round2/time-distribution-fix.json`、`time-distribution-card-after-fix.png/xml`。本次仍保持 4.2.7/code129，不进入 #281；规则沉淀见 `docs/REUSE-RULES.md` 8.12。
+- 2026-09-18：完成 #280 稳定性第三轮（当前设备可执行范围）：魅族 21 `[序列号已省略]`（Android API 36）完成冷/热启动、force-stop 重启、深色主题切换并恢复、首页/洞察/记录弹层/日历弹层打开关闭、我的 → 数据与隐私 → 备份与恢复入口以及备份功能树可见性验证；再次运行时段分布快照回归，`清晨 3、上午 0、下午 7、傍晚 14、深夜 38` 保持正确；版本仍为 `4.2.7/code129`，前台为 `MainActivity`，无 `FATAL EXCEPTION`/`ANR in`。证据：`debug/visual-migration/#280-stability-round3/`、`guanji-app_实施v4.2.7_#280-稳定性第三轮_2026-09-18.md`。按用户要求未执行跨设备/跨品牌矩阵、真实 WebDAV/AI 网络和会改变真实数据的破坏性操作，#280 仍保持 `implemented_pending_stability_signoff`。
+- 2026-09-18：主力机 OnePlus PLZ110（1216×2640、560dpi、约 347dp 宽）复现并修复记录流程的窄屏弹性布局问题：详情 Sheet 不再与普通时间页共用 `86%` 高度上限，改为按可视窗口和导航栏安全区计算；备注区保持可滚动、底部按钮保持固定，避免备注和按钮被卡片边界裁切。计时全屏数字增加窄屏字号收缩、`maxLines=1` 和 `softWrap=false`，避免首帧 `00:00` 的最后一个 0 换行。版本升级为 `4.2.8/code130`，待统一构建与主力机真机回归后再签收。证据：`debug/visual-migration/#280-main-device/repro-record-layout/`。
+- 2026-09-18：根据 OnePlus 复现与全量 Native Surface 只读审计，将“跨设备弹性布局稳定化”正式纳入 #280 的 P0–P7 待实施阶段。现有 `verify:276`/`verify:280` 虽通过，但新增只读响应式检查检出 9 个结构性红灯，包括固定 density 除数、固定 Sheet 上限、viewport 魔法减法以及页面未接入 Root Insets 契约；因此 #280 不得因两个局部修复而签收，必须先完成统一窗口度量、公共弹性容器、窗口/字体/导航/IME 自动矩阵和魅族/OnePlus 双机验收。本条仅记录计划扩展，尚未修改布局代码、构建 APK 或进入 #281。
+- 2026-09-19：根据 #273–#279 知识库实施记录和 `docs/REUSE-RULES.md` 复核，修订 #280 弹性布局计划边界：#279 的 `NativeSheetInput`、LOCAL/SERVER 内部可收缩视口、SECURE_ENABLE 整卡片 IME、固定 Footer、HOME `wrapContentHeight`、#276 记录滚动结构、#278 `SettingsMetrics` 均标记为已完成冻结资产；#280 不再新建平行 Sheet/IME/Scaffold 组件，只实施 Root 窗口度量统一、现有容器可用高度收口、density/固定高度风险清理、跨设备自动矩阵和魅族 21/OnePlus/魅族 18s 验收。方案以修订版 P0–P7 为准，未修改代码、版本号或 #280 完成状态。
+- 2026-09-19：开始实施 #280-P0。已在当前连接的魅族 21（`[序列号已省略]`）采集只读窗口基线：1080×2340、440dpi、fontScale 1.06、手势导航、状态栏 92px、导航栏 69px、IME 关闭、`MainActivity/NativeRoot/home`，并保存截图、UI dump、窗口 Insets、Activity、WebView、系统属性和日志尾部。证据索引：`debug/visual-migration/#280-p0-baseline/index.json`；魅族 18s 与 OnePlus 已有历史证据已登记，但完整同格式窗口参数仍需重新连接两台设备补齐，因此 P0 暂保持 `partial_device_matrix`，未修改代码、版本号、APK 或布局。
+- 2026-09-19：继续完成 #280-P0 的魅族 18s 采集。设备 `[序列号已省略]` 已从 `4.2.7 (129)` 更新到项目当前 `4.2.8 (130)`，通过统一构建钩子安装且未清除数据；采集到 1440×3200、物理 480dpi/Override 640dpi、fontScale 1.0、手势导航、状态栏 120px、导航栏 100px、IME 关闭、`MainActivity/NativeRoot/home`，并保存截图、UI dump、窗口 Insets、Activity、版本和日志。P0 索引已更新，当前仍等待 OnePlus 补齐同格式窗口参数与正式版本证据，状态保持 `partial_device_matrix`。
+- 2026-09-19：完成 #280-P0 三设备窗口采集。OnePlus `[序列号已省略]` 已确认项目当前 `4.2.8 (130)`，并在启动 `MainActivity/NativeRoot/home` 后采集 1216×2640、560dpi、fontScale 1.0、手势导航、状态栏 135px、导航栏 56px、IME 关闭、截图、UI dump、窗口 Insets、Activity、WebView、版本和日志；既有窄屏备注/footer 裁切与 `00:00` 换行证据继续关联。三台设备的统一基线已登记到 `debug/visual-migration/#280-p0-baseline/index.json`，当前状态改为 `baseline_captured_pending_audit`；尚未修改布局代码或进入 P1。
+- 2026-09-19：完成 #280-P0 只读响应式审计。新增 `debug/verify-280-responsive-p0.cjs`，扫描全部 Native Surface 的 density 换算、固定 Sheet 高度、页面级高度减法、Root WindowMetrics/Insets 接入和跨设备 bounds 闸门，并生成 `debug/visual-migration/#280-p0-baseline/responsive-audit.json`。结果为 `fail_pending_p1`：6 条阻断规则（固定 density 除数、页面魔法高度、固定 Sheet 上限、原始 bottomInset、Surface 未接入统一 Root Metrics、viewport 魔法比例）、2 条人工复核规则、1 条必须用三设备同状态证据完成的运行时矩阵；共登记 85 条证据。P0 保持红灯，不修改布局代码、版本号或 APK；下一步只能进入 P1 统一 `NativeWindowMetrics`/Insets 消费后再复跑审计。
+- 2026-09-19：完成 #280-P0 的 R6/R8 人工静态复核，报告见 `debug/visual-migration/#280-p0-baseline/r6-r8-manual-review.json`。R6 确认 `NativeRoot`、Home/Record/Backup Sheet 与三个安全/维护 Surface 之间存在分散 Insets owner；其中 `NativeSecureEnableSurface` 同时使用原始 `bottomInset / 3`、直接 WindowInsets 读取和手动 IME 位移，确认为 P1 阻断。R8 已区分视觉 token 与响应式约束：Home `0.88f`、Record 固定高度减法继续保持阻断；Backup 132dp、Home 128dp 列表高度、日期徽标、Insight 图表和按钮尺寸列为条件复核，不能直接全部删除或全部放行。当前 shell 无 adb，未伪造运行时结论；三设备运行时证据继续沿用 P0 基线，P0 仍为 `fail_pending_p1`。
+- 当前边界：#280 的接口收口与既有多轮稳定性验证已经落地，但跨品牌复现证明原生页面仍缺少统一弹性布局底座。必须完成本条新增 P0–P7、完整 21 项功能、破坏性操作隔离 fixture、同状态 WebView/Native 对照和跨设备窗口矩阵后，才能把台账从 `implemented_pending_stability_signoff` 改为 `verified`，并进入 #281。
+
+- 2026-09-19：完成 #280-P1 的静态实现与构建验证。新增 `NativeWindowMetrics` 作为 `NativeRoot` 唯一窗口度量 owner：Root 统一读取 status/navigation/IME 原始 px 并按当前 density 转为 Dp，Home、Record、Calendar、Insight、Settings、Backup、DataMaintenance、SecureMode、SecureEnable 均消费同一快照；移除 `bottomInset / 3`、页面级 `0.88f/0.86f` 高度比例、重复 `navigationBarsPadding()` 和分散的原始 WindowInsets 读取；记录/备份列表高度与 Sheet 上限改为基于可视窗口的动态约束，并保留 #279 已冻结的 Footer、Input Sheet 与 IME owner。`verify:280`、`verify:native-ui-v2:preflight -- 280`、`verify:279`、`verify:276`、`node --check` 与 `git diff --check` 通过；统一构建钩子完成 `com.guanji.app`、`4.2.8/code130` debug APK，APK 签名为稳定 Android Debug，产物摘要见 `debug/apk-build-summary.json`。当前 P1 仍未整体签收：R8 的 2 条条件人工复核、R9 三设备同状态 bounds 对照及真机运行时回归待完成；本 shell 当前未发现可用 `adb`，未伪造安装或运行结论，#280 继续保持 `implemented_pending_stability_signoff`。
+
+- 2026-09-19：用户完成并确认 #280-P1 的 R8 人工复核通过。复核范围包括备份内部列表视口、首页最近记录列表、日期徽标一/两位数居中、洞悉图表标签、记录页操作按钮和记录对话框最大宽度；未发现裁切、Footer 被挤压或关键文字换行问题。R8 已从人工待复核转为通过，#280 仍等待 R9 的魅族 21/魅族 18s/OnePlus 同状态 bounds 对照。
+- 2026-09-19：开始执行 #280-R9 的魅族 21 单设备运行时采集。固定 `4.2.8/code130`、1080×2340、440dpi、fontScale 1.06、手势导航、状态栏 92px、导航栏 69px；完成 `NativeRoot/home`、记录弹层、日历弹层、我的页、数据与隐私、`NativeBackupSurface` 的截图与 UI dump，证据目录为 `debug/visual-migration/#280-r9-meizu21/`，报告为 `r9-report.json`。首页、记录、日历、备份首页的窗口 bounds 处于安全范围，Activity/版本检查通过，近期日志未观察到 FATAL/ANR。重新核验“修改口令”后确认该入口当前仍走 `android.webkit.WebView` 旧弹窗，故不把它伪装成 Native 输入证据，R9 标记为 `partial_device_r9`；仍需魅族 18s、OnePlus 同状态采集及 secure-change 路由归属处理后才能签收三设备闸门。
+- 2026-09-19：完成 #280-R9 魅族 18s 单设备采集，先核对确认仍为 `com.guanji.app 4.2.8/code130`，未混入旧 APK。固定 1440×3200、480dpi（系统 override 640）、fontScale 1.0、手势导航、状态栏 120px、导航栏 100px；完成首页、记录弹层、日历弹层、我的页滚动状态、数据与隐私、备份首页和恢复来源选择页的截图/UI dump，证据目录为 `debug/visual-migration/#280-r9-meizu18s/`，报告为 `r9-report.json`。当前设备处于未加密状态，“修改口令”不适用，未伪造输入/IME 证据；仅打开恢复来源选择，未执行文件选择或实际恢复。R9 仍为 `partial_device_r9`，下一步只剩 OnePlus 同版本同状态采集与三设备 bounds 对照。
+- 2026-09-19：魅族 18s R9 复核未发现 bounds 越出 1440×3200、底部操作区落入导航栏或记录/日历/备份 Sheet 被窗口裁切的硬失败；首页 Tab 覆盖下一张卡片与魅族 21/既有基线一致，暂不判为 18s 回归。新增限制：18s 与魅族 21 当前 `dataRevision`/记录数量/加密状态不同，当前截图只能证明响应式安全性，不能直接完成最终视觉等价对照；后续三设备必须统一 fixture 和 dataRevision，并用隔离加密 fixture 补测 IME 输入路径。
+- 2026-09-19：完成 #280-R9 OnePlus PLZ110 单设备采集，并先核对确认仍为 `com.guanji.app 4.2.8/code130`。固定 1216×2640、560dpi、fontScale 1.0、手势导航、状态栏 135px、导航栏 56px；完成首页、记录弹层、日历弹层、我的页滚动状态、数据与隐私、备份首页、恢复来源、服务器恢复列表和服务器恢复口令键盘状态的截图/UI dump，证据目录为 `debug/visual-migration/#280-r9-oneplus-plz110/`，报告为 `r9-report.json`。所有 dump bounds 均位于窗口内，服务器恢复口令聚焦后输入框完整可见且“恢复到本机”按钮可达，近期未观察到 FATAL/ANR；“修改口令”仍确认是 WebView 旧弹窗，单独标记为路由归属问题。三台设备单机证据现已齐全，但三设备最终对照仍需统一 fixture/dataRevision 后执行。
+
+### #280 衍生修复：首页最近记录日期格式（v4.2.10）
+
+- WebView `ui-home.js` 使用 `dateKey` 的月份和日期显示最近记录；Native 首页此前只取 `dateKey` 最后一段，导致跨月记录显示为“20日”而不是“9月20日”。
+- `NativeRecentRow` 现在按 `yyyy-MM-dd` 拆分并显示“月日”，异常格式保留旧日字段兜底；`verify-275-home-calendar.cjs` 增加日期格式回归断言。
+
+### #280 衍生修复：备份/恢复输入型 Sheet 的 IME 回归（v4.2.9，待隔离恢复 fixture 验收）
+
+- 根因：`NativeRoot.availableHeightDp` 已扣除键盘高度后，`NativeBackupSurface` 又叠加 `.imePadding()`，同时输入框执行二次 `BringIntoView`，导致服务器配置三输入框及本机/服务器加密恢复口令出现过度上移或底部裁切；未加密→已加密弹窗因使用独立整卡片位移未受影响。
+- 修复：备份页统一采用 `imeDp - navigationBarDp` 的单一整 Sheet 位移，内部保持一个 `weight(1f, fill=false)` 滚动视口，字段只在该视口内执行共享 `BringIntoView`；未加密→已加密继续保持原有 `bringIntoView=false` 的整卡片策略。
+- 防回归：新增 `debug/verify-280-ime-input.cjs` 并接入 `npm run verify:280`；静态闸门、构建签名和魅族 21 服务器配置三输入框键盘证据通过。证据：`debug/ime-regression-meizu21/config-ime.png`、`config-ime.xml`。本机/服务器加密恢复因当前设备没有可用备份文件未执行真实导入，需用隔离加密 fixture 继续验收。
+
+### #280.1 子待办：首页“较上周”改为自然周对比（🆕 待实施）
+
+**提出日期：** 2026-09-28
+
+**归属：** #280 首页统计语义收口；不新建顶层待办，不进入 #281。
+**目的：** 将“较上周”从“本周截至当前日/时刻对比上周同期”修正为“本自然周累计对比上一完整自然周”，恢复自然周与自然周的统计意图；保留百分比呈现，不改变统计卡片视觉设计。
+
+#### 统计口径
+
+- 自然周按统计时区的周一 00:00 开始，周日结束；区间统一使用左闭右开 `[start, end)`，边界计算复用当前统计时区与日期规则。
+- 本周值统计本周周一 00:00 至当前统计时刻（本周累计）；上周值统计紧邻的上一完整自然周（周一 00:00 至下一周一 00:00）。不得再按“今天是本周第几天”截断上一周。
+- 百分比沿用 `(本周累计 - 上周完整周次数) / 上周完整周次数 × 100%`，舍入规则沿用现有统一统计实现；UI 不独立重算。
+- 上周为 0 时不伪造百分比：本周大于 0 显示“新增”，两周均为 0 显示“持平”；数据不可用或统计失败显示中性占位，不与“正常为零”混为一谈。状态色继续沿用现有方向提示规则，不新增颜色语义。
+- 周边界以现有 `dateKey` / 统计时区约定为准；旧记录、时区变化和时间戳兼容遵循当前 Stats Engine 的既有规则，不借此变更记录或备份数据格式。
+
+#### 实施范围与数据契约
+
+- 先确认当前“较上周”的唯一计算权威及所有消费端，再在统一 StatsSnapshot 生产路径实施；Native 首页、WebView 兼容展示、桌面小组件及引用周统计的洞悉/AI 摘要必须消费同一结果，不得各自复算或混用旧缓存。
+- 保留现有 `weekDelta` 兼容字段，并补齐/明确 `weekDeltaCount`、`weekComparisonMode = current_week_to_date_vs_previous_full_week`、`weekComparisonStatus`（`percentage` / `new` / `unchanged_zero` / `unavailable`）等语义字段；JSON/桥接字段名、空值和舍入规则建立契约测试。
+- 更新统计规则版本或缓存签名，使按旧“上周同期”生成的快照、AI 缓存不能被误认为新口径；不迁移或改写用户记录，不提前执行 #281 的 JS 核心删除。
+- UI 只呈现统一快照：保留“较上周”标签、百分比外观和既有方向色；零基数状态采用现有中性文字层级，不改变首页布局、字号、动画、趋势图、14/30 日口径或 Tab。
+
+#### 测试与验收
+
+- 单元/契约用例覆盖：周一刚开始、周中、周日结束、跨月/跨年、统计时区变化、上一周为零/本周为零/两周均为零、记录新增/编辑/删除、未来或无效日期、旧记录缺少精确时间字段，以及 `[start,end)` 边界不重不漏。
+- 用固定 fixture 对照旧算法与新算法，至少包含“上周同期为 0 但上一完整周非 0”及“上周同期有值但整周总数不同”的样本，证明新值来自完整自然周，而不是标签替换。
+- 验证 StatsSnapshot、Native 首页、WebView 兼容展示、桌面小组件和周统计相关洞悉/AI 摘要在相同 `dataRevision` 下一致；旧统计缓存失效后重新生成，正常本地记录、备份/恢复数据和真实用户记录指纹不变。
+- 通过统计规则测试、`verify:280` 及相关首页/小组件回归后，再按项目稳定构建流程进行需要的运行验证；不因该子待办单独提升 App 版本号。完成前 `#280.1` 标记待实施，`#280` 及 #281 状态均不得因此提前签收。
+
+**新增记录（2026-09-28）：** 用户确认采用自然周对比，并要求作为 #280 子待办登记。此前 #209 的“上周同期”记录属于历史实现/当时决策，不代表本子待办口径；本条作为后续明确修正，实施时以本条为准。
+
+## 281. v4.2.8：经典版 JS 核心收口与原生化验收 🆕 待实施
+
+### 父计划与依赖
+
+- 父计划：#271
+- 前置任务：#280 稳定期通过
+
+### 需求
+
+结束经典模式迁移期：保持 #280 已冻结的 Domain Gateway 和 Compose UI 不变，把迁移期 JS Adapter 替换为 Kotlin/Room/Filesystem/WebDAV 实现；逐项验证后再删除旧 JS 核心业务运行时，并为后续玻璃原生重做、洞悉系统改版建立稳定原生基线。玻璃版本不再依赖 WebView 过渡，而是以后置独立任务直接从已完成的原生经典界面重构。
+
+### 实施清单
+
+1. 按 `RecordFlowGateway → InsightGateway → SettingsGateway → BackupGateway → DataMaintenanceGateway` 的依赖顺序逐域切换最终 Adapter；每次只切一个业务域，验证通过后才删除该域的 JS Adapter、运行时入口、回退桥和核心业务依赖，不保留玻璃 WebView 核心回退。
+2. 保留关于、隐私、帮助、更新说明和许可证等静态 WebView 内容；静态页不得访问核心数据写入接口。玻璃模式在玻璃原生重做完成前暂不作为独立 Native 材质提供，用户请求统一安全回落到已验收的 Native 经典界面并保留偏好，不通过 WebView 继续承载业务，也不得出现空白壳。
+3. 清理旧 route、双向 UI 状态同步、临时 feature flag、旧 fixture 和迁移期适配器。
+4. 保留数据/备份兼容读取器、未知字段、v3.53/v3.87/v4.1.5 恢复测试和必要迁移代码。
+5. 更新架构、复用索引、测试矩阵、隐私说明和维护手册；冻结 v4.2.8 为洞悉改版的 UI 基线。
+6. 数据所有权按领域收口，而不是笼统要求所有内容进入 Room：记录与统计由 Room/Kotlin 权威；设置由 Native preferences/SecureStorage 权威；API Key/口令继续进入安全存储；备份文件、BackupEnvelope、Filesystem 与 WebDAV 保持各自协议边界。每个领域只允许一个写入 owner。
+7. 破坏性命令禁止在真实用户数据上做 JS/Kotlin 双执行：
+   - 导出仅用固定 fixture、manifest/hash 和 dry-run 结果做等价校验，不触发两次系统分享；
+   - 清除和恢复演示数据使用隔离测试库、事务快照或可恢复副本验证，不能先让 JS 执行一次再让 Kotlin 执行一次；
+   - 切换真实 owner 前必须生成可信备份并验证可恢复，成功后再关闭旧 Adapter。
+8. 每个 Gateway 切换必须保留 `requestId/dataRevision` 语义、错误码和幂等约束；Activity 重建、进程恢复、桥回调重放和网络重试不得造成重复副作用。
+9. 只有当 Compose 不改动即可从 Legacy JS Adapter 切换到 Kotlin Adapter，且同一黄金样本输出与真实流程回归均通过时，才允许删除旧实现；若 UI 必须随实现切换而改写，退回 #280 修正接口。
+10. 删除完成后扫描并阻断核心页面对 `window.__guanji*`、核心 DOM selector、旧 backdrop 和业务 WebView route 的引用；静态 WebView 白名单之外的命中均视为 #281 未完成。
+
+### 验收要点
+
+- 核心业务只有 Compose + Kotlin 分领域实现；记录只有一份 Room 权威数据，设置/密钥/备份按各自安全存储和文件协议保持唯一 owner，不再存在 JS 第二实现；
+- 没有旧 JS 核心入口、双宿主、双 Tab、双 Sheet 或双写；
+- 导出、清除、恢复演示数据、记录保存、备份恢复与 AI/洞悉刷新均通过 requestId/revision/幂等回归；真实用户数据上没有任何破坏性双算或双执行；
+- 静态 WebView 页面可用且无法越权读写核心数据；
+- 从 v3.53/v3.87/v4.1.5 升级、备份恢复和旧记录兼容通过；
+- 玻璃模式不会通过旧 WebView 核心回退继续运行；后续玻璃原生重做从已验收的 NativeRoute 直接开始；
+- #271 总计划验收通过后，才允许创建新的 v4.3 洞悉系统原生改版任务和独立玻璃原生重做任务。
+
+### #279 新增收口：数据与隐私安全流程及 Native Restore Engine（v4.2.7，待真机破坏性场景确认）
+
+- plain → encrypted 已增加独立 `NativeSecureEnableSurface`：口令与确认口令在 Native 收集，取消不改权威状态，只有既有 `secureEnable()` 完成后才回传终态并刷新设置快照；口令不写入日志、不回传 Android。
+- 清除全部数据改为稳定的 Native 终态：任务 Sheet 成功后不自动关闭，由用户明确关闭；行标题状态的持久化方案已由后续衍生修复替换为短期反馈。
+- 本机/服务器恢复改为共用 `__guanjiNativeRestore` 无 UI 引擎：同一套文件读取、CSV/加密包识别、口令校验、`merge/new/overwrite` 方案和 `GuanjiRoomShadow.replaceRecords` 原子提交；失败保持当前记录不变，并通过错误码区分缺口、口令错误、损坏和提交失败。
+- Native 恢复页增加本机加密文件口令、服务器口令、三种恢复方案、固定 footer、`imePadding` 和稳定结果槽；Native 不再调用 `openLocalRestore`/`openServerRestore` 旧 WebView 弹窗。系统文件选择“浏览其他位置”保留为兼容入口，选择后的恢复执行仍回到同一 Native 引擎。
+- `NativeBackupBridge.onRestoreResult`、`NativeSecureEnableBridge` 与 `requestId`/错误码回执补齐，`DATA-PRIVACY-ROUTE-MAP-280.md` 已更新为新的所有权边界；`verify:279` 增加恢复引擎、加密开启、清除不自动关闭、状态持久化和旧恢复路由阻断检查。
+- 本轮未执行真实清除、演示恢复、真实导入或加密确认；仅验证取消路径、静态契约、编译、安装启动和无崩溃。真实数据场景需用户明确授权后再单独验收。
+
+### #279 衍生修复：临时操作反馈与统一输入型 Sheet IME（v4.2.7，已完成真机键盘专项确认）
+
+- “清除全部数据”和“恢复演示数据”的行标题状态改为短期成功反馈：默认不显示，不写入持久化设置，不显示“待确认/处理中”；两个状态分别由 NativeRoot 独立持有，成功后显示约 4.5 秒，再自动消费；再次进入对应操作时立即清除旧反馈。
+- 清除成功仍保持任务 Sheet 打开，但“处理中”仅保留在 Sheet 的操作按钮，不污染我的页标题；恢复失败只显示在当前恢复 Sheet，不显示为成功状态。
+- 三个口令场景（开启加密、本机加密备份恢复、服务器恢复）统一使用 `NativeSheetInput`、单一内容滚动区和 `BringIntoViewRequester`；外层 Sheet 只使用一次 `imePadding`，不叠加负 offset，字段聚焦后自动滚入可视区域。
+- `www/js/app.js` 不再读取 `guanji_native_clear_status`，`ui-sheet.js` 不再写入该永久状态；`verify:279` 已增加临时反馈与统一 IME 闸门。
+- 键盘专项收口：`NativeSheetInput` 改为监听 `WindowInsets.ime` 稳定值后再执行双阶段 `BringIntoViewRequester`，requester 挂在完整输入框容器；本机恢复、服务器恢复、开启加密三个 Sheet 的输入区改为 `weight(1f, fill = false)` 的内部可收缩滚动视口，外层 Sheet 裁剪边界与固定 footer 保持不变。
+- 统一输入视口底部间距：三类输入 Sheet 通过 `NativeSettingsSheetMotion.inputFooterGap` 由 18.dp 调整为 28.dp，仅增加输入区与固定 footer 的内部留白，不移动整张 Sheet、不改变键盘安全裁剪边界。
+- 真机证据：`debug/guanji-279-local-ime.png`、`debug/guanji-279-server-ime.png`、`debug/guanji-279-secure-enable-ime.png` 均确认键盘弹出后输入框完整可见、footer 可操作，未执行确认导入、解密或清除等破坏性操作；`verify:279`、`verify:280`、`verify:276` 与 JS 语法检查通过。
+- 本轮收口：开启加密的紧凑卡片改用 `WindowInsets.ime - navigationBars` 的整卡片位移，字段不再触发局部 `bringIntoView`；真机证据 `debug/guanji-279-secure-whole-ime-after-correct-route.png/xml` 显示标题、说明、双输入框和底部按钮同时完整可见。备份 HOME 路由改为 `wrapContentHeight`，内容底部从 18.dp 收紧为 8.dp，HOME footer 顶部从 14.dp 收紧为 6.dp；按钮底部安全区和按钮位置保持不变，证据 `debug/guanji-279-backup-home-after-homefix-2.png/xml`。
+
+### #280 P0 路由收口：修改口令与 AI 数据范围（v4.2.8，魅族 21 已安装验证）
+
+- 根因确认：Native「我的」页的 `secure-change` 与 `data-scope` 原先都进入 `delegated` 分支，经 `window.__guanjiNativeSettingsAction` 点击 WebView 的 `secureChangeBtn` / `aiDataScopeBtn`，分别打开旧 `secBackdrop` / `aiDataScopeBackdrop`；这不是 z-index 或 Tab 层级问题，而是 Native/WebView 混合宿主残留。
+- 修复：两个动作在 `MainActivity.handleNativeSettingsAction` 中改为 NativeRoot 专属分支。`NativeSecureChangeSurface` 复用统一 Settings Sheet、输入区和 IME 规则，确认后仅调用无 UI 的既有 `secureChangePassphrase(null, passphrase)`，口令不回传 Android；`NativeDataScopeSurface` 完全由 NativeRoot 渲染 WebView 原有说明内容和关闭动作。
+- 生命周期：新增 `NativeSecureChangeBridge` 只接收 completed/failed 终态；返回键、取消、遮罩与动画均由 NativeRoot 持有，两个路由不会触发 `suppressNativeHome`，也不会创建第二 Activity、第二 Tab 或旧 DOM 弹层。
+- 闸门：`debug/verify-280-p0-routes.cjs` 已接入 `npm run verify:280`，阻断两个动作重新进入 delegated WebView 路由；`npm run verify:280`、`verify:272`、`verify:native-ui-v2:preflight -- 280` 通过。构建钩子安装 `com.guanji.app` v4.2.8/code130 到 MEIZU 21（serial `[序列号已省略]`），UI dump 确认两个入口均由 Native Compose Sheet 渲染且无 `android.webkit.WebView` 节点；证据：`debug/scope-meizu21.xml`、`debug/change-meizu21.xml`。
+
+- 2026-09-20：按 #280 弹性布局方案修复记录详细页底部按钮在 OnePlus 窄屏被压缩/裁切的问题（不变更版本号）。移除详情页依赖固定 `180dp` header/footer 预留的内容高度猜测，改为 `BoxWithConstraints` 约束详情容器；正文成为唯一可滚动区并使用 `weight(fill = false)`，底部操作区移到滚动区外保持固定，外层 Sheet 与 Root WindowMetrics/安全区 owner 不变。统一构建钩子支持 `-Serial`，分别安装到魅族 18s（`[序列号已省略]`）与 OnePlus PLZ110（`[序列号已省略]`）验证；两台设备“直接填写 → 记录详情”中“上一步/存为记录”完整可见，蓝色 footer 实际高度约 52dp，无文字裁切或薄条。当前版本保持 `4.2.10/code132`，#280 仍按整体 P0–P7/R9 状态管理，不因本项单独签收。
+- 2026-09-20：**#280 记录详情弹性滚动跟进（版本号不变）**：根据魅族 18s/OnePlus 真机复核，确认“发生前状况”选项此前比时长、备注更靠左，根因为 Native `FlowRow` 未继承 WebView `.sheet` 的 22dp 内容水平内边距；已通过 `detailsContentHorizontalPadding` token 统一三段内容对齐。详情布局改为 `SubcomposeLayout` 先测量 Header、顶部字段、备注与 Footer，仅把剩余可视高度交给选项区 `verticalScroll`，避免 `weight` 造成备注与 Footer 之间大块空白，也避免固定 viewport 减法。选项滚动时 Header、备注和 Footer 保持固定，底部视觉间距仅由 `detailsFooterVisualGap` token 控制，系统安全区仍由 `NativeWindowMetrics` 消费。`verify:280`、`verify:276`、`verify:native-ui-v2:preflight -- 280`、JS 语法检查、`git diff --check` 和统一 debug 构建通过；`4.2.10/code132` 已按稳定调试签名安装到魅族 18s 与 OnePlus。证据：`debug/guanji-meizu18s-details-subcompose.png`、`debug/guanji-post-details-oneplus-subcompose-final2.png`、`debug/guanji-post-details-oneplus-subcompose-final-scrolled2.png`。规则沉淀见 `docs/REUSE-RULES.md` 8.13。
+- 2026-09-20：**#280 新增阻断项：记录详情 Sheet 底部空间收口（实现完成，待 R9 三设备签收）**：按 WebView `100dvh - safe-top - safe-bottom - 24px` 恢复 `NativeWindowMetrics.sheetMax(..., floatingVerticalGap = 24.dp)`，详情页向 `SubcomposeLayout` 传入已扣除悬浮空间的 `sheetMaxHeight`；将 Sheet 外部系统安全区/12dp 悬浮距离、卡片内部唯一 8dp Footer 留白和详情内容测量分别归属，移除 `RecordFooter(details = true)` 的重复底部间距，并用显式 `Layout` 放置卡片，避免 OEM app window 已扣除导航栏时把 Footer 推到 Tab reserve。新增 `record-details-sheet / options / note / footer` 运行时标识及 `verify:280-record-details-layout` 红灯闸门；`4.2.10/code132` 未变，统一 debug 构建通过并已安装到魅族 21（`[序列号已省略]`）和魅族 18s（`[序列号已省略]`）。当前两台同 fixture 复测显示 Footer 与卡片底部约 8dp、屏幕到底部关系符合导航栏 + 12dp；OnePlus PLZ110 当前未连接，三设备 evidence 尚未签收，故 #280/#281 不提前标记完成。当前证据：`debug/visual-migration/#280-r9-record-details-layout-20260920/`。
+- 2026-09-21：**#280 记录详情底部视觉留白调整（待 R9 三设备复测）**：用户确认两台设备的 Footer 与卡片底部间距已一致但 8dp 视觉过紧；为保持 WebView 与 Native 同源，`.sheet.details-active` 与 `NativeRecordLayoutTokens.detailsFooterVisualGap` 同步由 8 调整为 12（外部导航安全区与卡片悬浮 12dp 不变），`verify:280-record-details-layout` 的内部间距契约同步改为 12dp ± 2dp；版本号保持 `4.2.10/code132`，需重新构建并以相同 fixture 完成魅族 21、魅族 18S、OnePlus PLZ110 复测后才能签收。
+- 2026-09-21：**#280 记录详情底部视觉留白再次调整（待 R9 三设备复测）**：用户确认 12dp 虽已统一但视觉仍偏紧；为保持 WebView 与 Native 同源，`.sheet.details-active` 与 `NativeRecordLayoutTokens.detailsFooterVisualGap` 同步由 12 调整为 16（外部导航安全区与卡片悬浮 12dp 不变），`verify:280-record-details-layout` 的内部间距契约同步改为 16dp ± 2dp；版本号保持 `4.2.10/code132`，需重新构建并以相同 fixture 完成魅族 21、魅族 18S、OnePlus PLZ110 复测后才能签收。
+- 2026-09-21：**#280 新增结构修复（待 R9 三设备复测）**：魅族 18S 复测发现 Footer 语义边界仍贴到卡片底部，说明达到 Sheet 最大高度时父级 `Column.padding(bottom)` 会被高度上限裁掉。改为由详情 `SubcomposeLayout` 在有界测量中显式扣除并追加 `bottomVisualGap`，父级详情 padding 不再重复提供底部空间；不改变外部悬浮/导航安全区，也不使用设备特判。
+- 2026-09-21：**#280 记录详情底部视觉留白统一到输入框—按钮节奏（待 R9 三设备复测）**：用户确认按钮与卡片底部间距仍偏小，决定复用备注输入框底部到 Footer 顶部的既有 20dp 节奏。`.sheet.details-active` 与 `NativeRecordLayoutTokens.detailsFooterVisualGap` 同步调整为 20px/20dp；外部导航安全区、12dp 卡片悬浮距离、选项区唯一滚动 owner 均不变。`verify:280-record-details-layout` 契约同步为 20dp ± 2dp；版本号保持 `4.2.10/code132`。必须使用同一 fixture 完成魅族 21、魅族 18S、OnePlus PLZ110 的 R9 复测后才能签收 #280。
+- 2026-09-21：**#280 R9 OnePlus 高度路径修复（版本号不变，待魅族 21 复测）**：OnePlus PLZ110 首次复测显示卡片底部到 Footer 仅约 16dp，根因不是设备特判缺失，而是详情 `SubcomposeLayout` 内部的底部 gap 与父级 `heightIn(max = sheetMaxHeight)` 共同参与最大高度分配；短可用高度设备进入上限路径后，父级裁掉了约 4dp。修复为 Sheet Column 先从详情 body viewport 扣除 `detailsFooterVisualGap`，再以固定 sibling `Spacer(20dp)` 持有卡片内部底部留白；详情正文只负责 Header/选项滚动/备注/Footer，不再在自身 measure policy 里持有可被父级压缩的 gap。魅族 18S 与 OnePlus 使用 `4.2.10/code132` 同一 APK 复测均恢复到 20dp，外部安全区关系保持通过；魅族 21 需重新连接后复测，未提前签收 R9/#280。规则同步至 `docs/REUSE-RULES.md` 8.13，证据见 `debug/visual-migration/#280-r9-record-details-layout-20260921/record-details-layout-after-fix.json`。
+- 2026-09-21：**#280 R9 记录详情三设备同 fixture 复测通过（不代表 #280 总计划完成）**：魅族 21 `[序列号已省略]` 使用 `4.2.10/code132` 同一 debug APK 重测，物理截图卡片底部 2238px、Footer 底部 2183px，设备 density 2.75，间距为 55px = 20dp；屏幕到底部 37.1dp = 导航安全区 25.1dp + 12dp 悬浮距离。与魅族 18S（20dp）和 OnePlus PLZ110（20dp）一起通过 `verify-280-record-details-layout.cjs`，无 Footer 裁切、选项区重叠或按钮裁切。三设备证据已更新为 `status: passed`。#280 仍需继续完成其余 P0–P7、功能矩阵和最终签收，不提前进入 #281。
+- 2026-09-21：**#280 新增跨设备视觉一致性收口分支（VC0–VC6，待实施）**：根据三设备渲染审查，将字体家族/字重、baseline、卡片阴影、边框和视觉重量纳入 #280 的新增阻断分支；当前只读基线显示魅族 21 与魅族 18s 的标题字形覆盖相对差异约 7.95%、阴影轮廓差异约 15.11%，视觉闸门保持红灯。方案冻结 #280 已通过的 `NativeWindowMetrics`、记录详情弹性布局、Footer/IME/Sheet/Tab owner 和 #279 输入规则；新增 `NativeTypography`、`NativeShadowTokens` 的最小映射层，字体候选与许可证审核、确定性阴影原型、三设备同 fixture 渲染闸门和性能/体积记录纳入 VC0–VC6。当前不改版本号、不修改代码、不进入 #281；只有 R9-A 弹性布局和 R9-B 视觉一致性同时通过，#280 才能标记 `verified`。
+- 2026-09-21：**#280 P0/P1 响应式审计已按当前代码重新生成**：修正 `debug/verify-280-responsive-p0.cjs` 的阶段语义，使报告不再沿用 P0 的 `fail_pending_p1` 和旧 nextGate；当前 `responsive-audit.json` 标记为 `p0_p1_static_pass_pending_p4_p5`。R1–R5、R7 已无静态证据；R6 无残留证据；R8 已由既有人工复核接受；R9 仍保留三设备运行时矩阵待 P4/P5 验收。`npm run verify:280` 全部通过。本次只更新审计脚本、基线状态和报告，不修改业务布局、版本号、APK 或设备数据；下一步执行 P4 自动响应式闸门，再进入 P5 三设备同 fixture 全量回归。
+- 2026-09-21：**#280-P4 自动响应式闸门首次执行（部分通过，保持阻断）**：新增 `debug/verify-280-responsive-p4.cjs` 并接入 `verify:280`/`verify:280:responsive`。静态契约与当前在线设备只读采集通过：P0/P1 静态审计无阻断证据，魅族 18s/魅族 21 的包名、版本、MainActivity、UI dump bounds 均通过窗口边界检查。由于 OnePlus PLZ110 当前未连接，且 fontScale 1.15/1.30、深色/降低透明度、IME 聚焦、空/密集/长文案及全路由矩阵尚未采集，P4 报告为 `partial_pass_pending_device_matrix`，证据见 `debug/visual-migration/#280-p4-responsive/p4-report.json`。本轮未修改版本号、业务布局、系统设置或业务数据；补齐矩阵后才能进入 P5 全量三设备回归。
+- 2026-09-21：**#280-P4 第三设备补采集**：OnePlus PLZ110 已连接并完成只读采集，`4.2.10/code132`、`MainActivity`、UI dump bounds 均通过；为避免启动前读取 Launcher 造成误报，修正 P4 脚本为“启动 MainActivity 后再读取前台 Activity”。本次采集时魅族 21 已断开，因此报告仍为 `partial_pass_pending_device_matrix`，当前缺失设备为魅族 21；fontScale 1.15/1.30、深色/降低透明度、IME 聚焦、空/密集/长文案和全路由矩阵仍待补齐。未修改版本号、业务布局、系统设置或业务数据。
+- 2026-09-21：**#280-P4 采集台账改为跨会话累计**：由于一次最多连接两台设备，`verify-280-responsive-p4.cjs` 现在会保留上一次同版本采集结果，按 serial 合并当前证据，当前会话覆盖同 serial 时以新证据为准；同时将“设备集合完整”和“状态矩阵完整”分开判定。当前魅族 18S + 魅族 21 采集通过，OnePlus 证据待下一次连接后合并；fontScale、主题、IME、数据密度和全路由矩阵仍未完成，状态为 `partial_pass_pending_matrix_states`。
+- 2026-09-21：**#280-P4 三设备基础集合已补齐**：OnePlus PLZ110 已重新连接并完成只读采集，P4 台账成功合并魅族 18S、魅族 21、OnePlus 三台设备；三台均为 `4.2.10/code132`，MainActivity 可见，UI dump bounds 未越界。P4 仍保持 `partial_pass_pending_matrix_states`，待补齐宽高矩阵、fontScale 1.15/1.30、深色/降低透明度、IME 聚焦、空/密集/长文案及全路由状态；未进入 P5。
+- 2026-09-21：**#280-P4 fontScale 状态矩阵部分补齐**：新增 `capture-280-responsive-states.cjs` 与 `verify:280:responsive:states`，在不写入业务数据的前提下临时采集 fontScale 1.0/1.15/1.30，并在 `finally` 中恢复设备原始字号；魅族 18S 与 OnePlus 三档状态 bounds/MainActivity 均通过，设备字号已恢复为 1.0。魅族 21 因本轮未连接暂缺三档证据；P4 报告仍列出 320/412dp、短屏、魅族 21 fontScale、深色/降低透明度、IME、数据密度和全路由矩阵待补齐。
+- 2026-09-21：**#280-P4 fontScale 三设备状态矩阵完成**：用户连接魅族 21 后补采集 1.0/1.15/1.30 三档字体缩放；`state-matrix.json` 已累计 3 台设备、9 组状态，所有状态的 MainActivity、bounds 越界和截图采集通过，缺失字体档位为空。采集脚本恢复了每台设备的原始系统字号（魅族 21 原始值为 1.06，魅族 18S/OnePlus 为 1.0），未修改业务数据和版本号。P4 仍未完成：320/412dp 宽度、短屏、深色/降低透明度、IME 聚焦、空/密集/长文案 fixture 及全路由状态仍待补齐；不得进入 P5。
+- 2026-09-21：**#280-P4 窗口宽高状态矩阵完成**：新增 `capture-280-responsive-window-states.cjs` 与 `verify:280:responsive:windows`，在魅族 21、魅族 18S 上临时采集 320dp/700dp（窄/短）和 412dp/840dp（宽/高）窗口；每台设备均在 `finally` 中恢复原始 `wm size`，实际设备恢复为物理分辨率，未修改 density、业务数据或版本号。窗口 bounds 与 MainActivity 检查全部通过；P4 当前已覆盖宽度 320/347/360/393/412dp 和短/OnePlus/普通/高四类高度，仍待深色/降低透明度、IME 聚焦、空/密集/长文案 fixture 及全路由状态。
+- 2026-09-21：**#280-P4 深色状态补采集**：新增 `capture-280-responsive-theme-states.cjs` 与 `verify:280:responsive:theme`，在魅族 21、魅族 18s 临时切换系统夜间模式并采集 UI dump/截图，bounds 与 MainActivity 均通过；两台设备原始夜间模式均为 `no`，已在 `finally` 中恢复。OnePlus 因未连接暂保留历史证据；降低透明度没有可用系统开关，未伪造通过。P4 仍待 OnePlus 深色、降低透明度、IME 聚焦、空/密集/长文案 fixture 及全路由状态。
+- 2026-09-21：**#280-P4 深色状态三设备完成**：OnePlus PLZ110 连接后补采深色状态，三台设备的 dark evidence、MainActivity 与 bounds 检查均通过；OnePlus 原始夜间模式为 `no`，已恢复。P4 当前仅剩降低透明度、IME 聚焦、空/密集/长文案 fixture 及全路由状态，未进入 P5。
+- 2026-09-21：**#280-P4 IME 状态补采集**：新增 `capture-280-responsive-ime-states.cjs` 与 `verify:280:responsive:ime`，在魅族 18s、OnePlus 的“首页 → 记录 → 直接填写 → 备注”路径打开键盘，确认输入框保持可见且 bounds 未越界；脚本只聚焦输入框，不输入、不保存，结束后关闭键盘并退出页面。魅族 21 因本轮未连接暂缺 IME 证据；P4 仍待三设备 IME、降低透明度、空/密集/长文案 fixture 及全路由状态。
+- 2026-09-21：**#280 衍生修复：记录详情备注 IME 遮挡（版本号不变）**：定位到记录详情 Sheet 只监听一次焦点延时，外层自定义 `Layout` 仅保留导航栏空间；在键盘以 overlay 方式覆盖完整窗口的设备上，备注输入框因此落入 IME 区域。修复复用 #279 输入型 Sheet 规则：详情卡片在 IME 可见时只消费一次 `imeDp - navigationBarDp` 的整卡片位移，备注字段监听 `WindowInsets.ime` 稳定值并双阶段 `BringIntoViewRequester`，不叠加 `imePadding`、负 offset 或第二滚动容器；请求器挂在完整输入框容器。新增 `verify-280-ime-input.cjs` 对记录详情 IME 契约做静态阻断，编译与详情布局闸门通过。新 APK 保持 `4.2.10/code132`，已安装到魅族 21（`[序列号已省略]`）、魅族 18S（`[序列号已省略]`）与 OnePlus PLZ110（`[序列号已省略]`）；三台设备运行时 IME 采集均确认备注字段聚焦后完整显示、键盘可见、bounds 无越界，证据已合并到 `debug/visual-migration/#280-p4-responsive/states/state-matrix.json`。#280 仍按原计划继续其余响应式矩阵与最终签收，不因本项单独提前完成。
+- 2026-09-21：**#280-P4 IME 三设备收口并重新生成闸门报告**：OnePlus 重新连接后安装同一 `4.2.10/code132` debug APK，记录详情备注聚焦、IME 显示、字段可见性和 bounds 均通过；当前 `p4-report.json` 已确认三设备基础集合、宽高、fontScale、深色和 IME 状态全部覆盖。P4 剩余仅为 `reduced-transparency`、`empty/dense/long-text fixtures` 和 `all routes`，状态保持 `partial_pass_pending_matrix_states`，尚未进入 P5。
+
+- 2026-09-21：**#280-P4 范围修订：玻璃模式与降低透明度回退不再作为 Native 三设备硬闸门**：根据当前原生化边界，#275–#280 的 NativeRoute 只负责经典/普通模式（浅色、深色和普通模式的响应式布局）；玻璃模式及其 `prefers-reduced-transparency` 回退继续由 WebView 唯一渲染，后续玻璃原生重构另立任务，不在 #280 内提前制作或验收。Native 仍保留防御性兼容：收到 `reducedTransparency` 材质事实时，必须关闭 blur/透明叠加并回退到主题实底，不改变页面几何、路由、Tab/Sheet 层级或业务状态。由此，P4 的 Native 必需矩阵移除 `reduced-transparency` 三设备运行态要求；该状态改为 WebView 兼容记录 + Native 静态契约/受控 debug 回退检查，不得伪造真机系统开关证据。P4 当前真正剩余为 `empty/dense/long-text-multi-digit` 数据 fixture 与 `all routes` 状态采集，完成后再进入 P5；现有 `p4-report.json` 中的旧 `reduced-transparency` 缺口需在下一次 P4 闸门脚本重跑时按新范围重新分类，不能直接把历史报告标为完成。
+
+- 2026-09-22：**#280 P5 当前设备回归（两台魅族，阻断）**：在魅族 21（`[序列号已省略]`）与魅族 18S（`[序列号已省略]`）使用同一 `4.2.10/code132` 安装版本完成冷启动、热恢复、强制停止重启，以及首页、日历、记录、计时、洞悉、我的、备份与恢复、输入型 Sheet 的只读路由采集；生命周期、路由可达性、bounds、MainActivity、计时偏好恢复和记录指纹均通过，未执行记录增删改、导入导出、清除或恢复。P5 发现真实启动期空快照窗口：两台设备在约 `0.77–1.09s` 短暂报告 `0` 条记录，随后恢复为原有 `62` 条；因此 `p5-report.json` 状态为 `failed`，不能签收 #280，也不能进入 #281。初步根因是 `www/js/app.js` 启动时 `syncNativeHomeSnapshot(initialStatsSnapshot)` 在记录/统计尚未稳定时把空聚合快照写入 Native，后续异步行为快照才将其恢复；需在 #280 修复“空快照写入保护/启动写入时序”后重新执行 P5，并补做 OnePlus PLZ110 同 fixture 回归。证据：`debug/visual-migration/#280-p5-regression-20260922/p5-report.json`；本轮无版本号、APK 或真实数据变更。
+
+- 2026-09-22：**#280 P5 启动空快照保护修复（两台魅族复测通过，OnePlus 待复测）**：为阻止启动期/缓存回调把暂时为空的聚合覆盖到 Native，`www/js/app.js` 在权威记录加载完成后才设置 `__guanjiRecordsReady`；`www/js/records.js` 在未 ready 时拒绝发布，并在候选快照缺少有效记录但当前源仍有记录时从当前 `records` 重建聚合；仅明确的真实空记录替换/清除路径通过 `allowEmpty=true`。`NativeHomeSnapshotPlugin` 增加持久化层保护：已有非空快照时拒绝未显式授权的空快照覆盖，并返回 `empty_snapshot_rejected`。新增 `verify:280:startup-snapshot` 静态闸门并接入 `verify:280`；JS 语法、全量静态闸门、稳定 debug 构建、签名/版本校验均通过，APK 保持 `com.guanji.app` `4.2.10/code132`，已安装到魅族 21（`[序列号已省略]`）和魅族 18S（`[序列号已省略]`）。P5 同 fixture 只读复测：两台设备 `startupEmptyWindow=false`、`snapshotStable=true`，启动前后记录均为 `62`，生命周期/路由/计时偏好恢复均通过；未执行记录增删改、导入导出、清除或恢复。OnePlus PLZ110 仍需连接后完成同一 P5 复测，故 #280 尚未签收。证据：`debug/visual-migration/#280-p5-regression-20260922/p5-report.json`。
+
+- 2026-09-22：**#280 P5 启动首快照时序补强（三设备证据通过）**：OnePlus 首轮仍在约 0.4–0.7 秒读到空快照，定位为该设备没有旧的有效 Native 快照，而首个快照提交等待了后续初始化；因此在权威记录 `load()` 完成后立即构建并等待一次本地聚合快照写入，再继续设置/AI 初始化。重新构建并安装 `4.2.10/code132` 后，魅族 18S 与 OnePlus 当前批次、魅族 21 保留证据均通过 P5：`startupEmptyWindow=false`、`snapshotStable=true`、生命周期/路由/计时偏好恢复/Activity 错误检查全部通过；记录指纹保持不变（魅族 18S 62→62、OnePlus 59→59），未执行任何增删改、导入导出、清除或恢复。P5 报告状态为 `passed`，证据：`debug/visual-migration/#280-p5-regression-20260922/p5-report.json`。#280 仍需完成 P6/P7 及最终整体签收，不因 P5 单项提前标记完成。
+- 2026-09-22：**#280 P6 VC0–VC1 已实施，保持视觉红灯**：固定 `4.2.10/code132`、`com.guanji.app`、`record-details-fixed-footer-v1`、`record-details-sheet`、经典浅色、`fontScale=1.0`、键盘关闭，扩展 `debug/verify-280-cross-device-rendering.ps1` 纳入魅族 21、魅族 18S、OnePlus PLZ110 三设备同 fixture 对照；新增 `debug/verify-280-rendering.cjs`、`npm run verify:280:rendering`，并将其接入 `npm run verify:280`。新增 `docs/native-rewrite/CROSS-DEVICE-VISUAL-CONTRACT-280.md` 和 `docs/REUSE-RULES.md` 8.15，冻结字体/阴影角色、阈值和后续 VC2–VC6 边界。当前报告 `debug/visual-migration/#280-p6-vc0-20260922/vc0-report.json`：魅族 21→魅族 18S 字形覆盖差异 `7.95%`、阴影差异 `15.11%`；魅族 21→OnePlus 字形覆盖差异 `7.14%`、阴影差异 `58.82%`，均超过 `5%/10%` 阈值，状态为 `red_baseline`。本轮不修改 UI、字体、阴影、版本号或业务数据；P6 尚未完成，下一步必须按 VC2/VC3/VC4 以 WebView CSS 为事实源逐批收口，不能进入 P7/#281。
+- 2026-09-22：**#280 P6 弹性布局收口已独立通过（不等于 #280 总计划完成）**：新增 `debug/verify-280-p6-elastic.cjs` 与 `npm run verify:280:p6`，按 P6 实际职责验证 P0/P1 审计、P4 三设备响应式矩阵、P5 生命周期/路由/启动快照保护、R9 记录详情 Footer/安全区契约和迁移台账闭环。报告 `debug/visual-migration/#280-p6-elastic-20260922/p6-report.json` 状态为 `passed`；三设备 R9 均为 20dp、无裁切/重叠，P4/P5 均通过。报告明确 VC0–VC6 是 #280 并行视觉阻断分支，不作为 P6 的通过条件；当前 VC0 仍为 `red_baseline`，所以 #280 继续保持 `implemented_pending_stability_signoff`，下一步为 P7 收口准备与 VC2–VC6 视觉分支，不能进入 #281。
+- 2026-09-22：**#280 P6 当前批次验收纠正为阻断**：复核发现上一条 P6 报告只读取了历史保留的三设备 P4/P5/R9 证据，没有核对本轮实际连接设备；当前连接为魅族 18S + 魅族 21，缺少 OnePlus PLZ110，因此不能称为本轮 P6 真机验收通过。`verify-280-p6-elastic.cjs` 已增加 ADB 当前设备检查，要求至少一台魅族与 OnePlus 同时在线；历史证据只能作为保留基线，不能替代当前批次。当前 P6 报告应为 `blocked_pending_oneplus`，待连接 OnePlus 后重新执行同版本、同 fixture 的 P6 复测。
+- 2026-09-22：**#280 P6 当前批次补测通过**：连接魅族 18S（`[序列号已省略]`）与 OnePlus PLZ110（`[序列号已省略]`）后重新执行 `npm run verify:280:p6`，当前设备条件、P4/P5、R9 记录详情 Footer/安全区、迁移台账和无设备特判检查全部通过。P6 报告恢复为 `passed`；魅族 21 仍作为已留存的同版本 R9/P4 基线，不冒充本轮在线设备。VC0–VC6 视觉分支仍独立为 `red_baseline`，不改变 P6 结论，也继续阻断 #280 总签收。
+- 2026-09-22：**#280 P6 真机证据补正**：针对“46 秒不可能完成采集”的复核，先实际执行 `npm run verify:280:p5` 在当前魅族 18S + OnePlus 上完成只读冷启动/热恢复/强制停止/全路由采集，P5 报告为 `passed`；随后执行 `npm run verify:280:p6`，因此本次 P6 通过是基于新采集的当前批次证据，而不只是在线状态或历史报告。仍未执行任何记录增删改、导入导出、清除或恢复。
+- 2026-09-22：**#280 VC2 字体准入已实施**：读取 `www/css/theme.css` 的 `--font` 系统字体栈，确认 Native 不新增 SF Pro、PingFang、HarmonyOS Sans 等字体文件；新增 `NativeTypography.kt`，冻结 `FontFamily.SansSerif`、`FontSynthesis.None` 和 `fontScale=1.0/1.15/1.30` 准入档位；新增 `debug/verify-280-vc2-font-admission.cjs` 与 `npm run verify:280:vc2`。当前连接的魅族 18S（API33）和魅族 21（API36）均为 `com.guanji.app 4.2.10/code132`，报告记录了真实 density、导航模式和 fontScale（18S 为 1.0、魅族21 原始为 1.06）；APK 内字体资产为空，无额外字体许可证或 ABI 负担。统一 debug 构建通过，仍保持 4.2.10/code132；VC2 不替换页面 TextStyle，下一步进入 VC3 Typography 分批映射，不改变 Sheet/Insets/Footer/Tab/弹性布局。
+- 2026-09-22：**#280 VC3-T0 字体角色映射已实施**：按 WebView CSS 事实新增 `NativeTypography.style(...)` 语义角色，首批覆盖首页问候/趋势、时段、最近记录卡片标题与副标题，以及记录时间/详情页字段标题、日期/时长、备注、选项和底部按钮；不新增字体资产，不改变字号、padding、Sheet 高度、Insets、Footer、Tab 或滚动 owner。`npm run verify:280:vc3` 通过，魅族 18S 与魅族 21 均为 `4.2.10/code132`；统一 debug 构建通过，APK SHA-256 为 `084CBB96B401EC11B86519D2E350D74C144D28C0339821E2360A187F08296566`。VC3 总体、VC0/VC1 和 #280 总体仍未签收，下一批进入 T1。
+- 2026-09-22：**#280 VC2.1 字体一致性复核已实施（待第三设备证据）**：严格沿用 VC2 的系统字体来源决策，新增 `debug/verify-280-vc2.1-font-consistency.cjs` 与 `npm run verify:280:vc2.1`。脚本只读记录设备 density/导航模式/版本，临时将已连接设备 `fontScale` 统一为 `1.0`，采集 MainActivity、UI dump、bounds 与截图，并在 `finally` 恢复原始字号；不修改业务数据、不修改 density、不新增字体资产、不升级版本号。当前魅族 21（原始 `1.06`）和魅族 18S（原始 `1.0`）采集通过，OnePlus PLZ110 未连接，报告为 `blocked_pending_device_evidence`；报告路径：`debug/visual-migration/#280-p6-vc0-20260922/vc2.1-font-consistency/vc2.1-font-consistency-report.json`。本项仍未决定内置字体，待三设备同条件渲染对照后再决定是否进入经许可证/API23/包体/WebView 兼容审查的字体候选评估。
+- 2026-09-22：**#280 VC2.1 跨会话采集补充**：考虑一次最多连接两台设备，脚本改为按 `versionName/versionCode/targetFontScale` 跨会话合并证据，当前会话覆盖同 serial，并为每次采集保存独立 session 报告。OnePlus PLZ110 与魅族 18S 当前采集均通过、字号已恢复；本轮魅族 21 未连接，累计报告仍为 `blocked_pending_device_evidence`，不是字体代码失败。待连接魅族 21 后再次运行同一命令完成累计三设备采集。
+- 2026-09-22：**#280 VC2.1 三设备归一化与渲染复核完成（进入字体候选阻断）**：魅族 21、魅族 18S、OnePlus PLZ110 均完成 `fontScale=1.0` 同条件采集，原始字号均已恢复；使用三设备共有静态标题“次数趋势”做像素覆盖对照，魅族 21→魅族 18S 为 `1.77%`（通过），魅族 21→OnePlus 为 `13.79%`（超过 VC0 的 `5%` 阈值）。VC2.1 报告状态为 `blocked_needs_font_candidate_review`，确认仅靠 OEM `FontFamily.SansSerif` 不能满足跨设备字体一致性；尚未内置字体，下一步必须先完成候选字体许可证/API23/包体/WebView 兼容审查，不能进入 VC3-T1。证据：`debug/visual-migration/#280-p6-vc0-20260922/vc2.1-font-consistency/vc2.1-rendered-font-report.json`。
+- 2026-09-22：**#280 VC2.2 字体候选准入评估启动（保持阻断）**：新增 `debug/verify-280-vc2.2-font-candidate.cjs`、`npm run verify:280:vc2.2:candidates` 与 `docs/native-rewrite/VC2.2-FONT-CANDIDATE-ADMISSION-280.md`。按官方发布/许可证记录 `Noto Sans CJK SC Sans2.004` 与 `Source Han Sans SC 2.005R` 两个候选，候选资产只允许进入 `debug/font-candidates/vc2.2` 隔离目录，禁止直接写入生产 `res/font`。准入条件冻结为 OFL 1.1、API 24（当前工程 minSdk）静态 fallback、400/500/700 字重、SHA-256、APK 增量、API 24/三设备/WebView 同 fixture 渲染和许可证声明；初始状态为 `blocked_pending_candidate_asset_inspection`。
+- 2026-09-22：**#280 VC2.2 候选资产清点完成（渲染仍阻断）**：两套官方压缩包已下载到 `debug/font-candidates/vc2.2/`，并解压到隔离目录；Noto Sans CJK SC 已发现 Regular/Medium/Bold，Source Han Sans SC 已发现 Normal/Medium/Bold，脚本记录了每个文件 SHA-256，生产 `res/font` 仍为空。由于 API 23 渲染、临时候选 APK 包体/启动/内存、三设备与 WebView 同 fixture 对照尚未完成，报告状态更新为 `blocked_pending_candidate_render`；未修改版本号或生产界面，VC3-T1、VC0 和 #280 仍不能签收。
+- 2026-09-22：**#280 VC2.2 兼容目标校正**：核对 `android/variables.gradle`，当前 `minSdkVersion=24`，因此 API 23（Android 6.0）不属于观己可安装范围；VC2.2 的最低验收环境改为 API 24（Android 7.0），不降低 minSdk，仅保留静态字体和 API 26 变量字体 fallback 规则。报告、脚本和 VC2.1 候选准入引用已同步，避免为不支持的 API 23 额外建立测试环境。
+- 2026-09-22：**#280 VC2.2 修订并完成字体选型，进入 VC3-T1**：按用户确认取消 API 24 运行时测试，改为 `minSdk=24` 的静态资源/打包/OTF 兼容审查，并在 `vc2.2-font-candidate-report.json` 中明确记录 `passed_static_compatibility_runtime_unverified` 与残余风险接受；不降低 minSdk，也不伪造 API 24 运行时证据。依据三设备同 fixture 静态候选渲染（Noto 最差相对差异 `0.5281%`，Source Han 最差 `0.7107%`）选择 Noto Sans CJK SC Sans2.004，接入未修改的静态 Regular/Medium/Bold，600/800 明确映射到 Bold，完整 OFL 1.1 许可证进入 `android/app/src/main/assets/licenses/NotoSansCJKSC-OFL-1.1.txt` 和 `THIRD_PARTY_NOTICES.md`。新增 `verify:280:vc3:t1`，将首页、日历、记录/计时文字绑定到统一语义 Typography 角色；VC3-T0、VC3-T1 静态闸门和 V2 preflight 均通过。通过统一构建钩子生成并安装 `4.2.10/code132` 到魅族 18S/21，APK `54,707,001` bytes，SHA-256 `95E52614E70321B43FE1EF2893E57F70C78E2D5E10FCF5D683A906C8553512C2`，两台设备端 SHA 与构建产物一致且无近期崩溃/ANR。当前 VC3-T1 状态为 `passed_static_pending_three_device_runtime`，待 OnePlus PLZ110 连接后完成同 fixture 运行时对照；冷启动/内存、WebView 同样张和完整 #280 收口仍未完成，不能标记 #280 或 VC0–VC6 完成。
+- 2026-09-22：**#280 VC3-T0/T1/T2/T3 按计划推进（两台魅族内部回归通过，OnePlus 延后）**：T0/T1 继续使用 `NativeTypography` 的 Noto Sans CJK SC 语义角色，T2 新增并绑定“我的/数据与隐私/备份与恢复/输入型 Sheet”角色，T3 新增并绑定“洞悉/Tab/空状态/状态小字/日期徽标/AI 文案”角色；所有迁移页面不再直接创建 `TextStyle`，统一使用 `NativeTypography.style(...)`，保留 #279 的 IME、Sheet、Footer 和 #280 的弹性布局参数。新增 `verify:280:vc3:t2`、`verify:280:vc3:t3`、`verify:280:vc3:internal` 及对应文档/报告。统一构建钩子生成并安装 `com.guanji.app 4.2.10/code132` 到魅族 18S（API33）和魅族 21（API36），稳定调试签名 SHA-256 为 `0F14FD7EDA0C58BFF82144B8D5CB6A6AD19A79C48E25B0D5B640213E7DC97E0B`；两台设备完成只读 P5 路由回归（冷/热启动、force-stop、首页、日历、记录/计时、洞悉、我的、备份与恢复、输入型 Sheet），记录快照未发生空窗口或漂移，证据见 `debug/visual-migration/#280-p5-regression-20260922/p5-report.json`。当前 VC3 内部状态为 `passed_two_meizu_internal_pending_oneplus`，没有标记 VC3 或 #280 完成；按用户确认，OnePlus 只在 T3 完成后连接，下一步为三设备最终同 fixture 字体/视觉对照及 VC3 合规收尾（许可证入口、NOTICE、包体/冷启动评估）。
+- 2026-09-23：**#280 VC3 许可署名补齐（当前两台魅族运行可见，尚非 VC3/#280 总签收）**：在“我的 → 观己应用图标 → 开源软件许可”的 Noto Sans CJK SC Sans2.004 条目中明确展示 `© 2014-2021 Adobe` 与 `Noto is a trademark of Google Inc.`，完整 OFL 1.1 文本保持离线可读；`THIRD_PARTY_NOTICES.md` 同步加入版权与商标声明。`verify:280:vc3:t3` 新增应用内署名和发布 NOTICE 静态断言并通过。保持 `4.2.10/code132`，经统一 `tools/build-apk.ps1` 安装同一稳定调试签名构建到魅族 18S/API33、魅族 21/API36；两台真机许可页 UI dump 均确认署名、Sans2.004 来源链接和 OFL 1.1 正文可见。VC3 仍待 OnePlus 最终验收及字体包体/冷启动/内存评估，#280 仍未完成。
+
+## #280 VC3 静态字体阶段历史记录（已由 VC3-R2 可变字体方案完整替代）
+
+> 本节下方的静态 400/500/700 映射与 4.2.11 实施记录仅作为历史和回滚依据，不再描述当前生产实现。当前执行标准以 VC3-R2 和 `docs/native-rewrite/VC3-R2-VARIABLE-FONT-280.md` 为准。
+
+### VC3-R2：可变字体单一路径升级（已批准，实施中）
+
+### 本轮实施运行
+- Run ID：`guanji-vc3-r2-closeout-20260929-01`
+- 关联前序 Run：`guanji-vc3-r2-oneplus-final-20260929-01`；三设备 T0–T3 Native 字体抽查及 P5 路由/生命周期证据已完成
+- 执行契约：legacy VC3-R2；用户于 2026-09-29 明确确认的范围修订 R1：WebView 仅为迁移参考/测试入口、用户流程不依赖，因此 API 26 WebView 回退测试标记为不适用且不阻塞 VC3；API 26 Native 页面与可变字体兼容性仍是验收项
+- 基线提交/工作区：`c113bcf4c7729d0978ded3f37f3ab76496334af1`；主项目工作区已有未提交改动（88 项），全部保留；仅修改本条状态、VC3-R2 状态文档、`CHANGELOG.md` 的验收状态及本 Run 报告
+- 候选版本：`4.2.12/code134`，复用现有 APK；本 Run 不改产品版本、不重建/安装 APK
+- 验证档位：`android-runtime`（并行完成 APK/许可材料静态核验）
+- Run 状态：`complete`
+- 当前阶段：VC3-R2 / VC3 签收；#280 父级计划继续 VC4～VC6
+- 文件白名单：`IMPROVEMENTS.md`；`CHANGELOG.md`；`docs/native-rewrite/VC3-R2-VARIABLE-FONT-280.md`；`outputs/guanji-app_实施v4.2.12_#280-VC3-R2-收尾_2026-09-29.md`；`debug/visual-migration/#280-vc3-r2/` 下既有只读证据
+- 禁止事项：不改产品 UI/字体/业务/版本；不重建或安装 APK；不操作用户记录、不清除应用数据；不改动 API 24/25 兼容 APK；不为已确认不适用的 API 26 WebView 回退路径做兼容修复
+- 启动时间：2026-09-29
+
+### 本轮执行台账
+| 计划步骤 | 状态 | 实际改动 | 证据 | 偏差 |
+|---|---|---|---|---|
+| 范围修订：API 26 WebView 回退不适用 | passed | 用户确认 WebView 只作迁移参考/测试入口且用户流程不依赖；不再要求 WebView fallback 兼容测试或修复；API 26 Native 验证保留 | 本轮用户确认；`api26/api26-runtime-report.json` | R1：仅调整验收适用性，不改变最终 WebView 移除路线 |
+| API 26 Native 页面与可变字体验证 | passed | 复核当前 `4.2.12/code134`；NativeRoot 首页/洞悉/我的路由的 Compose 文本与可变字体可见，Native 页面 UI 树无 WebView 节点；WebView fallback 按 R1 不适用 | `api26/api26-runtime-report.json`；本 Run 只读 Native 路由证据 | API 26 仍是最低 Native 运行要求 |
+| APK 与字体资源体积评估 | passed | 旧三份静态字体 25,219,940 bytes / ZIP 21,932,029 bytes；当前单变量 TTF 17,773,132 / ZIP 11,276,746 bytes；字体资源 ZIP 压缩量减少 48.58%。旧/新 APK 总体大小也记录，但不将版本间差值全部归因于字体 | `debug/apk-build-summary.json`；`baseline-static-api24/`；本 Run 报告 | — |
+| 冷启动/内存评估 | measured | API 26 AVD 三次 `am start -W TotalTime` 为 1490/1664/1695 ms，中位数 1664 ms；Native 首页/洞悉/我的及长页滚动 PSS 样本约 120.1～128.4 MiB。测量条件、缓存状态和口径已在报告说明 | 本 Run 报告；`api26/api26-runtime-report.json` | 项目未定义 PSS 数值预算；不声称单字体增量或跨设备性能保证 |
+| 应用内许可与发行 NOTICE 核验 | passed | API 26 Native 中从「我的→App 介绍图标」打开离线许可页；SQLCipher BSD 与 Noto OFL 正文均可滚动读取；APK 两份资产与源码 SHA-256 一致；根目录 `THIRD_PARTY_NOTICES.md`、README/API 边界及变更说明核验通过 | 当前 APK ZIP 条目与 SHA；Native 离线许可页运行检查；`THIRD_PARTY_NOTICES.md` | 本轮未发布 GitHub Release；正式发布时仍需将根目录 NOTICE 随 APK 作为发布材料提供 |
+| VC3-R2/VC3 签收 | signed_off | 所有适用的 Native、三设备、API 26、字体体积、启动/内存观察与许可证/NOTICE 检查已完成；VC3-R2 与 VC3 签收。父级 #280 仍未完成，继续 VC4～VC6 | 本 Run 报告；`docs/native-rewrite/VC3-R2-VARIABLE-FONT-280.md` | API 26 WebView fallback 按用户确认 R1 标记为不适用，不阻塞签收 |
+
+- D-24（2026-09-29）：用户确认 WebView 仅用于迁移期间参考或测试，用户流程不依赖 WebView。因此 API 26 WebView fallback 测试转为 `not_applicable`，不再作为 P5/VC3 阻断项；API 26 Native 可变字体验证仍保留。旧 API26 Chromium 69 的 JS 兼容观察保留为历史诊断，不据此修复或阻塞。
+- D-25（2026-09-29）：在 API26 x86_64 AVD 对 `4.2.12/code134` 测三次 ActivityManager `am start -W`，并通过现有桥接恢复 NativeRoot 后确认 Native Compose 文本节点、可变字体和零可见 WebView 页面节点。该计时不是 Android Vitals TTID/TTFD；PSS 是混合宿主完整主进程值，且项目未设 PSS 阈值，故只登记观察基线，不虚构字体单独占用或通用设备结论。
+- D-26（2026-09-29）：应用内许可页由 Native icon 入口打开，SQLCipher BSD 与 Noto OFL 正文可离线滚动；APK 中两许可证资产 SHA 与源码一致。`THIRD_PARTY_NOTICES.md` 与 API 24/25 兼容边界存在且一致。未发布 Release；将 NOTICE 作为附件随正式 APK 发布仍是发布步骤，不是本轮 VC3-R2 阻断。
+
+### 实施运行
+- Run ID：`guanji-vc3-r2-oneplus-final-20260929-01`
+- 关联前序 Run：`guanji-vc3-native-visual-20260929-01`；两台魅族 Run-10 Native T0–T3 字体视觉复核已通过，继续 P5 OnePlus 最终验收
+- 执行契约修订：legacy；来源为 VC3-R2 已批准方案、用户确认的设备顺序，以及用户于 2026-09-29 明确授权将 OnePlus 上的 4.2.10/code132 原位升级至 4.2.12/code134
+- 基线提交/工作区：沿用当前工作区；保留既有用户改动，不重置、不清理
+- 候选版本：4.2.12/code134；复用现有 APK SHA-256 `21EFC6627796D82B403195C89B2503F9AE32DC18062BFD6CB07BE31469AEC67E`；不改版本与产品代码
+- 验证档位：android-runtime
+- Run 状态：in-progress
+- 当前阶段：OnePlus PLZ110 版本升级前数据摘要 → 同签名原位覆盖安装 → 数据连续性与 T0–T3/P5 验收
+- 文件白名单：`tools/build-apk.ps1`（仅通过统一 debug 安装钩子核验/安装指定 code134，禁止卸载及清数据）；`debug/capture-280-vc3-oneplus-data-summary.cjs`（只读采集 code132/code134 前后聚合数据条数与 SHA-256，不落盘记录内容）；`debug/capture-280-p5-regression.cjs`（新增 OnePlus-only 只读批次；截图仅落盘静态标签 allowlist 裁图，且只核对、不重写原计时偏好）；`debug/capture-280-vc3-native-font-review.cjs`（新增独立 OnePlus-only T0–T3 字体批次，输出使用独立 run-11 目录）；`debug/visual-migration/#280-vc3-r2/oneplus-final-4.2.12-134/`（仅存版本/数据摘要、脱敏路由证据和 allowlist 字体裁图）；P5/VC3 最终验证报告；本条 `IMPROVEMENTS.md`、VC3-R2 状态文档和本 Run 唯一实施报告
+- 禁止事项：不得卸载、清除数据、导入/恢复/编辑/删除/导出记录；不得改变用户主题、通知、字体缩放或字体路由偏好；不得保存原始记录文本或包含记录内容的整屏截图；不得修改产品 UI/字体/映射/版本
+- 启动时间：2026-09-29
+
+### 执行台账
+| 计划步骤 | 状态 | 实际改动 | 证据 | 偏差 |
+|---|---|---|---|---|
+| OnePlus 设备/版本/签名预检 | passed | 确认 PLZ110/API37，当前安装 4.2.10/code132；现有目标 APK 为 4.2.12/code134、minSdk26，SHA-256 与构建摘要一致，且与设备安装证书相同。用户已明确授权 `adb install -r` 原位升级；尚未安装 | `debug/apk-build-summary.json`；只读 ADB 版本与证书核验 | 无 |
+| 重新运行 VC3-T1/T2 静态门禁 | partial_blocked_by_device_batch | T1 输出仍为 pending OnePlus；T2 因当前只连接 18S + OnePlus、不满足“两台魅族在线”的旧运行条件而生成 blocked 报告。无产品代码或手机数据改动；Run-10 的两机视觉裁图未被覆盖 | T1/T2 当前静态报告及本轮命令输出 | D-21；不得把环境组合错误记为产品失败 |
+| OnePlus 原位升级与数据连续性 | pending | 尚未开始；需先采集 code132 升级前的本机聚合摘要，再使用统一构建钩子安装 code134 并复核摘要 | — | — |
+| OnePlus P5/T0–T3 最终验收 | pending | 等待升级、版本复核和数据连续性检查 | — | — |
+
+- D-21（2026-09-29）：用户连接 OnePlus 后，当前设备组合为 MEIZU 18S + OnePlus。误在该组合下重跑要求“两台魅族同时在线”的 T1/T2 子门禁，T2 因目标设备集合不足写出 `blocked` 报告；这是运行环境不符合子门禁约束，不是产品实现失败，未触碰设备数据。保留失败报告作审计证据；此后 OnePlus 阶段只运行接受 OnePlus 批次的最终验收，不运行两魅族专属门禁。若最终收口仍要求 T1/T2/T3 报告恢复为两机签收状态，需在 OnePlus 批次结束后重新连接两台魅族并重跑对应门禁。
+- D-22（2026-09-29）：现有 `verify-280-vc3-r2-data-preservation.cjs` 仅验证旧基线 4.2.11/code133，并硬编码两台魅族；OnePlus 当前是 4.2.10/code132。为在用户授权的 OnePlus 原位升级前后做可复核但不泄露私密记录内容的摘要对比，新增 OnePlus 专用只读采集器，限定设备、前后目标版本，仅输出记录数量与选定聚合快照的 SHA-256，不导出/保存记录文本，不执行任何记录写操作。此为测试证据能力增量，不改变数据迁移或产品验收语义。
+- D-23（2026-09-29）：通用 P5 路由采集器默认保存整屏截图并在收尾时回写计时偏好原文，不适合直接用于有真实数据的 OnePlus 主力机。为完成已批准的 OnePlus 最终路由/生命周期验收且遵守数据最小化，仅新增 `--oneplus-only` 安全批次：每次截图只在内存中裁取匹配的静态 UI 标签附近小图；UI dump 继续清除 text/content-desc；计时偏好只比对、不重写；仅对本轮主动开启的计时通过 Native BackHandler 取消。默认两魅族批次行为不变，OnePlus 证据与 Run-10 分目录保存。
+
+### 实施运行
+- Run ID：`guanji-vc3-native-visual-20260929-01`
+- 关联前序 Run：`guanji-vc3-r2-20260929-01`；继续其 P5，不重跑已通过的 WebView 来源探针
+- 执行契约修订：legacy；来源为本节 VC3-R2 已批准方案及用户确认的“两台魅族 Native T0–T3 字体视觉复核后再接 OnePlus”顺序
+- 基线提交/工作区：沿用当前工作区；保留所有既有用户改动，不重置、不清理
+- 候选版本：4.2.12/code134；不改版本、不构建 APK
+- 验证档位：android-runtime
+- Run 状态：in-progress
+- 当前阶段：P5；两台魅族 Native Compose T0–T3 实际文字字形/同态视觉证据
+- 文件白名单：`debug/capture-280-vc3-native-font-review.cjs`（只读导航；截取目标静态文字 bounds 小图；临时 fontScale/Native 路由标志均在 finally 恢复；禁止记录 CRUD）；`debug/visual-migration/#280-vc3-r2/native-font-visual-4.2.12-134/`；本条 `IMPROVEMENTS.md`；`guanji-app_实施v4.2.12_#280-VC3-R2-Native-Visual_2026-09-29.md`
+- 禁止事项：不改产品 UI/字体/映射/Gradle/版本；不重建或安装 APK；不写入、编辑、删除、导入、恢复或导出用户记录；不连接 OnePlus
+- 启动时间：2026-09-29
+
+### 执行台账
+| 计划步骤 | 状态 | 实际改动 | 证据 | 偏差 |
+|---|---|---|---|---|
+| #272、V2 preflight、VC3 variable-font 静态闸门 | passed | 三项现有门禁通过；两机均安装 4.2.12/code134 | `#280-preflight.json`、`variable-font-static-report.json` | — |
+| 采集器范围设计与隐私保护 | passed | 采集器只落盘静态 allowlist 文字裁图和 bounds；全屏截图与原始 UIAutomator dump 仅内存处理；补充全局 ADB 参数、可选文本匹配和预检失败报告处理 | `debug/capture-280-vc3-native-font-review.cjs` | D-07、D-08 |
+| 两台魅族 Native T0–T3 同态复核 | passed_two_meizu_visual_review_pending_oneplus | Run-10 在两机各完成 13 个 Native 视口、26 个允许文字样本；同为 light、fontScale=1.0。人工逐类复核 T0 首页/记录、T1 日历/记录方式/计时、T2 设置/隐私/备份、T3 洞悉/共同出现/建议；未见字体字形层级明显分歧、裁切或意外换行。计时数字图仅含数字，操作图完整覆盖主/次按钮。18s 的 tab-home 样本被 Flyme 橙色悬浮层局部遮住，改由同角色 tab-insight/tab-settings 与 M21 tab-home 交叉核验，登记为环境遮挡而非字体缺陷 | `.../run-10/native-font-visual-report.json` 及两机 T0–T3 文字裁图；D-20 | D-09、D-11–D-20 |
+| 恢复设备状态与报告 | passed after Run-10 | 18s fontScale 1.0→1.0、M21 1.06→1.0→1.06；TimerService 停止、timer-start 标记清除、Native 路由未变、无新增 ADB forward、recordOperations=0、userDataMutation=false。数据摘要 after 与既有 before 基线一致 | `run-10/native-font-visual-report.json`、`data-preservation-after.json` | D-18–D-20 |
+
+- D-07（2026-09-29）：既有 `capture-280-vc3-weight-same-state.cjs` 仅覆盖 Settings，P5 全路由截图又使用各机自身数据且没有在同一 fontScale 下采集，因此不足以完成本轮要求的 Native T0–T3 字体视觉复核。新增一个隔离的只读采集器，仅导航现有 Native 页面、校验当前版本/主题/fontScale/路由归属并保存静态目标文字的 bounds 小图与尺寸元数据；不保存整页截图/原始 UI dump，不执行记录 CRUD，不更改产品实现、字体资产/映射、版本或 APK。采集器必须在 `finally` 恢复设备原 fontScale、Native 路由标志及计时偏好，并验证 adb forward 已移除。验收为两台设备同版本、同主题、fontScale=1.0，T0–T3目标文字样本可见且 bounds 合法；若两机主题不同、任一恢复失败或目标文字不可见，则停止并记录阻断，不自动改用户主题。
+- D-08（2026-09-29）：执行设备采集前的脚本审阅发现全局 ADB 查询错误地带入了空序列号参数、若干可选中文标签被误设为必须同时出现、PowerShell 裁图矩形构造不够稳健，且早期预检失败没有落盘失败记录。仅修复新建的测试采集器，增加“必需标签 + 任一候选标签”区分和预检失败报告；不改产品代码、页面、字体、设备主题、用户记录或验收范围。以 Node 语法检查、三项项目静态闸门及实际设备采集复核。
+- D-09（2026-09-29）：Run-01 在 MEIZU 18s 首页的静态文案校验停止，原因是“最近记录”卡片标题不在当前可访问视口；未采集任何 Native 页面裁图或操作记录。fontScale 已恢复（18s 1.0、MEIZU 21 1.06）、Native 路由开关未变、无残留 ADB forward。清理核验失败来自采集器假设的 `guanji_native_record_timer.xml`：源码没有该偏好契约，启动应用后创建空默认 XML 造成“文件存在性”不一致；不能据此判断计时业务状态，也不得继续读写或删除该文件。保留 Run-01 原始失败报告；Run-02 将首页上部与滚动后的最近记录区分为两个只读视口，计时前后仅检查真实 TimerService 活动状态并通过 Native“取消计时/返回”关闭临时计时，不编辑用户数据、不删除偏好文件。该修订只限测试采集器与报告，不改产品实现或验收范围。
+- D-10（2026-09-29）：Run-01 未完成整页采集，但采集器原有 `freshStart` 会对每个采样 route 重复 `am force-stop`，有不必要地重复触发 #280 启动链的风险。Run-02 改为单次应用进程内顺序导航；通过可视标签、受限方向滚动和正常 Native 返回在页面间移动；不反复冷启动、不改数据/设置，不影响字体复核目标。首次运行前仍逐设备验证版本、Native 路由、主题、fontScale 和 TimerService；任何返回路径偏离预期则停止并还原设备 fontScale。
+- D-11（2026-09-29）：Run-02 在 MEIZU 18s 的 T0 首页样本检查处停止，零裁图；设备清理通过。只读 UIAutomator 树与 `NativeBottomTabs.kt` 源码共同证明 Native 底栏实际仅包含 HOME/INSIGHT/SETTINGS 三项，“记录”由首页记录入口承载，不是 Tab。采集器错误地将 `tab-record` 设为必需字体样本；同时发现 UIAutomator 对滚动外 Compose 节点可能返回零面积 bounds，旧 `textNode` 会把它当作可见节点，并且 Timer 路由可用性判断会把缺失 route 的 `undefined` 误判为未跳过。下一次只改采集器：删除虚构的 `tab-record` 样本；统一拒绝零/负面积 bounds；Timer 路由必须显式存在且未跳过才算可用；使用新的 `run-03` 证据目录，保留 Run-01/02 原件。无需产品/路线/验收决定，不改 Native UI、字体资源/映射、版本、APK、主题、记录或用户设置。
+- D-12（2026-09-29）：Run-03 已在 MEIZU 18s 采集 T0 首页、Home 中段/最近记录及记录详情文字裁图，视觉样本只含静态 Typography 文案；随后 T1 日历路线无法通过“补记”文本定位。源码显示 `NativeHomeHeader` 调用 `NativeIconButton("补记", ...)`，但该组件仅设置 `Role.Button`，没有把 `label` 写入 `contentDescription`，因此 UIAutomator 树中不存在“补记”节点。两台魅族只读树都各有一个位于屏幕右上 Header 区、边界尺寸符合源码 42dp 图标按钮/系统可点击目标扩展的匿名 clickable 节点（18s 192×192px、M21 132×132px），可从实时 UIAutomator bounds 定位，而非写死屏幕坐标。下一次仅在采集器中按源代码尺寸、右上 Header 区和唯一候选约束查找该节点，点击其真实 bounds 中心打开日历；候选不唯一/尺寸或区域不符立即停止。证据为 `run-03/native-font-visual-report.json` 与两机过滤后的即时节点边界记录。该自动化修正不改 Native UI/无障碍实现、字体资源/映射、版本/APK、主题、记录或用户偏好；新输出使用独立 `run-04`。
+- D-13（2026-09-29）：Run-04 已在 MEIZU 18s 完成首页、记录详情、日历、记录模式采样并进入 Native 计时；计时页含 `rememberInfiniteTransition` 的呼吸动画，Android UIAutomator 在页面动态变化时持续返回 `could not get idle state`，故计时文本无样本，M21 未进入采集循环。旧 `finally` 把“读取UI树寻找取消按钮”和“恢复fontScale”放在同一 try 中；UI dump失败后跳过其余清理，导致临时 TimerService 仍活跃，报告误判 `failed_restore`。后续读取源码确认计时页 BackHandler 会调用 `timer-cancel` 和 `record-close`；本次手动按系统返回成功结束临时 TimerService，未触发 `record-save`，两机 fontScale 已为原值（18s 1.0、21 1.06），Native route 仍开启。下次仅修采集器：计时路由采用内存截取的源码布局区域图（不落整屏图/UI dump），用 `MainActivity + TimerService + NativeRecordSurface.TIMER_RUNNING` 的路径证据说明采样对象；取消时使用已验证的系统返回逻辑；把 timer cancel、fontScale restore、route/forward 验证拆为相互独立的 finally 步骤，各自记录清理错误，保证任一步失败不跳过其他恢复。新输出用 `run-05`，保留 Run-04 原始失败报告和 cleanup recovery。不得停/杀服务代替业务取消，不改产品UI、字体、版本/APK、主题或记录。
+- D-14（2026-09-29）：Run-05 在 18s 完成 T0 与 T1 的七个页面/状态采样（含新增的源码布局计时局部截图），进入 T2「我的」时因采集器错误要求“外观”和“数据与隐私”必须同屏而停止；后者实际位于滚动视口之外，属于测试脚本视口假设错误，不是产品缺项。设备清理通过：fontScale 恢复为 18s 1.0、M21 1.06，临时 TimerService 已停止、Native route 未变、无新 ADB forward、recordOperations=0；M21 尚未进入页面采集。Run-06 只拆分 T2 设置页为顶部（标题/外观）和向下滚动后的「数据与隐私」两个采样状态，两个状态均以实时 UIAutomator 可见 bounds 为准；其余只读导航/字体临时归一/恢复行为不变。保留 Run-05 报告与局部图片，不修改产品代码、字体、主题、版本/APK 或用户记录。
+- D-15（2026-09-29）：Run-06 在 18s 已完成 T0/T1 全部采样及 T2 设置顶部、数据与隐私、备份与恢复三个实际视口，然后转入 T3 洞悉首屏时因采集器要求「共同出现」与「可以试试」在同一画面而停止；源码 `NativeInsightSurface` 明确按整体概览、时段、状况、共同出现、变化、可选建议顺序放在同一个纵向滚动 Column，因此这些卡片不可能都出现在首屏。Run-06 finally 清理通过：fontScale 18s=1.0/M21=1.06，计时服务停止、路由未变、无新 ADB forward、recordOperations=0；M21 页面循环未开始。Run-07 仅将 T3 采样分成洞悉页头、滚动到共同出现卡、滚动到可选建议卡三个 Native 实际视口；每页只读实时可见 bounds，不改业务/UI/字体/主题/版本/APK/记录。
+- D-16（2026-09-29）：Run-07 在 18s 成功完成 T0–T3 共 13 个页面视口，M21 已采集前 6 个路由状态后在计时页触发 `timer-start`，Native Surface 已切到运行态并持久化临时起点；但该机关闭了“计时通知”，`notifyStartTimer()` 按设计静默跳过 `TimerService`，因此采集器错误地将服务不存在视为 Native timer 页面不存在。旧 finally 也仅在 TimerService 活跃时发 Back，未清除 M21 本轮自身创建的 start 标记。运行后核查确认 M21 `start_time_ms` 标记存在、`TimerService` 未启动；18s 标记/服务均清除，双方 fontScale 已恢复（1.0/1.06），路由未变、无 forward、recordOperations=0。立即恢复：对 M21 使用一次系统 Back，依赖现有 TIMER_RUNNING BackHandler 执行 `timer-cancel` + `record-close`，核验起点标记及服务均消失；Run-08 修采集器以起点标记 + MainActivity/源码路径证明 Native 计时 UI 状态，记录通知服务的有无但不作为字体取证门槛；finally 无论服务是否活跃，只要本轮起点标记仍在就经 Native BackHandler 清理并核验。保留 Run-07 原件，不改产品 UI、字体、用户通知偏好、版本/APK 或用户记录。
+- D-17（2026-09-29）：Run-08 两台魅族均完成 T0–T3 13 个视口，机器检查、字体缩放恢复、timer 标记清理、路由与 forward 检查全部通过；但人工查看 timer `timer-value.png` 发现 300dp 宽裁图含系统状态栏时钟和精确“开始于”时间，`timer-actions.png` 也因裁切范围不足而把结束按钮上缘切掉。该结果违反采集器声明的隐私白名单，故将 Run-08 报告状态改为 `partial_timer_crops_retracted`、`allRequiredSamplesVisible=false`，并删除两设备各两张宽 timer PNG；其他静态样本未受影响。Run-08 的非计时图片保留，计时样本待更窄裁切重采。
+- D-18（2026-09-29）：Run-09 在 M21 上复用先前洞悉 `ScrollState`；点击洞悉 Tab 后仍停留在下方建议卡附近，T3 采集器却假设页头会自动回到顶部，导致“个人洞察”标题不可见而提前结束。不是文字缺失或产品 UI 异常。Run-10 在进入 T3 页头样本前显式按 UIAutomator 可见 bounds 向上滚至「个人洞察」，再分别滚到「共同出现」「可以试试」；不重建/重置产品页面状态，不改数据。
+- D-19（2026-09-29）：Run-09 的计时按钮窄裁区已完整且无动态内容，但计时数字裁图 140–260dp 的下缘仍带入“开始于”元数据行顶部（18s 图肉眼可见），不符合隐私约束。Run-09 两机 timer-value 图片均撤回，报告状态改为 `partial_t3_scroll_timer_value_retracted`；Run-10 将数字样本收窄至源码对照的 145–245dp 并在人工检查中确认不出现状态栏时钟/开始时间。Run-09 其余 T0/T1/T2 与洞悉卡片静态裁图均保留。所有采集均未触碰记录、通知偏好、主题、版本或 APK。
+- D-20（2026-09-29）：Run-10 完成两机各 13 个视口、26 个 allowlist 文字样本；人工复核 T0–T3 所有裁图。可变字体 Native 字形轮廓及各角色相对字重层级在两机上未见明显分歧，检查的标题、标签、按钮无裁切/异常换行；计时数字裁图不含状态栏时间或精确开始时刻，计时动作裁图完整覆盖主/次按钮。Meizu 18s 的 tab-home 图被系统橙色浮动层局部遮挡，使用同一 `TabLabel` 角色的 tab-insight/tab-settings 及 M21 tab-home 复核；这是设备环境遮挡，不归因于应用字体。结论只覆盖两台魅族的 Native T0–T3 定性复核，不代表 WebView 像素等价或 OnePlus 最终验收。Run-10 finally 核验 fontScale（18s=1.0、M21=1.06）恢复、TimerService/start marker 清除、无 ADB forward、零记录操作；`data-preservation-after.json` 与升级前基线摘要一致。版本保持 4.2.12/code134，未重建 APK。
+
+### 实施运行
+- Run ID：guanji-vc3-r2-20260929-01
+- 执行契约修订：legacy；来源为本节已批准的 VC3-R2 方案与本轮用户确认的执行顺序
+- 基线提交/工作区：沿用当前工作区；保留既有用户改动，不重置、不清理
+- 候选版本：4.2.12/code134（本轮不改版本、不重建生产 APK）
+- 验证档位：android-runtime
+- Run 状态：in-progress
+- 当前阶段：P5；两台魅族同状态 WebView/Native 字体证据采集与 API26 冷启动兼容性复核
+- 文件白名单：`debug/capture-280-vc3-weight-same-state.cjs`、`debug/probe-280-vc3-webview-fonts.cjs`（仅修复采集元数据/版本动态读取并补采集缺口，不触碰产品 UI）；`debug/visual-migration/#280-vc3-r2/`；本条实施报告、`IMPROVEMENTS.md` 与 VC3-R2 状态文档
+- 启动时间：2026-09-29
+- 命令执行环境：普通沙箱命令启动返回 `helper_unknown_error: setup refresh had errors`；重新授权项目读写后仍复现。通过受控提权执行最小只读命令确认项目目录和命令本身可用，故本轮在提权命令通道继续；这是沙箱 helper 初始化问题的绕行，不代表宿主命令环境已修复。未重启服务、未执行清理或重置操作。
+
+### 执行台账
+| 计划步骤 | 状态 | 实际改动 | 证据 | 偏差 |
+|---|---|---|---|---|
+| 实施前门禁与设备/版本核验 | passed | 核对 R2 legacy 契约、复用规则、两台魅族当前设备；`verify:272`、V2 preflight、VC3 internal 均通过 | 当前构建 `4.2.12/code134`；两台魅族在线；OnePlus 未连接 | 无 |
+| 两台魅族同 fixture 字体采样 | in-progress | WebView 来源探针已在 4.2.12/code134、两机 fontScale=1.0 下完成七档字重和 Rendered Fonts 采集，DOM/ADB 转发清理通过；Settings Native/WebView 配对截图已完成。T0～T3 Native 全面同态视觉签收尚缺 | `debug/visual-migration/#280-vc3-r2/font-source/4.2.12-134/webview-font-source-probe.json`；`debug/visual-migration/#280-vc3-weight-same-state-4.2.12-134/same-state-report.json` | D-01～D-04：仅测试采集脚本和隔离证据；不改产品 UI/字体映射/版本/APK，不触碰用户记录 |
+| API26 冷启动兼容性判断 | pending | 既有原生桥接冒烟已通过；需单独判断旧 Chromium 69 的 WebView JS 冷启动风险 | `debug/visual-migration/#280-vc3-r2/api26/api26-runtime-report.json` | 不将桥接冒烟误记为冷启动通过 |
+| OnePlus 三设备验收 | blocked-environment | 设备未连接，先完成可在魅族/AVD 执行的项目 | 当前 `adb devices -l` | 等待用户连接 OnePlus |
+| 性能与许可发布收尾 | pending | 未开始 | — | 依赖 P5 视觉验收 |
+
+- D-01（2026-09-29）：现有同态采集结果 `captures_ready_for_visual_review` 只说明相同 APK/页面/字体缩放下截图有效、路由归属与设备状态已恢复；它没有证明全部 400/500/600/650/700/750/800 轴值在 Android Compose 中的实际渲染差异，也没有提供同文案区域的量化证据。原 WebView 来源探针还硬编码 4.2.11/code133 与历史输出目录，不能直接用于当前 4.2.12/code134。故先扩展 VC3 测试采集（限定于白名单脚本及其隔离证据目录），将版本读取改为动态，并把 WebView 来源/权重栅格证据与 Native 真实页面 Typography 角色证据分开记录；不注入或改变产品界面、不改变字体选择与轴映射。若设备采集不能隔离某一权重轴的 Compose 渲染，记录为未验证，不以 WebView Canvas 指标替代 Native 验证。
+- D-02（2026-09-29）：上述字体来源探针本身已存在且只在 WebView 中临时注入、结束时移除 DOM 与 adb 转发；它是本次证据链必须的测试脚本，而非产品变更。将该既有只读采集器显式加入白名单；仅修正当前构建版本/报告目录硬编码，使证据准确指向 4.2.12/code134，并保存于 VC3-R2 隔离目录。每台设备仍要求 `cleanupVerified=true`，清理失败即判失败。
+- D-03（2026-09-29）：尝试用 CDP `Page.captureScreenshot` 保存临时 overlay 画面时两机设备截图超时；`finally` 清理后又重新运行探针确认两机均 `cleanupVerified=true`，ADB 转发检查为空。为避免截图命令再次阻塞，不再调用整页 CDP 截图；如需可视样本，只从同一临时 canvas 字样生成独立 specimen PNG，并与 Canvas 字重测量同源。该 PNG 仅为 WebView 字重取证，不代表 Native Compose 实测。
+- D-04（2026-09-29）：首轮探针发现 18s 和 21 的系统 fontScale 分别为 1.0/1.06，尽管逐设备内部权重排序仍可观察，跨设备 ink 指标不属于同状态比较。复采时两机统一临时设为 fontScale=1.0，采集器加入 fontScale 断言；脚本执行后通过 `finally` 逐机恢复原值并核验，恢复记录继续使用现有 `fontscale-fixture.json`，不得覆盖未恢复的既有记录。
+- D-05（2026-09-29）：Settings 全页截图报告通过路由/build/fontScale/状态恢复检查，但复核发现该对照不等同跨设备同 fixture：18s WebView 截图含黄色浮层，21 与 18s 的磨砂强度值分别为 6px/3px。故截图只证明对应页面可见、字体可读及路由归属，不用于认定跨设备布局或字重像素一致；跨设备字重结论以固定 CSS specimen + Rendered Fonts/ink 指标和后续 Native 专项同 fixture 证据为准。
+- 2026-09-29 进度：WebView 字体探针在两台魅族同构建/同 fontScale=1.0 下通过；七档 CSS 权重均由平台 `Noto Sans CJK SC Regular` face 输出，但 ink 覆盖签名不同：Meizu 18s 的 400/500/600 相同、650/700/750/800 相同；Meizu 21 的 650/700 相同、750/800 相同。报告中的 cleanup 全通过；fontScale 恢复核验通过（18s 1.0、21 1.06）。这证明 WebView 字重行为设备相关，不能用一个 WebView 物理字重梯度代表所有设备；不因此回退或改动已经批准的 Native 变量字体轴值。Settings 的 Native/WebView 同态截图已可用，但 T0～T3 Native 同 fixture 页面视觉复核、OnePlus、API26 WebView 冷启动边界、性能/许可收尾仍待完成。
+
+- 2026-09-29 进度补充：**API26 Native Compose 可变字体运行冒烟通过**。`debug/visual-migration/#280-vc3-r2/api26/api26-runtime-report.json` 确认首页、洞悉、我的三个路由均由 NativeRoot 持有，Compose 文本节点存在且无 WebView 节点。API26 AVD 的系统 WebView 为 Chromium 69，不支持当前 WebView JS 使用的 optional chaining；为隔离验证原生字体运行，本次通过既有 Native Bridge 初始化主题和路由。该结果不证明 WebView fallback 冷启动兼容，也不替代 OnePlus 与同 fixture 字重对照。变量字体静态合同、T0～T3 和两台魅族内部闸门通过；VC3-R2 / VC3 / #280 仍未签收，待 OnePlus、同态字重对照、冷启动/内存及许可发布收尾。
+- 本节点完整替代上述静态字体路径，不与旧静态方案并行：最低系统提升至 API 26；使用官方 Noto Sans SC Sans2.004 可变 TTF；移除三份静态 OTF；继续 `FontSynthesis.None`。
+- 目标权重为 400/500/600/650/700/750/800，均须映射到真实 `wght` 轴值，不保留中间字重吸附到静态脸的旧映射。
+- VC3-T0～T3 旧实现保留为历史实施证据，状态改为“实现完成、变量字体重验收中”；未完成新字体下的编译、三设备/API 26、升级数据保留、布局回归、包体和性能验证前，不得标记 VC3 或 #280 完成。
+- 实施节点：P0 兼容策略与静态/API24 回滚基线；P1 官方字体/许可/哈希准入；P2 minSdk 与字体资产替换；P3 唯一变量字体接口与自动闸门；P4 Typography Token 收口；P5 T0～T3 重验收及三设备/API 26、旧版覆盖安装和数据保留验证；最后完成 NOTICE、应用内许可、包体/启动/内存评估。
+- 对后续计划的影响：VC4 必须用变量字体重新采集截图和 bounds（阴影参数不变）；VC5 增加 API26 首启、变量字体缓存、进程重建、多字重、fontScale 和旧版覆盖安装；VC6 增加 minSdk26、APK 单字体、静态字体删除、无旧映射、API26/三设备、许可/NOTICE/旧API24 APK/README 检查；#281 将 NativeTypography 固定为唯一字体事实源，删 JS 时不迁移 Web 字体栈；玻璃原生重做复用同一变量字体体系。
+- API24/25 不可安装此后新版本；保留本节点前的最后兼容 APK（4.2.11/code133，minSdk24，SHA-256 `ED9E43912323E24B67481FE197A76FFCFA52A774CA9A9ADB92A85A131BF3A509`）及静态字体回滚件，README/发行说明必须说明兼容边界。
+- 当前状态（2026-09-29 更新）：VC3-R2 P0/P1/P2/P3、4.2.12/code134 构建、两台魅族 Run-10 与 OnePlus Run-11 Native 字体样本复核、以及三设备 P5 路由/生命周期合并验收均已通过。OnePlus 本批使用原有安装数据，68 条记录在采集前后保持一致；没有创建、编辑、删除、导入、导出或恢复记录。Run-11/P5 只证明同构建下的原生页面与生命周期路由可用，不能宣称相同记录数据 fixture 或像素级视觉等价；VC3 字体裁图另做了同角色人工抽查。剩余 API26 WebView fallback、启动/内存与应用内许可/NOTICE 发布收尾；VC3-R2、VC3、#280 均不得提前签收。
+
+- 根因：Noto 静态字体只有 400/500/700，旧表把 Bold700 同时登记为 600/700/800；部分已迁移页面也绕过统一字体 helper。CSS 字重与原生请求权重不一致会造成视觉粗细错位。
+- 修正：400→Regular，500/600→Medium，650/700/750/800→Bold 的显式最近静态脸映射；将记录选中胶囊及备份分区、选中项、紧凑操作、主按钮等 CSS 650 角色改为数值 650，区分备份 Ghost 页脚 600、历史文件标题 700与普通 400 按钮；消除迁移页直接构造 TextStyle 的字体旁路。没有改变字号、行高、字距、颜色、布局、窗口或设备规则。
+- 版本：按实施流程构建 `4.2.11 / code133`，CSS/JS query 版本仅递增用于缓存刷新；WebView 样式文件内容不变。
+- 专项静态闸门：`npm run verify:280:vc3:weights`；`verify:276`、`verify:279` 与 `verify:native-ui-v2:preflight -- 280` 均通过。统一构建钩子生成 `4.2.11 / code133`，同一 APK（SHA-256 `ED9E43912323E24B67481FE197A76FFCFA52A774CA9B9ADB92A85A131BF3A509`）已通过 `adb install -r` 安装并启动于魅族 18s（API33）与魅族 21（API36），调试签名保持稳定；用户记录未改。两台设备在相同 `fontScale=1.0` 下对首页、洞悉、我的进行字体观感抽查；魅族 21 原始 `fontScale=1.06` 已恢复。截图与运行报告位于 `debug/visual-migration/#280-p6-vc0-20260922/vc3-weight-correction/`。本轮没有采集同态 WebView 对照截图，OnePlus PLZ110 仍待接入；因此只完成两台魅族阶段核验，不代表字形笔画与 WebView 完全等价，也不代表 VC3/#280 完成。
+- 2026-09-28：**VC3-T0～T3 两台魅族当前构建内部回归通过，最终三设备验收未完成**：重跑 `4.2.11/code133` 后发现旧 T2/T3/internal 验证器可能引用 `4.2.10/code132` 的历史 P5/三设备报告形成假阳性；已改为读取 Gradle 当前版本，并要求每份 P5/最终报告版本匹配后才可作为证据。P5 采集改为按版本和设备批次分目录，报告不再写入完整记录快照或原始 UI 文本；在魅族 18S、魅族 21 对当前安装 APK 完成只读冷/热启动、8 路由、快照稳定性和计时偏好恢复，状态均通过。T0、T1、T2、T3 与 `vc3:internal` 当前版本闸门通过，报告位于 `debug/visual-migration/#280-p6-vc0-20260922/` 与 `debug/visual-migration/#280-p5-regression-4.2.11-133-meizu/`。OnePlus 同构建验收及同态 WebView 字重对照仍待完成；当前静态 Noto 仅有 400/500/700 真字形，600/650/750/800 仍是最近静态脸映射，不得宣称物理笔画字重一一等价。下一步按原顺序连接魅族 18S + OnePlus，完成同状态三设备对照，再做 VC3 发布合规/性能收尾。
+- 2026-09-28：**VC3 字体来源取证与字重决策完成（新增字重资源暂缓）**：对魅族 18s/API33 与魅族 21/API36 上当前安装的 `4.2.11/code133` 做只读 WebView 字体来源探测，未改业务源码、字体资源、Typography 映射、版本或 APK，也未触碰用户数据。两机 CSS 字体栈相同，`CSS.getPlatformFontsForNode` 均报告中文 Noto Sans CJK SC Regular；但 `/system/etc/fonts.xml` 显示 18s 的 `zh-Hans` 仅声明常规 400 face，魅族 21 则为同名 TTC 登记 `wght` 100–900 轴。相同中文字在 CSS 400/500/600/650/700/750/800 下的归一化画布墨迹覆盖率也呈现不同阶梯（详见 `debug/visual-migration/#280-vc3-font-source-20260928/font-source-and-weight-decision.md` 与原始 JSON）。由此确认 WebView 字重渲染依赖设备 fallback/轴能力；当前证据不能证明 Native 缺少额外静态脸是主要根因。决定维持 Noto 静态 400/500/700 和既有映射，不新增字体（NO-GO，非永久否决），等待有具体 Native/WebView 单元素差异证据时再评估最小资源实验。`npm run verify:280:vc3:weights` 为 `passed_static`；VC3 与 #280 均未因此签收。
+
+- 2026-09-29：**VC3-R2 生产切换进入运行验证**：固定 Sans2.004 官方可变字体 SHA-256 `D68BAFCB48A2707749396AA12BBBD833CB70401F3A9A689FD2902C7E0D295964`；生产资源目录仅保留 `noto_sans_sc_variable.ttf`，删除三份静态 OTF（原文件与哈希已封存于 `debug/visual-migration/#280-vc3-r2/baseline-static-api24/`）。Native Kotlin/XML 文字字符集覆盖检查 847 个汉字/标点，缺字 0；变量字体静态合同通过。升级至 `4.2.12/code134`、minSdk 26；API24/25 最后兼容基线保留为 `4.2.11/code133`。更新 T0–T3 闸门以验证变量字体路径并将 R2 新报告放入独立目录，旧静态报告不覆盖。Compose 编译、当前版本安装、两台魅族/OnePlus/API26 和升级数据保留尚待验证，VC3 与 #280 仍未完成。
+
+- 2026-09-29：**VC3-R2 两台魅族阶段回归通过，最终验收仍阻断**：统一构建钩子构建的 `4.2.12/code134`（minSdk26）已覆盖安装到魅族18s/API33 与魅族21/API36；安装前后记录数量/摘要完全一致（18s 63 条、21 62 条），无清数据。临时将两机 fontScale 统一为 1.0 完成 P5 只读冷/热启动、重启、首页/日历/记录/计时/洞悉/我的/备份与恢复/输入 Sheet 路由采集，随后准确恢复原值（18s 1.0、21 1.06）；当前版本 T0/T1/T2/T3 和内部两机静态/路由闸门通过，`verify:276`、`verify:279`、V2 preflight 通过。修复了 T0 验收器漏导入 `vc3P5ReportPath` 导致的误报阻断。P5 路由使用每台设备的现有数据，只能证明功能/生命周期和数据连续性，不能冒充相同 fixture 字体比较；18s Timer UIAutomator dump 超时，但截图可读且其余路由证据可用。当前无 OnePlus 连接，本机 SDK 仅有 API35 系统镜像、没有 API26 AVD；还需专项同态字重采样、OnePlus/API26、启动/内存及许可运行/发布收尾，因此 VC3-R2/VC3/#280 均未完成。证据位于 `debug/visual-migration/#280-vc3-r2/` 与 `debug/visual-migration/#280-p5-regression-4.2.12-134-meizu/`。
+
+- 2026-09-29：**VC3-R2 OnePlus PLZ110 Run-11 与三设备 P5 路由/生命周期验收通过（VC3/#280 仍未完成）**：OnePlus 当前为 `4.2.12/code134`，未重建或升级版本；完成 Run-11 T0～T3 Native 文字视觉复核及 OnePlus-only P5 冷启动、热恢复、强停重启、首页/日历/记录/计时/洞悉/我的/备份与恢复/输入 Sheet 路由采集。安装数据采集前后均为 68 条、快照稳定、无启动空窗口、无 Activity 错误，计时偏好恢复且本轮启动的临时计时已通过返回键取消；未执行记录增删改、导入导出、清除或恢复。人工抽查 8 张 OnePlus 静态标签裁图及计时操作区裁图，未见明显裁切或路由错位。首次 P5 因首页裁图候选和计时动画期间 UIAutomator idle 等待失败，报告未通过；已将 OnePlus 采集器改为主页安全标签有限重试，并对计时路由复用同版本 Run-11 已验证的原生计时操作区裁图，同时以本次 Native timer marker/service 启动证据及返回清理作为验收；非 OnePlus 路径未改变。最终检查器新增跨批次路由矩阵校验，移除硬编码 `sameFixtureScope=true`，明确本项不声称相同记录数据 fixture 或像素级视觉等价。`debug/visual-migration/#280-vc3-r2/vc3-final/vc3-final-report.json` 为 `passed_three_device_same_build_route_matrix`，所有三设备、版本、生命周期、8 路由及证据文件检查通过。普通 Windows 命令执行仍会在启动前报 `setup refresh had errors`；本轮通过已授权的提权命令执行路径完成 QA，未能修复 Codex 执行器本身。剩余 API26 WebView fallback、启动/内存、应用内许可/NOTICE 收尾；VC3-R2/VC3/#280 不得标记完成。
 
 ---

@@ -32,13 +32,18 @@ screenshots/
 # 真机调试临时产物（不入库：截图 / uiautomator 转储 / 采样输出 / 临时脚本；调试脚本本身入库）
 debug/
 # 注意：gitignore 不支持行内注释——规则行内不能带 # 后缀（原 debug/*.cjs 行内注释导致规则失效，已收敛为整目录）
-# #221 的协议校验脚本和黄金样本是可复用测试资产，其他 debug 产物仍不入库。
+# 明确列出的协议/迁移校验脚本和黄金样本是可复用测试资产，其他 debug 产物仍不入库。
 !debug/
 debug/*
 !debug/verify-221-contracts.cjs
+!debug/verify-272-native-restart.cjs
+!debug/verify-native-ui-v2.cjs
+!debug/verify-native-ui-v2-preflight.cjs
 !debug/fixtures/
 debug/fixtures/*
 !debug/fixtures/221-golden.json
 
-# 实施记录文档（不入库——2026-08-19 决策：与历史实施记录一致，仅本地保留）
-实施v*.md
+# 实施记录文档及本地交接材料（含真机环境细节，不入库）
+*实施v*.md
+/HANDOFF.md
+/outputs/

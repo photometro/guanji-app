@@ -100,6 +100,47 @@
 - 只要组件的玻璃 `::before` / `::after` 受光层使用 `z-index: 2`，可读内容层必须显式使用 `position: relative; z-index: 3`；标题区、卡片内容和固定操作区按需提权，禁止把文字留在伪元素下方。备份/恢复面板已按此规则接入，后续新玻璃卡片优先复用该内容层规则。
 - 不把 `backdrop-filter` 放在持续移动元素上；系统要求减少透明度时回退 `var(--card)`。
 
+#### 1.3.1 NativeRoot 材质事实桥与局部背景层（#274）
+
+**职责**：当同一 `NativeRoot` 内只有底部 Tab 已原生化、正文仍由 WebView 渲染时，让原生 Tab 复用 WebView 的主题/玻璃事实，并避免透明 Compose 宿主在 Flyme 上泄露白色清屏层。
+
+- **调用入口**：`notifyNativeTabTheme()` → `GuanjiNativeTab.onMaterialChanged(JSON)`；`NativeRoot.setNativeTabTheme()` → `NativeTabBackdropView.updateMaterial()`；滚动/路由结束由 `onBackdropChanged()` → `refreshNativeTabBackdrop()`。
+- **输入契约**：只传 `theme`、`liquidGlass`、`blurPx`、`saturate`、`reducedTransparency`；不把原始记录或业务统计过桥。`blurPx` 取 `--lg-blur` 的 0–10px 范围，`saturate` 取 1–3。
+- **材质规则**：背景采样层只在滚动结束、路由切换或材质变化后刷新；API 31+ 使用 `RenderEffect`，低版本使用同主题安全底色。Compose 层根据 `blurPx` 调整受控 tint，经典态边缘透明度沿用 WebView `0.65`，不新增 ripple/pressed overlay。
+- **适用边界**：同一宿主内的原生浮层/Tab 与 WebView 背景共存，且需要继承用户主题与玻璃强度的迁移阶段。
+- **不适用边界**：整页原生化后直接绘制的页面、持续动画中的背景逐帧采样、或需要读取业务数据的桥接；不得复制第二套主题变量或 Tab 所有者。
+- **验证方式**：`npm run verify:274`、`npm run verify:274:material`；魅族真机四组合 WebView/Native 对照、滑块 0/10 截图差异、UI dump 单一 Tab、重启无 FATAL/ANR。
+
+#### 1.3.2 原生化材质范围冻结（#275–#281）
+
+- #275–#281 的 NativeRoute 只实现经典/普通模式（浅色、深色及降低透明度回退）；不得把 `glass.css`、`backdrop-filter`、`NativeTabBackdropView` 或任何玻璃伪元素直接复制成页面级原生材质。
+- 玻璃模式在 #275–#280 期间由 WebView 唯一渲染，仅用于兼容和同状态对照；不得出现 Native + WebView 双层、第二套玻璃卡片或并行玻璃动画。
+- #281 删除全部旧 JS 核心后，玻璃模式不得回退到旧 WebView 业务；在后置玻璃原生重做完成前，玻璃请求统一安全回落到已验收的 Native 经典界面，并向用户明确状态，不得显示空壳。
+- 玻璃原生重做必须在 #281 后另立任务，重新测绘、重新登记视觉契约和验收证据；本节经典模式的 token、容差和验收结论不能直接冒充玻璃设计。
+
+#### 1.3.3 NativeRoot 弹层与底部 Tab 所有权门禁（#276）
+
+**职责**：在记录 Sheet、日历 Sheet、计时恢复等弹层或全屏任务由同一 `NativeRoot` 承载时，保证底部 Tab 不会因 WebView 主题同步、路由回调或重建时序被错误移除；它保留在视觉树但由 Sheet 覆盖其重叠区域，不取得交互所有权。
+
+- **唯一入口**：由 `NativeRoot.setNativeCalendarVisible()` 管理日历来源状态，由 `NativeRoot.setNativeRecordContext()` 管理记录状态；宿主侧通过 `NativeRootHost` 的对应方法接入。通用 `setNativeModalVisible()` 仅保留兼容入口，不能替代来源状态。清理记录上下文后，必须依据日历状态重新计算总门禁。
+- **显示规则**：`applyNativeTabVisibility()` 以 `nativeRouteRequested` 保证唯一活动 Tab 常驻，`nativeTabRequestedVisible` 只作迁移期兼容请求；当 `nativeModalVisible` 为真时，Tab 仍保留在同一 Compose 树和原有 bounds 中，但必须关闭点击、焦点和无障碍子树。记录/日历入口不得再调用 `setNativeTabEnabled(false)` 作为隐藏手段；即使旧异步 false 请求到达，也不能改写 NativeRoute 的常驻所有权。尚未迁移的 WebView route 可使用独立迁移宿主，但它与 NativeRoute 内联 Tab 必须互斥，任一时刻只能有一个活动实例。
+- **层级规则**：记录/日历 Sheet、遮罩、NativeRoute 页面和 Native Tab 必须在同一个 `NativeRegion` Compose 渲染树中按固定顺序绘制：`页面 → Tab → 遮罩/Sheet`。旧的 `NativeModalRegion` 仅保留为不可见迁移探针，禁止再用第二个全屏 ComposeView 绘制弹层；也禁止通过提升/降低整个 `nativeRegion` 的 elevation 来覆盖 Tab，因为关闭时的宿主降层会制造 Tab “从隐藏到显现”的假动画。弹层关闭只移除遮罩和 Sheet，Tab 由面板移动与遮罩淡出连续揭示，不重建、不换宿主、不播放独立出现动画。
+- **适用边界**：同一 `NativeRoot` 中的经典模式记录/日历 Sheet、计时恢复和其他已登记原生任务层。
+- **不适用边界**：WebView 自己拥有的页面层、独立 Activity、后置玻璃原生重做；这些场景仍须遵循各自的页面宿主和材质契约。
+- **验证方式**：覆盖弹层打开后立即检查与延迟 3 秒检查、Activity 重建/计时恢复、返回关闭全过程；运行 `npm run verify:276` 与 `npm run verify:278:tab-continuity`。真机除打开态/关闭态截图外，必须提交关闭过程的逐帧证据，确认 Tab 随 Sheet 下移连续揭示，且不存在 Sheet 已消失后 Tab 才单独出现的帧。
+
+#### 1.3.4 Native 设置任务 Sheet 视觉基座（#279）
+
+**职责**：让导出、清除、演示数据恢复等原生任务卡片复用已经验收的备份与恢复 Sheet 视觉规则，不再各自套一套 Material/Dialog 样式。
+
+- **唯一入口**：`NativeDataMaintenanceSurface` 统一承载三种任务；任务差异只通过 `task`、局部 body 和 `DataMaintenanceGateway` 命令表达，不能复制三套 Sheet。
+- **必须复用**：`nativeBackupColors`、`backupModule`、`BackupCloseButton`、`BackupFooterButton`，以及备份 Sheet 的 22dp 外层圆角、22dp 阴影、20dp Header/内容水平内边距、固定 footer 和 safe-bottom 规则。公共 Compose 组合件位于 `NativeSettingsSheetPrimitives.kt`。
+- **动效必须复用**：`rememberNativeSettingsSheetMotion` 与 `NativeSettingsSheetMotion` 的 550ms 进场、300ms 退场、320ms 宿主延迟、scrim alpha 和内容尺寸过渡；快照刷新不得以 JSON 变化重置已出现的 Sheet 动效。
+- **Header 状态**：附属状态文字应与主标题同一行，使用稳定的单行高度和省略策略；状态更新不得移动关闭按钮或重测整张 Sheet。
+- **遮罩触摸**：全屏 scrim 必须消费点击，不能使用 `clickable(enabled = false)`，否则会把触摸穿透到 WebView backdrop/旧页面；关闭只能由 Header、footer 或已登记的返回动作触发。
+- **边界**：统一的是视觉基座、层级、动画和安全区，不强行统一不同任务的业务内容、数据模型或破坏性动作语义。
+- **验证方式**：真机逐项打开导出/清除/恢复入口，确认只有一个 Native Sheet owner、旧 WebView backdrop 不可见、Tab 位于底层且不可操作；同时检查标题状态同排、取消可关闭、scrim 不穿透，并运行 `npm run verify:279` 和 `npm run verify:native-ui-v2:preflight -- 279`。
+
 ### 1.4 响应式与无障碍是默认约束
 
 **来源**：`www/css/responsive.css`、`www/js/app.js`（键盘布局）
@@ -163,6 +204,7 @@
 
 - 内容短：Sheet 自然收紧，不人为填满高度。
 - 内容长：外层高度受安全区约束，只有内容区滚动；操作区固定可见。
+- 安全区由外层 Sheet 消费：导航栏/手势条间距放在 Sheet 与屏幕之间；footer 只保留 WebView 的按钮内边距，禁止把 safe-bottom 叠加到 footer 导致卡片整体被向上撑高、顶部内容被挤压。
 - 详情态须先调用 `updateDetailsScrollState()`，由真实 `scrollHeight/clientHeight` 决定是否可滚动；不以标签数量等猜测。
 - 不为了固定按钮新增另一个容器、绝对定位或独立底部规则。
 
@@ -490,7 +532,7 @@ backup-picker → secure → storage → records → stats → ai
 
 **实现**：`tools/build-apk.ps1`；npm 入口为 `build:apk:debug`、`build:apk:release`。
 
-- **职责**：固定 `ANDROID_HOME`、JDK 21、`GRADLE_USER_HOME`、`JAVA_TOOL_OPTIONS=-Duser.home=C:\Users\43124` 与 `ANDROID_USER_HOME=C:\Users\43124\.android`，避免生成第二份 debug.keystore；检查依赖、写权限和同项目并发进程。
+- **职责**：通过 `ANDROID_HOME`/`ANDROID_SDK_ROOT`、`JAVA_HOME`、`GRADLE_USER_HOME` 和当前用户的 `ANDROID_USER_HOME`/`user.home` 解析工具链与 Android Debug 签名位置，避免将开发者本机路径写入项目或生成第二份 `debug.keystore`；检查依赖、写权限和同项目并发进程。
 - **同步**：默认执行 `cap sync android`，仅在捕获到已知 `uv_os_get_passwd` 环境错误时进行一次本地 CLI shim 重试；随后比较关键 Web 资源与 Android assets 的 SHA-256，禁止带着旧资源构建。
 - **构建**：使用 Gradle wrapper 的 `--offline --build-cache`，保留 daemon 以缩短增量构建时间；日常 `debug` 直接使用 `:app:assembleDebug`，保持正式包名 `com.guanji.app` 与固定 Android Debug 签名，不创建额外 QA flavor，确保可覆盖既有调试安装。
 - **依赖补齐**：离线缓存缺少新依赖时，必须显式传 `-Online` 给统一构建钩子；默认仍保持 `--offline`，避免普通构建隐式联网。依赖下载完成后恢复离线构建。
@@ -633,6 +675,266 @@ v3.44 的 #183 首次实现曾新增横向二级页、第二层遮罩和 `z-inde
 服务器备份管理保留业务上的独立状态，但复用 #184 的唯一父 Sheet，不再创建平行遮罩。详见 `IMPROVEMENTS.md` 的 #183/#184。
 
 ---
+
+## 8.1 WebView → Compose 视觉等价迁移闸门（#276 复盘）
+
+**职责**：将 WebView 的已验证运行时表现作为唯一迁移基线，阻止原生页面凭感觉重做或被 Compose/Material 默认样式改写。
+
+- **调用入口**：涉及 `#259–#281` 或任何 WebView → Compose 页面迁移时，先读取 `docs/native-rewrite/MIGRATION-GATE.md`、`NATIVE-MIGRATION-CHECKLIST.md`、目标页 `SCREEN-MANIFEST.json`/`COMPONENT-CONTRACTS.json`/`STATE-MATRIX.md`，再运行 `npm run verify:native-ui-v2:preflight -- <issue>`。
+- **事实优先级**：运行中的 WebView 截图、DOM/CSS/JS、结构与 bounds 证据优先于设计稿、记忆和 Material 默认值；若证据缺失，任务只能停留在测绘，不得进入实现。
+- **宿主规则**：页面必须接入唯一 `NativeRoot`；弹层、来源页、底部 Tab 由同一宿主管理，不得创建平行 Activity、透明占位壳或第二套遮罩。
+- **状态规则**：记录、日历、计时等来源状态独立持有；关闭子层不得释放仍可见的来源层门禁；Back 优先级、恢复状态和 `dataRevision` 必须在状态矩阵中有明确转移。
+- **几何规则**：所有颜色、字号、字重、baseline、圆角、宽高、内外边距、阴影、滚动范围和安全区值必须可追溯到 WebView 证据和 token；禁止用固定 dp 反复猜位置。
+- **默认行为**：显式覆盖 Compose/Material 的 Button、Tab、Slider、Dialog、ripple、shape、elevation 和 typography；除非 WebView 已验证存在，否则不得引入缩放、回弹、黑色覆盖或系统 ripple。
+- **Insets/IME**：由 `NativeRoot`/`SheetHost` 统一读取 status、navigation、IME insets，子页面只消费一次；输入统一使用 `FocusRequester`、`BringIntoViewRequester` 和可验证的键盘关闭路径。
+- **首帧与性能**：先呈现稳定壳再异步补数据，单次桥请求完成计算与序列化；不得在每张卡片或每次重组中扫描全量记录。
+- **证据与阻断**：实施前/后必须保存同视口、同 fixture、同状态的浏览器/原生/真机截图、bounds、动效采样和返回路径证据；静态闸门、运行时闸门或回归清单任一失败即阻止版本升级、APK 发布和“完成”标记。
+- **验证**：除目标页专项测试外，必须执行 `NATIVE-MIGRATION-CHECKLIST.md` 的 `#276 Regression Checklist`；修复一项不得跳过其它历史状态。
+
+**适用边界**：记录、计时、日历、首页、洞悉、备份等页面的视觉等价迁移和共享组件复用。
+
+**不适用边界**：明确批准的新视觉设计、玻璃模式重构或产品规则变更；这些任务仍需先形成独立基线和迁移契约，不能借迁移闸门绕过评审。
+
+## 8.2 记录流程共享组件收口（#276）
+
+**职责**：记录入口、就现在/补记、计时运行、结束摘要、详细填写和保存流程共享同一套状态、Sheet 宿主、输入和动效规则。
+
+- **状态入口**：使用 `RecordFlowState`/显式 reducer 管理 `Closed`、`Time`、`Details`、`TimerRunning`、`TimerSummary`、`Closing`，不在多个 Composable 与 Activity 间复制 phase 或布尔标记。
+- **共享组件**：复用 `SheetHost`、`RecordModeSegment`、`DurationSlider`、`ObservationChips`、`RecordFooter`、`GuanjiVisualTokens`；组件只接收状态和事件，不自行决定返回、遮罩或 Tab 门禁。
+- **来源门禁**：日历使用 `setNativeCalendarVisible`，记录流程使用 `setNativeRecordContext`；通用 `setNativeModalVisible` 仅作兼容入口，不能成为新的状态真相。
+- **回归要求**：任何记录相关改动必须覆盖首页→记录→就现在→计时→结束，以及首页→记录→补记→日期时间→时长→状况→保存/返回，并执行 #276 清单中的嵌套日历返回、IME、Insets、性能和历史回归项。
+- **验证**：`npm run verify:276`、目标页 preflight、真机截图与无崩溃检查全部通过后，才可将记录流程标记为视觉等价完成。
+
+**适用边界**：所有记录入口及其子步骤、日历内补记、返回和保存。
+
+**不适用边界**：洞悉/备份等不共享记录状态机的页面；它们仍需复用宿主、token 和闸门，但不能直接套用记录流程 phase。
+
+## 8.3 洞悉聚合快照与 AI owner 收口（#277）
+
+**职责**：保证洞悉 Native 只呈现 WebView 已验证的聚合事实和 AI 状态，不在 Compose 卡片中重新统计、读取原始记录或复制 AI 生成链。
+
+- **唯一入口**：洞悉必须从 `NativeRoot → NativeRegionSurface → NativeInsightSurface` 进入；禁止创建独立 Insight Activity、透明占位壳或第二套 Tab 宿主。
+- **数据入口**：`www/js/records.js` 通过 `getNativeInsightContext()` 一次性提供聚合洞悉快照和脱敏 AI 状态；Native 卡片不得读取单条记录、备注、附件、精确时间或 API Key。
+- **AI owner**：`insight-configure` 和 `insight-generate` 只回传既有 JS AI owner（设置聚焦/生成入口），不在 Kotlin 重写 Provider、缓存、免责声明或输出过滤。
+- **追问 owner**：`insight-ask` 只把问题回传 `window.__guanjiAskQuestion`；回答状态由 `ai.js` 写回一次性快照，Native 只渲染，不在 Compose 复制网络调用或 Markdown 解析链。
+- **共同出现读取**：Native 必须消费 `insight.cooccurrence` 与 `insight.labels` 的同一快照；先把存储 key 映射为展示 label，再区分 `empty`、`insufficient`、`error`、`ready`，不能把字段缺失或类型错误吞成“暂无数据”。
+- **Typography owner**：洞悉页所有文字使用 `NativeInsightSurface.kt` 的 `InsightTypography` token，并与 `docs/native-rewrite/INSIGHT-TYPOGRAPHY-MAP-277-FOLLOWUP.md` 对照；禁止在 Composable 内散落字号、字重和颜色常量。
+- **状态边界**：无数据、数据不足、未配置、生成中、成功/缓存和错误状态必须与 WebView 文案和显示规则一一对应；没有新增 v4.3 洞悉信息架构。
+- **材质边界**：v4.2.x 只接管经典/普通模式；玻璃模式继续由 WebView 唯一渲染，玻璃 Native 必须另行测绘和建立契约。
+- **验证**：运行 `npm run verify:277`、`npm run verify:native-ui-v2:preflight -- 277`，并完成同状态 WebView/Native/真机截图、滚动、AI 生成与返回路径证据后，才可标记台账 `verified`。
+
+**适用边界**：当前洞悉页及后续洞悉相关经典模式迁移。
+**不适用边界**：v4.3 洞悉信息架构改版、玻璃 Native 重构和其他页面的独立数据模型。
+
+---
+
+## 8.4 异步卡片状态与证据采样闭环（#277 补充回归 4）
+
+**职责**：统一 WebView/Compose 异步卡片的局部 loading、稳定内容保留、语义状态采样和外部索引验收，避免“只显示 spinner”“截图时序误判”或“HTTP 200 被误报完成”。
+
+- **实现入口**：洞悉 AI 卡片使用 `Header / AnalysisContent / Intro / ActionArea / Disclaimer` 分区；Native 复用 `InsightLoadingState`，WebView 复用 `.insight-action-loading` 和 `ai.js` 的局部动作区更新。迁移证据按 `debug/visual-migration/#277-followup4-device-evidence.json` 的格式登记。
+- **状态规则**：`idle` 显示分析、介绍、重新生成按钮和声明；`loading` 只替换动作区，保留已有分析/介绍，显示 spinner + 灰色提示，隐藏声明；`success/cache` 恢复按钮和声明；`error` 保留最后可信内容并按 WebView 规则提示，不得先清空整卡片。
+- **几何规则**：动作区固定高度（当前 46dp/46px）；spinner、文案与上下介绍左对齐；卡片内边距和 gap 必须引用页面 Typography/spacing token，不能用未登记的临时 `Spacer`。
+- **证据规则**：先轮询 UI 树/DOM 的语义标记（提示文案、按钮可见性、声明可见性），再截取截图；截图、XML/DOM、时间戳和触发动作使用同一 evidence id。固定等待只能作为轮询间隔，不能作为状态判定。
+- **fixture 规则**：动态页面至少准备 `empty`、`ready`、`loading`、`ready-after` fixture；缺少 fixture 时，报告必须标记动态浏览器路径未执行，并以真机证据或源码断言明确补位。
+- **版本规则**：版本号、HTML CSS/JS cache marker、verifier 断言和实施报告同步变更；历史 verifier 只能锁定兼容迁移线，不得把已结束的 versionCode 当作永久唯一值。
+- **知识库规则**：Dify 上传分为“接收（HTTP 200/document id）→索引（indexing_status）→可检索（display_status/抽样检索）”；未达到 `completed/available` 不得称为上传成功，错误需保留本地报告并可幂等重试。
+- **验证**：运行 `npm run verify:272`、`npm run verify:native-ui-v2:preflight -- <issue>`、目标页 verifier 和受影响历史回归；真机必须覆盖 loading 与完成态；收尾同步本索引、`NATIVE-MIGRATION-CHECKLIST.md`、迁移台账和实施报告。
+
+**适用边界**：洞悉 AI 卡片、报告生成、备份索引等包含异步局部状态的页面组件。
+**不适用边界**：一次性静态文案或明确批准的全屏 loading 改版；若要改变状态结构，必须先更新页面契约并重新测绘。
+
+## 8.5 设置页安全快照与 WebView 动作 owner（#278）
+
+**职责**：让“我的/设置”原生页面只呈现可安全渲染的派生状态，并复用既有 JS/SecureStorage 处理器，避免复制设置协议、泄露密钥或创建第二套弹层。
+
+- **快照规则**：Native 仅接收主题、开关、Provider/模型/Base URL 脱敏状态、`hasApiKey`、编辑/测试状态和版本号；原始 API Key 永不跨桥、进入日志或 Compose UI 树。
+- **动作规则**：所有设置写入通过 `window.__guanjiNativeSettingsAction` 进入既有 JS 函数；空密钥表示保留旧密钥，Provider/Base URL/模型校验继续由既有实现负责。
+- **弹层 owner**：提醒时间、保护模式、备份/恢复/导出/清理等需要系统选择器或 WebView Sheet 的动作，Native 只暂时让出正文；完成后由路由回调恢复 `me` 的 Native 所有权，不得叠加遮罩或新建 Activity。
+- **视觉规则**：经典模式复用 WebView CSS token；玻璃模式回退 WebView。分段控件、开关、滑块、字段和卡片禁止直接使用 Material 默认外观，尺寸与安全区必须记录在设置页契约。
+- **节奏规则**：设置页统一复用 `NativeSettingsSurface.SettingsMetrics` 管理卡片间距、内边距、分组和分隔线节奏；不得在单个 Composable 内用未登记的 `Spacer`/`padding` 反复猜测。
+- **控件规则**：分段控件未选中底色复用 WebView `--bg-elev`，原生开关固定 46×27dp、滑块 21dp；测试通知保持扁平状态区，不得为状态反馈再包一层卡片。
+- **响应规则**：点击设置先更新 Native 乐观状态，再异步调用既有 JS owner 并以短延迟快照回读收敛；不得在主线程等待 Preferences、SecureStorage、网络或数据库结果后才更新 UI。
+- **资源规则**：Compose 不直接解码 API 26 自适应 XML 图标；需要在卡片内展示应用图标时，复用已登记的栅格 foreground 资源并保持 WebView 的外壳/圆角。
+- **基准审计规则**：如果需求描述声称 WebView 存在某控件，实施前必须以当前基线 HTML/CSS/JS 复核；基准不存在的控件不能为了“补齐清单”自行新增，需在报告中说明差异。
+- **验证**：运行 `verify:native-ui-v2:preflight -- <issue>`、设置页专项 verifier 和历史回归；真机 UI dump 必须证明滚动/弹层/返回存在，且不含 API Key 明文。
+
+**适用边界**：#278 及后续设置、AI 设置、数据与隐私页面的经典/普通模式迁移。
+**不适用边界**：玻璃 Native 重构、全新设置协议或需要改变数据所有权的功能；这些必须另立契约并经安全审查。
+
+## 8.6 备份与恢复 Native 路由及协议复用（#279）
+
+**职责**：在经典/普通模式提供备份首页、WebDAV 配置、本机文件管理和恢复来源的原生宿主，同时让既有 JS/Capacitor 继续作为文件、加密、WebDAV 和恢复协议的唯一 owner。
+
+- **宿主规则**：所有备份状态都在同一个 `MainActivity → NativeRoot → NativeBackupSurface` 路由栈内；子页只改变 route state，不创建第二个 Activity、Tab、遮罩或全屏 Sheet。
+- **层级规则**：绘制顺序固定为“页面 → Tab → Backup Sheet”，不得通过隐藏/重建 Tab 解决遮挡；返回按“子页 → 备份首页 → 设置页”逐级收口。
+- **数据边界**：`__guanjiNativeBackupContext` 只返回脱敏文件索引、同步状态和 WebDAV 配置摘要；API 密码、记录原文、密钥和 BackupEnvelope 不跨桥。上传、删除和 WebDAV 保存仍调用既有 `secure.js`/`webdav.js`/Capacitor owner；本机/服务器恢复统一进入无 UI `__guanjiNativeRestore` 引擎，再由 `GuanjiRoomShadow.replaceRecords` 原子提交。
+- **恢复规则**：local/server 只允许一套 `merge`、`new`、`overwrite` 语义；恢复前完成文件格式、密码/完整性、记录字段和候选集校验，恢复后完成 Room 写入校验；失败只回传错误码并保持当前记录不变。`requestId` 防重放，Native Sheet 只展示运行状态和结果。
+- **键盘规则**：恢复口令字段位于可滚动内容区，外层 Sheet 使用 `imePadding`，footer 不参与 IME 重排；必须验证魅族真机键盘弹出时口令字段和确认按钮仍可见。
+- **列表规则**：最新文件/备份单独展示；更早条目只在固定高度的内部列表滚动，footer 固定；空文件、未配置、未加密和失败状态分别呈现，不能把空列表当成协议异常。
+- **视觉规则**：经典模式复用备份 CSS 的卡片几何、颜色、阴影和固定 footer；图标使用 Compose Canvas/登记的矢量资源，不使用 Emoji 或系统字体符号；玻璃模式仍由 WebView 唯一渲染。
+- **验证**：`npm run verify:279`、`verify:native-ui-v2:preflight -- 279`、统一 APK 构建及真机覆盖备份首页、WebDAV 未配置、本机文件管理、恢复来源、子级返回和关闭；视觉签收前台账只能标记 `implemented_pending_visual_signoff`。
+
+**适用边界**：#279 及后续经典/普通模式备份、恢复、WebDAV 页面迁移。
+**不适用边界**：玻璃 Native 重构、加密协议重写、BackupEnvelope/文件命名规则改造；这些必须另立契约并先完成协议回归。
+
+## 8.7 异步 JS 快照回传规则（#280）
+
+**职责**：把 WebView 中返回 Promise 的只读派生快照安全送入 Compose，避免 `evaluateJavascript` 把未等待的 Promise 序列化为 `{}`，从而把“桥未就绪/读取失败”误报为旧数据源不可用。
+
+- **调用入口**：JS 异步函数完成后调用 `GuanjiNativeBackup.onContext(JSON.stringify(snapshot))`；Native 仅接收已脱敏的文件索引与状态，Compose 仍通过 `loading → ready/error` 收敛。
+- **禁止项**：不得把 Promise 直接作为 `evaluateJavascript` 返回值；不得把空对象当作成功快照；不得在回调中传递口令、原始记录、密钥或文件内容。
+- **验证方式**：真机触发首次打开和二级路由刷新，确认回调收到 `ready` 快照、UI 保留当前 route，列表能显示实际文件；同时覆盖 JS bridge 缺失、异常和空列表状态。
+
+**适用边界**：Native 设置/备份/洞悉等需要消费异步 WebView 派生快照的迁移页面。
+**不适用边界**：同步返回的纯 UI 状态；核心数据写入协议和加密密钥传输。
+
+## 8.9 临时反馈与输入型 Sheet 规则（#279 follow-up）
+
+**职责**：为危险操作结果和口令输入提供稳定、可复用的生命周期与键盘行为。
+
+- 清除全部数据、恢复演示数据的标题状态只表示一次成功操作；默认空白，不写入持久化设置，不使用共享 `operationSuccess`。清除与演示恢复分别由 `NativeRoot` 的独立反馈状态驱动，并在短时窗口或再次进入操作时消费。
+- Loading 文案属于任务 Sheet 内部，不显示在我的页行标题；失败只显示在当前 Sheet 结果槽，不污染行级反馈。
+- 密码/恢复口令统一使用 `NativeSheetInput`：输入控件位于单一可滚动内容区，外层 Sheet 只处理一次 `imePadding`，字段获得焦点后通过 `BringIntoViewRequester` 自动滚入可视区域；禁止叠加固定负 offset、第二次 IME padding 或让 footer 参与滚动。
+- **IME 稳定规则**：本机/服务器恢复口令保留外层 Sheet 的键盘安全裁剪边界，输入区必须使用 `weight(1f, fill = false)` 形成可收缩的内部滚动视口。`NativeSheetInput` 监听 `WindowInsets.ime` 由 0 变为稳定值后再执行两次 `bringIntoView()`，并把 requester 挂在完整输入框容器上，避免只滚动文字节点造成字段上下被裁切。开启加密是紧凑型双口令卡片的例外：使用 `WindowInsets.ime - navigationBars` 计算整卡片上移，并关闭字段级 `bringIntoView`，确保说明、两个输入框和底部操作同时可见。输入视口底部统一保留 `NativeSettingsSheetMotion.inputFooterGap`，让字段与固定 footer 有稳定呼吸空间；该间距只在 LOCAL/SERVER 口令路由启用，HOME/SOURCE 等非输入路由必须保留原卡片几何。三个输入场景（开启加密、本机恢复、服务器恢复）必须共享可验证的 IME 契约并在魅族真机逐一验收。
+- **备份首页留白规则**：HOME 路由不得用可伸缩权重把剩余高度推到“恢复数据”模块下方。首页内容区使用 `wrapContentHeight`，底部保留 `16dp` 的固定节奏；footer 顶部间距按 HOME 单独保持为 `16dp`，按钮底部安全区保持固定。LOCAL/SERVER 输入路由仍使用可收缩视口和输入专用底部留白，不能用首页收紧规则覆盖口令页面。
+- **备份首页状态规则**：HOME 首次读取期间不渲染“正在读取备份状态”尾部占位，也不为它保留高度；只有真实错误才显示重试行，避免无意义文案和额外留白。
+
+### 8.9.1 #279 问题复盘与防回归门禁
+
+本条把 #279 中已经验证的失败模式固化为实施前检查，后续不得只凭截图或单个机型经验绕过。
+
+- **问题一：外层安全裁剪与输入框可视区混淆**。保留 Bottom Sheet 的底部安全裁剪是为了避开系统键盘，但仅增加外层 `imePadding` 会导致字段仍被裁切；固定负 `offset` 又会把内容过度上移。防护：输入型 Sheet 必须拆成“外层安全裁剪 + 内部可收缩滚动视口”，并用完整输入框容器做 `bringIntoView` 目标。
+- **问题二：IME 尚未稳定就滚动**。魅族键盘会经历二次布局，首次滚动位置可能失效。防护：监听 `WindowInsets.ime` 从 0 到稳定值，按统一两阶段策略触发校准；禁止在 `LaunchedEffect(focus)` 中直接单次固定延迟滚动。
+- **问题三：不同输入场景错误共用位移策略**。本机/服务器恢复适合内部滚动；紧凑的双口令开启加密适合整卡片上移。防护：由路由契约明确 `imeStrategy`，不能把整卡片位移、字段滚动和双重 `imePadding` 叠加。
+- **问题四：首页可伸缩高度制造假留白**。HOME 使用 `weight` 把剩余高度推到恢复模块底部，造成与固定 footer 的间距异常。防护：HOME 使用 `wrapContentHeight`，内容尾部与 footer 各自使用登记的 `16dp` 节奏；输入路由的专用间距不得泄漏到 HOME/SOURCE。
+- **问题五：加载占位文案参与布局**。备份首页的“正在读取备份状态”既不是用户操作反馈，又会改变卡片高度。防护：正常 loading 保持安静且不占位，只有真实 error 才显示重试行；状态更新不得重建 Sheet。
+- **问题六：只验证“没被遮住”而未验证“完整可见”**。字段可能没有被键盘覆盖，却被卡片边界截断。防护：真机验收同时检查字段四边 bounds、确认按钮可操作、关闭键盘后布局恢复，并保存截图与 UI dump。
+- **问题七：验证路径可能改变用户数据**。解密、加密、导入和清除等操作不能用“点一下看看”代替验证。防护：优先走打开、聚焦、取消路径；需要执行写入操作时使用隔离 fixture，并在报告中明确未执行的 destructive path。
+- **问题八：规则只写在报告、不进入复用索引**。防护：实施完成后必须同步本节、目标 verifier、迁移台账和实施报告；后续 #279 相关改动先运行 `npm run verify:279`，再做真机三场景回归。
+
+**实施前硬检查**：确认目标路由、`imeStrategy`、内容视口、footer 所有权、HOME 间距、loading 状态和 destructive 验证边界均已登记；缺一项只能停留在“待视觉/交互验证”，不能标记完成。
+
+**实施后硬检查**：本机恢复、服务器恢复、未加密→加密三条路径均需覆盖键盘弹出、输入框完整 bounds、确认按钮、取消返回和关闭键盘恢复；HOME 需覆盖安静 loading、error/retry 和 footer 固定位置。
+
+**调用入口**：`NativeSheetInput`、`NativeRoot.setNativeClearDataFeedback`、`MainActivity.showTransientClearDataFeedback`、`MainActivity.showTransientRestoreDemoFeedback`。
+**验证方式**：默认进入设置页无状态；各操作成功只显示对应行状态并在短时后消失；三个输入场景在魅族真机弹出键盘时字段完整可见、确认按钮可用，关闭键盘后布局恢复。
+**适用边界**：经典 Native 设置、备份恢复及数据维护 Sheet。
+**不适用边界**：WebView 玻璃模式、长期设置状态、业务数据持久化和备份协议。
+
+## 8.10 分领域 Gateway 与 revision 收口（#280）
+
+**职责**：让原生 Surface 与迁移期 JS/Capacitor 实现通过稳定的领域接口连接，避免重新出现“外层 Native、内层直接 WebView/JS”的隐式混合调用，并为 #281 替换实现保留不变的调用面。
+
+- **唯一宿主**：所有 Gateway 只在 `MainActivity → NativeRoot` 内工作，不创建 Activity、Tab、Sheet 或 WebView backdrop；导航仍由 `RouteHost`/`NativeRoot` 负责。
+- **领域边界**：必须按 `RecordFlowGateway`、`InsightGateway`、`SettingsGateway`、`BackupGateway`、`DataMaintenanceGateway` 分域；禁止新增一个包揽所有动作的万能 Bridge。
+- **协议形状**：统一使用 `GatewayCommand(requestId, action, value, dataRevision)` 和 `GatewayResult(requestId, status, dataRevision, errorCode, message)`；`value/message` 只允许脱敏值，禁止原始记录、口令、API Key、WebDAV 凭据和文件正文。
+- **读取规则**：快照使用异步单次请求；由 `GatewayRevisionGate` 对每个领域做 revision 去重，旧回调不能覆盖新状态。Promise 必须在 JS 回调中完成后再进入 Native，不能把 Promise 直接作为 `evaluateJavascript` 返回值。
+- **写入规则**：动作通过显式 callback 返回 started/completed/failed；局部 action state 不得重建宿主 Sheet。设置可以先乐观反馈再以权威快照收敛，备份上传/删除/刷新必须保持局部状态。
+- **迁移期实现**：#280 使用一个 `LegacyJs*Gateway` Adapter 对接既有 owner；Adapter 是临时实现，不等于第二份数据权威。#281 替换 Adapter 时，UI 调用方和协议不应改变。
+- **路由审计**：功能矩阵必须同时登记入口、Gateway、最终 owner、是否 fallback、返回路径和隐私边界；不能只写“Native 页面”而隐藏实际 JS/Capacitor 逻辑。
+- **验证**：先运行 `npm run verify:native-ui-v2:preflight -- <issue>`、目标域 verifier 和历史回归；再用统一构建钩子安装到真机，保存 `topResumedActivity`、UI 树、截图、logcat 和 `apk-build-summary.json`。完整稳定性未签收时台账只能写 `implemented_pending_stability_signoff`。
+
+**适用边界**：#280 及后续所有经典/普通模式的原生化业务接口收口。
+**不适用边界**：玻璃 Native 重构、全新后端协议和需要改变数据权威的功能；这些必须另立契约并进行安全/兼容性审查。
+
+## 8.11 CSS 主题事实与系统栏同步规则（#280）
+
+**职责**：让 WebView 的 `data-theme` 与 Native Surface、Android 状态栏/导航栏保持同一主题事实，避免深色页面出现浅色宿主画布或上下系统栏色带。
+
+- **调用入口**：`MainActivity` 的 `onMaterialChanged` → `NativeRoot.setNativeTabTheme`；该入口是 NativeRoute 显示前唯一的主题同步点。
+- **Native 绘制**：每个 Native 页面根容器必须显式绘制 `nativeColors(darkTheme).background`；ComposeView 宿主和迁移探针保持透明，不依赖 `windowBackground` 承担运行时主题。
+- **系统栏**：同一次主题同步设置 `statusBarColor`、`navigationBarColor`、导航栏分隔线、`isNavigationBarContrastEnforced`（API 29+）和 `WindowInsetsControllerCompat` 的明暗图标状态。保持既有非 edge-to-edge 几何，不通过隐藏系统栏解决颜色问题。
+- **状态边界**：不能依赖 `values-night` 或 Android `uiMode`，因为 CSS 主题切换不会触发 Activity 重建；玻璃模式仍由 WebView 唯一渲染，但经典 Native 回退也必须同步系统栏。
+- **验证方式**：至少在深色和浅色主题分别冷启动，保存首页截图/UI dump，检查上下系统栏与内容背景连续、图标对比度正确，且内容 bounds 与基线不发生位移；同时检查无 FATAL/ANR。
+
+**适用边界**：经典/普通 NativeRoute 与其迁移期单宿主窗口。
+**不适用边界**：独立 Activity、玻璃 Native 重做或需要真正 edge-to-edge 的后续任务；这些必须重新建立窗口契约。
+
+## 8.12 序列化行为快照的派生索引重建规则（#280）
+
+**职责**：防止 Kotlin/JSON 行为快照丢失 JS 运行时上下文后，被错误解释为“没有记录”，进而把首页时段分布、图表或其他派生统计覆盖为全 0。
+
+- **调用入口**：`requestBehaviorSnapshot()` 返回值进入 `syncNativeHomeSnapshot()` 时，必须先判断 `__statsContext` 是否存在；该字段是 JS 运行时不可枚举字段，经过 JSON 往返后允许缺失。
+- **重建规则**：缺少 `__statsContext` 时，使用同一快照 revision 的当前记录、`generatedAtMs` 和统计时区调用 `createStatsContext()`，只重建轻量派生索引（如 `valid`、`timeBuckets`、日期计数）；快照携带的 Kotlin 聚合计数仍是权威值，不得被 JS 全量重算覆盖。
+- **状态区分**：没有运行时上下文 ≠ 没有记录；真正空数据、数据不足、快照不可用必须分别保留可区分状态，不能统一降级成全 0 或空卡片。
+- **一致性边界**：派生索引重建必须绑定当前 `dataRevision`/快照 revision，旧回调不得覆盖新状态；不得为了修复显示而上传原始记录、改变统计口径或创建第二份数据权威。
+- **验证方式**：先用 `debug/verify-280-time-distribution.cjs`（通过 `debug/cdp-eval.cjs`）重放真实启动调用链，确认存在源记录时 `timeBuckets` 非零；再运行 `npm run verify:280`、统一 APK 构建和真机冷启动/首页截图，检查时段分布环形图与明细均渲染且无 FATAL/ANR。
+
+**适用边界**：#280 及后续所有跨 Kotlin/JS 的聚合快照、Native 首页/洞悉/小组件派生展示。
+**不适用边界**：原始记录写入、备份文件协议、仅由 Kotlin 内部消费且不经过序列化的对象；这些仍遵循各自领域 owner 和 schema 契约。
+
+## 8.13 记录详情选项区弹性滚动与内容对齐规则（#280）
+
+**职责**：让记录详情在不同窗口宽度、系统栏和内容长度下保持 WebView 的同一条内容对齐线，同时只滚动“发生前状况”选项，不把备注或底部操作区卷入滚动。
+
+- **唯一滚动 owner**：详情页由 `SubcomposeLayout` 先测量 Header、时长/状况标题、备注和固定 Footer，再把剩余可用高度交给 `NativeObservationGrid` 的 `verticalScroll`；禁止用 `weight` 把剩余空间推到备注与 Footer 之间，也禁止用 `screenHeight - magicDp` 猜测选项视口。
+- **固定区不滚动**：备注输入框和“上一步/存为记录”Footer 保持固定位置；IME 适配继续复用 #276/#279 的单一 owner，不能因为选项滚动重新叠加 `imePadding`、负 offset 或第二个滚动容器。
+- **内容对齐**：发生前状况选项滚动视口必须复用 `NativeRecordLayoutTokens.detailsContentHorizontalPadding`，与时长、备注和 Footer 的 22dp WebView 内容边界对齐；不得让 `FlowRow` 贴到卡片边缘，也不得用设备宽度分支写死列数。
+- **间距边界**：底部视觉呼吸空间只能由 `detailsFooterVisualGap` token 提供（当前基准 20dp，与备注输入区到 Footer 的既有 20dp 节奏一致），并由 Sheet Column 作为固定 sibling 预留；详情 `SubcomposeLayout` 只消费扣除该 gap 后的 body viewport，不能在最大高度路径中压缩这段留白。系统导航栏安全区仍由 Root `NativeWindowMetrics` 提供；输入、首页和其他 Sheet 的间距不得泄漏到记录详情。
+- **备注 IME**：记录详情的备注字段复用 #279 的输入契约。Root/详情 Sheet 只消费一次 `(imeDp - navigationBarDp).coerceAtLeast(0.dp)` 的整卡片位移；备注容器使用 `WindowInsets.ime` 稳定值、`distinctUntilChanged`、`collectLatest` 和两阶段 `BringIntoViewRequester`。禁止在详情字段或外层再叠加 `imePadding`、固定负 `offset` 或第二个滚动 owner；键盘 overlay 的 OEM 也必须让备注字段和固定 Footer 同时完整可见。
+- **验证**：在魅族 21、魅族 18s、OnePlus 同版本打开“直接填写 → 记录详情”，确认选项可独立上下滑动，Header/时长、备注和 Footer 不随之移动；保存按钮完整可见、无大块空白、标签左右边界与字段一致，并保存截图和构建摘要。
+
+**适用边界**：#280 记录详情的经典 Native 迁移及后续同类多选表单。
+**不适用边界**：计时全屏页、玻璃 Native 重构、需要改变 WebView 内容结构的全新表单；这些必须另立契约。
+
+## 8.14 启动聚合快照时序与空覆盖保护规则（#280 P5）
+
+**职责**：阻止启动期间尚未完成权威记录加载的异步回调，把临时空聚合写入 Native 并覆盖已有有效首页快照。
+
+- **就绪门槛**：只有 `GuanjiDataStore.records.load()` 完成后才设置 `window.__guanjiRecordsReady = true`；`syncNativeHomeSnapshot()` 在此之前必须直接返回 `records_not_ready`，不得发布空快照。
+- **派生索引恢复**：JSON/桥回调可能丢失不可枚举的 JS 运行时上下文。候选快照没有有效记录、但当前 `records` 仍非空时，必须基于当前记录、`generatedAtMs` 和统计时区重建轻量派生索引；不能把“上下文缺失”当成“没有记录”。
+- **空写入语义**：正常同步默认 `allowEmpty=false`；只有明确的记录清空、空恢复或同等破坏性替换路径才可显式传 `allowEmpty=true`。Native 插件在已有非空快照时拒绝未授权的空快照覆盖，并返回可观测的 `empty_snapshot_rejected` 结果。
+- **生命周期隔离**：启动、AI、组件和行为快照回调不能重建宿主页面或清空当前数据；快照提交应是幂等、revision 受控的局部更新。
+- **验证**：运行 `npm run verify:280:startup-snapshot`，再执行 `npm run verify:280:p5`；冷启动采样必须确认 `startupEmptyWindow=false`、前后记录指纹一致、计时偏好恢复且无 Activity/ANR 错误。真实清空/恢复测试必须使用隔离 fixture。
+
+**适用边界**：首页聚合快照、Native 首页/洞悉/小组件以及任何跨 JS/Kotlin 的启动派生数据同步。
+**不适用边界**：原始记录写入事务、备份文件格式或用户明确确认的破坏性空数据提交；这些继续遵循各自领域 owner 和数据协议。
+
+## 8.15 跨设备视觉基线与红灯保留规则（#280 P6 VC0–VC1）
+
+**职责**：在修改字体或阴影前，冻结同一 APK、fixture、route、主题、fontScale 和键盘状态下的三设备视觉证据，并把差异变成可重复的阻断结果。
+
+- **唯一基线**：`4.2.10/code132`、`com.guanji.app`、`record-details-fixed-footer-v1`、`record-details-sheet`、经典浅色、`fontScale=1.0`、键盘关闭；魅族 21 为参考，魅族 18S 与 OnePlus PLZ110 为对照。
+- **验证入口**：`npm run verify:280:rendering` → `debug/verify-280-rendering.cjs` → `debug/verify-280-cross-device-rendering.ps1`；报告固定写入 `debug/visual-migration/#280-p6-vc0-20260922/vc0-report.json`。
+- **三设备要求**：必须同时有三台设备证据，脚本按参考设备与另外两台逐一比较；缺少任一设备视为失败，不能用主设备截图替代。
+- **红灯语义**：字形覆盖相对差异 `>5%` 或阴影轮廓相对差异 `>10%` 时报告 `red_baseline` 并退出码 1；不得放宽阈值、删除设备、白名单或修改版本号把它变绿。
+- **视觉事实源**：字体和阴影先追溯 `www/css/theme.css`、`www/css/screens.css`、`www/css/sheets.css` 与 `docs/native-rewrite/CROSS-DEVICE-VISUAL-CONTRACT-280.md`，再进入 VC2/VC3/VC4 的小批次实现。
+- **安全边界**：本规则不修改 `NativeWindowMetrics`、Footer、IME、Sheet、Tab 或弹性布局，不处理玻璃模式；视觉修复造成 R9/既有回归失败时只回退当前渲染批次。
+
+**适用边界**：#280 VC0–VC6 及后续经典 Native 跨设备视觉收口。
+**不适用边界**：玻璃 WebView、v4.3 洞悉改版、数据/Gateway/Room 迁移和设备特判。
+
+## 8.16 字体准入与许可证边界规则（#280 VC2 / VC3-R2）
+
+**职责**：在任何 Native Typography 批量修复前，先冻结 WebView 字体事实源、Native 平台候选、fontScale 档位、字体合成策略和许可证边界。
+
+- WebView `--font` 是系统字体栈；Native 只能使用已完成来源/许可证/兼容审查的字体。本轮 VC3-R2 采用官方 Noto Sans SC Sans2.004 Variable TTF，禁止把 SF Pro、PingFang、HarmonyOS Sans 或其他未审计字体复制进 APK。
+- `NativeTypography.synthesis` 固定为 `FontSynthesis.None`，避免设备在缺失字重时自行合成造成字形重量漂移。
+- VC0 基线固定 `fontScale=1.0`；响应式准入档位为 `1.0/1.15/1.30`，采集必须记录真实设备值并在临时修改后恢复。
+- 字体资源必须来自固定官方版本/tag，记录来源、SHA-256、字体轴/覆盖和许可；不得提取 OEM 字体或自行 subset/转换后仍声称是未修改官方文件。
+- VC3-R2 已批准单一变量字体路径：新版最低 API 26，只含一份主变量 TTF，不保留静态双路径。API24/25 用户继续使用最后一个兼容版本，不声称新版兼容。
+- API26 与设备运行证据不可由静态兼容检查替代；许可与 NOTICE 必须在应用内和分发材料保持可访问。
+- VC2 不替换页面 TextStyle；实际角色映射进入 VC3，且每批必须重跑 VC0 并保护 R9/IME/Insets/Footer/Tab。
+
+**调用入口**：`NativeTypography.kt`、`npm run verify:280:vc2.2:candidates`、`debug/verify-280-vc2.2-font-candidate.cjs`。
+**验证方式**：`npm run verify:280:variable-font` 检查固定来源/哈希/轴范围/单一资源/`minSdk=26`/许可；构建、API26、三设备和旧版覆盖安装另行提供运行证据。证据写入 `debug/visual-migration/#280-vc3-r2/`。
+**适用边界**：#280 VC2/VC3 及后续经典 Native 页面字体迁移。
+**不适用边界**：玻璃 WebView、需要品牌字体的独立产品、未经许可证审核的字体嵌入。
+
+## 8.17 Typography 语义角色分批映射规则（#280 VC3）
+
+**职责**：把 WebView CSS 的字号、字重、行高和字距事实映射到 Native 语义 Typography 角色；所有字体家族与物理权重值由唯一 Native 变量字体入口承载。
+
+- 角色唯一入口为 `NativeTypography.style(...)`；页面只能引用已登记角色，不得自行创建 `FontFamily` 或绕过字体 provider。真实字重为 400/500/600/650/700/750/800，Compose 描述值与 `wght` 轴值一致。
+- T0 覆盖首页问候/常规卡片和记录详情；T1 扩展首页、日历、记录与计时核心文字；T2 扩展我的/数据与隐私/备份与恢复/输入型 Sheet；T3 扩展洞悉、Tab、空状态、状态小字、日期徽标和 AI 文案。字号、padding、Sheet 高度、Insets、Footer、Tab 与滚动 owner 冻结，不得用字体修改掩盖布局问题。
+- VC3-R2 后，旧 T0–T3 报告只作为角色/布局历史证据；必须在变量字体构建上重跑 T0–T3/internal/final，并采集 API26 和三设备同状态证据。
+- 若出现换行、裁切、R9 Footer/IME/Tab 或弹性布局回归，先回退当前 Typography 批次，不得修改 `NativeWindowMetrics` 或设备特判。
+
+**调用入口**：`NativeTypography.kt`、`NativeHomeSurface.kt`、`NativeRecordSurface.kt`、`NativeSettingsSurface.kt`、`NativeSettingsSheetPrimitives.kt`、`NativeBackupSurface.kt`、`NativeInsightSurface.kt`、`NativeBottomTabs.kt`、`npm run verify:280:vc3`、`npm run verify:280:vc3:t1`、`npm run verify:280:vc3:t2`、`npm run verify:280:vc3:t3`、`npm run verify:280:vc3:internal`。
+**验证方式**：轴契约、角色映射、许可、fontScale、布局回归和当前构建版本全部通过；最终报告必须包含魅族 18S、魅族 21、OnePlus PLZ110 和 API26 环境，最多两台设备在线时允许分批采集。
+**适用边界**：#280 VC3 及后续经典 Native 页面字体映射。
+**不适用边界**：玻璃 WebView、v4.3 洞悉信息架构改版、未经 CSS 事实冻结的页面重设计。
 
 ## 9. 快速检索词
 

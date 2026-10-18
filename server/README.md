@@ -13,7 +13,7 @@
 
 项目提供本地环境脚本：
 
-1. JDK 21：默认使用 `C:\Users\43124\Android\jdk-21`。
+1. JDK 21：设置 `JAVA_HOME` 指向本机 JDK 21 安装目录。
 2. Maven 3.9.11：首次运行时下载到 `%LOCALAPPDATA%\Guanji\tools`，不污染仓库。
 3. PostgreSQL 15：通过 Docker Compose 启动，数据保存在 Docker volume `guanji-thesis-pgdata`。
 

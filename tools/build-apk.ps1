@@ -3,6 +3,8 @@ param(
     [ValidateSet('debug', 'release')]
     [string] $Mode = 'debug',
     [switch] $Install,
+    [string] $Serial,
+    [switch] $AllowDowngrade,
     [switch] $UseDebugSigning,
     [switch] $SkipSync,
     [switch] $Online,
@@ -15,7 +17,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path.TrimEnd('\')
-$expectedRoot = 'C:\Users\43124\Desktop\test\guanji-app'
+# 通过仓库结构识别项目根目录，不绑定开发者的本机路径。
 $debugDir = Join-Path $projectRoot 'debug'
 $buildStarted = Get-Date
 $buildStamp = $buildStarted.ToString('yyyyMMdd-HHmmss')
@@ -38,6 +40,7 @@ $device = [ordered]@{
     installedSignature = $null
     apkSignature = $null
     install = if ($Install) { 'not_started' } else { 'not_requested' }
+    allowDowngrade = [bool]$AllowDowngrade
     error = $null
 }
 $summary = [ordered]@{
@@ -214,16 +217,46 @@ try {
     New-Item -ItemType Directory -Path $debugDir -Force | Out-Null
     New-Item -ItemType File -Path $logPath -Force | Out-Null
     Write-Log "projectRoot=$projectRoot"
-    if ($projectRoot -ne $expectedRoot) {
-        throw "必须从实际项目根目录执行：$expectedRoot；当前为 $projectRoot"
+    foreach ($requiredProjectFile in @('package.json', 'android\gradlew.bat')) {
+        if (-not (Test-Path (Join-Path $projectRoot $requiredProjectFile))) {
+            throw "必须从观己项目根目录执行；缺少项目文件：$requiredProjectFile"
+        }
     }
 
-    # 固定 Android/Gradle 用户目录，避免使用第二份 debug.keystore。
-    $env:ANDROID_HOME = 'C:\Users\43124\Android'
-    $env:JAVA_HOME = 'C:\Users\43124\Android\jdk-21'
-    $env:GRADLE_USER_HOME = 'C:\Users\43124\.gradle'
-    $env:JAVA_TOOL_OPTIONS = '-Duser.home=C:\Users\43124'
-    $env:ANDROID_USER_HOME = 'C:\Users\43124\.android'
+    # 从标准环境变量或 SDK 默认目录解析工具链，避免将某台开发机路径写入仓库。
+    $androidSdkPath = $env:ANDROID_HOME
+    if ([string]::IsNullOrWhiteSpace($androidSdkPath)) { $androidSdkPath = $env:ANDROID_SDK_ROOT }
+    if ([string]::IsNullOrWhiteSpace($androidSdkPath) -and $env:LOCALAPPDATA) {
+        $androidSdkPath = Join-Path $env:LOCALAPPDATA 'Android\Sdk'
+    }
+    if ([string]::IsNullOrWhiteSpace($androidSdkPath) -or -not (Test-Path $androidSdkPath)) {
+        throw 'Android SDK not found. Set ANDROID_HOME or ANDROID_SDK_ROOT.'
+    }
+
+    $javaSdkPath = $env:JAVA_HOME
+    if ([string]::IsNullOrWhiteSpace($javaSdkPath) -or -not (Test-Path (Join-Path $javaSdkPath 'bin\java.exe'))) {
+        $javaCommand = Get-Command java -ErrorAction SilentlyContinue
+        if ($javaCommand) { $javaSdkPath = Split-Path -Parent (Split-Path -Parent $javaCommand.Source) }
+    }
+    if ([string]::IsNullOrWhiteSpace($javaSdkPath) -or -not (Test-Path (Join-Path $javaSdkPath 'bin\java.exe'))) {
+        throw 'JDK not found. Set JAVA_HOME to a JDK 21 installation.'
+    }
+
+    $env:ANDROID_HOME = $androidSdkPath
+    $env:ANDROID_SDK_ROOT = $androidSdkPath
+    $env:JAVA_HOME = $javaSdkPath
+    if ([string]::IsNullOrWhiteSpace($env:GRADLE_USER_HOME)) {
+        $env:GRADLE_USER_HOME = Join-Path $env:USERPROFILE '.gradle'
+    }
+    if ([string]::IsNullOrWhiteSpace($env:ANDROID_USER_HOME)) {
+        $env:ANDROID_USER_HOME = Join-Path $env:USERPROFILE '.android'
+    }
+    # Keep the Android debug keystore under the current user's profile unless explicitly configured.
+    if ([string]::IsNullOrWhiteSpace($env:JAVA_TOOL_OPTIONS)) {
+        $env:JAVA_TOOL_OPTIONS = "-Duser.home=$env:USERPROFILE"
+    } elseif ($env:JAVA_TOOL_OPTIONS -notmatch '(^|\s)-Duser\.home=') {
+        $env:JAVA_TOOL_OPTIONS = "$($env:JAVA_TOOL_OPTIONS) -Duser.home=$env:USERPROFILE"
+    }
     Remove-Item Env:ANDROID_PREFS_ROOT -ErrorAction SilentlyContinue
 
     $nodeCommand = Get-Command node -ErrorAction Stop
@@ -328,6 +361,9 @@ try {
             $apkPath = Join-Path $projectRoot 'android\app\build\outputs\apk\release\app-release.apk'
         }
     }
+    if ($AllowDowngrade -and $Mode -ne 'debug') {
+        throw '仅允许对 debug APK 显式启用降级安装；release 构建禁止降级'
+    }
     $summary.variantTask = $variantTask
     Set-BuildStage 'gradle-build'
     $gradleArguments = @('-p', 'android', $variantTask)
@@ -380,7 +416,15 @@ try {
         $deviceText = Invoke-Captured -Name 'adb-devices' -Executable $adbPath -Arguments @('devices')
         $onlineDevices = @($deviceText -split "`r?`n" | Where-Object { $_ -match '\sdevice$' -and $_ -notmatch '^List of devices' })
         if ($onlineDevices.Count -eq 0) { throw '未检测到在线 Android 设备' }
-        $device.serial = (($onlineDevices[0] -split '\s+')[0]).Trim()
+        $onlineSerials = @($onlineDevices | ForEach-Object { (($_ -split '\s+')[0]).Trim() })
+        if (-not [string]::IsNullOrWhiteSpace($Serial)) {
+            if ($onlineSerials -notcontains $Serial.Trim()) {
+                throw "指定设备不在线：$Serial；在线设备：$($onlineSerials -join ', ')"
+            }
+            $device.serial = $Serial.Trim()
+        } else {
+            $device.serial = $onlineSerials[0]
+        }
         $device.status = 'online'
         # pm path 对未安装的包返回 1，这是可接受的首次安装场景。
         $installedPathText = Invoke-Captured -Name 'adb-pm-path' -Executable $adbPath -Arguments @('-s', $device.serial, 'shell', 'pm', 'path', $metadata.package) -AllowedExitCodes @(0, 1)
@@ -403,7 +447,14 @@ try {
             }
         }
         Set-BuildStage 'device-install'
-        Invoke-External -Name 'adb-install' -Executable $adbPath -Arguments @('-s', $device.serial, 'install', '-r', $apkPath)
+        $installArguments = @('-s', $device.serial, 'install', '-r')
+        if ($AllowDowngrade) {
+            Write-Log '检测到显式 -AllowDowngrade：使用 -d 保留应用数据执行 debug 降级安装'
+            $installArguments += '-d'
+            $device.install = 'downgrade_requested'
+        }
+        $installArguments += $apkPath
+        Invoke-External -Name 'adb-install' -Executable $adbPath -Arguments $installArguments
         $device.install = 'passed'
         Set-BuildStage 'device-launch'
         Invoke-External -Name 'adb-launch' -Executable $adbPath -Arguments @('-s', $device.serial, 'shell', 'monkey', '-p', $metadata.package, '-c', 'android.intent.category.LAUNCHER', '1')
