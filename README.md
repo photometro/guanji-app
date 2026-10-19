@@ -1,160 +1,94 @@
-# 观己（Guanji）
+# 观己 · Guanji
 
-> 当前版本：v4.2.12（#280 VC3-R2：Native 可变字体迁移验证版；发行版仍为 Local-first）
+> 记录自己的节奏，温和地看见自己的模式。
 
-> 一个隐私优先、温和非评判的个人行为与习惯觉察 App。记录自己的节奏，看清自己的模式，不评判、不焦虑、不打卡式逼迫。
+观己是一款面向私密个人行为的 Android 记录与自我观察 App。它帮助你记下行为频率、发生时段和当时状态，再从自己的长期记录中回看变化；不打分、不与人群常模比较，也不作医学诊断。
 
-「观己」帮助你记录与觉察自己的行为习惯（频率、时段、发生前情况），用温和的 AI 分析找出藏在数据里的模式。**数据只保存在你自己的手机里；AI 只看到聚合统计，永远看不到你的单条记录。**
+**Android · Local-first · 可选 AI · 当前源码 v4.2.12（code 134）· Android 8.0 / API 26+**
 
-## 功能特性
+<p>
+  <img src="./assets/readme/behavior-flow.svg" width="100%"
+       alt="观己的数据路径：个人记录、个人模型和本地洞悉留在设备内；启用 AI 时仅发送聚合摘要。">
+</p>
 
-- **记录**：一键快速记录、完整记录面板（发生前情况 / 时长 / 备注）、补记历史日期、编辑与删除
-- **首页**：今日概览、时段分布环图、次数趋势（14 / 30 天）、本月对比、最近记录
-- **历史日历**：月历角标、选天明细、补记直达；**未来日期灰显禁用**，补记未来日期会被温和拦截（「未来的日期还没到哦，先记录今天吧」）
-- **个人洞察**：现有分析页回归六张旧版 AI 卡片（近 7 天概览、时段分布、发生前状况、共同出现、近期变化、可以试试）；有可用 AI 报告时只显示 AI 观察，没有 AI 时显示完整本地洞察，支持追问，不展示独立 AI 报告
-- **可追溯 AI 观察**：本地行为模型为聚合指标和个人特征生成绑定数据修订号与模型版本的 Evidence ID；AI claim 必须引用当前证据，过期或未知引用会被拒绝；个人特征只保存在本地原生快照
-- **AI 多提供商**：默认 DeepSeek，可选 OpenAI 或自定义（Base URL / 模型 / API 密钥**按提供商分别保存**，含连接测试）
-- **「就现在」计时记录**：像运动 App 一样开始/结束计时——**全屏沉浸式计时页**（主题蓝渐变 + 超大秒数 + 脉冲徽标），结束后同屏进入**汇总页**（发生前情况补选、上方内容可滚动、底部操作区固定、「继续计时」可反悔）；时长自动精准填入
-- **实况通知（Live Updates）**：计时时切出应用，通知栏/锁屏持续显示系统级秒数（Android 16+ 实况通知 / 魅族锁屏胶囊 / 其他常驻通知）；通知自带「结束并记录 / 取消」快捷按钮；息屏 AOD 显示「已计时 X 分钟」自动刷新；计时中 App 被杀也会自动恢复衔接
-- **桌面小组件（2x2，共 5 个）**：一键快速记录、数据看板、本周节奏、连续进度、今日卡片
-- **每日温和提醒**：可选，默认关闭
-- **深色模式**：跟随系统 + 手动覆盖
-- **本地加密**：数据从写入那一刻起就是密文（AES-256-GCM + 口令派生密钥），导出/备份均为密文包，仅口令可解；支持修改口令与关闭加密
-- **WebDAV 备份**：加密模式专属——配置你自己的 WebDAV 服务器（坚果云/群晖/Nextcloud），密文备份上传/恢复/管理；打开或回到 App 时自动备份（默认关、数据变化才上传）；明文模式显示「开启加密后可用」
-- **我的页**：AI 设置 / 记录方式 / 实况通知测试 / 数据卡（加密开关与口令 / 导出 / 备份导入（下载目录点选）/ **备份管理（列表与删除）** / 清除 / 恢复演示数据）/ 隐私说明（数据默认仅存本地）
+## 记录之后，看见自己的变化
 
-## 设计风格
+- **轻松记录**：快速记录、计时、补记历史日期，以及编辑和删除。
+- **回看节律**：通过首页统计、日历和洞悉页观察频率、时段与发生前状况的变化。
+- **建立个人参照**：将近期表现与自己的历史基线比较，而不是套用统一的“正常值”。
+- **可选 AI 增强观察**：在本地统计与证据基础上归纳跨维度变化、解释不确定性，并提供可继续观察的问题。
+- **日常入口**：桌面小组件、计时通知和可选的温和提醒，让记录保持轻量。
 
-界面遵循 Apple 设计语言，注重克制与温度：
+## 隐私边界
 
-- **玻璃效果体系（可开关）**：无磨砂通透配方——发丝暗线 / 渐变边框环 / 上缘高光 / 双层柔影；tab 栏 / 日历弹层 / 记录面板轻磨砂，**磨砂强度可滑动调节**（0-10px 默认 3）；选中指示为全宽渐变玻璃胶囊
-- **Tab 切换液体动效**：玻璃态下选中胶囊沿弹簧曲线滑动（0.55s），滑动途中挂 SVG 位移滤镜做液体波动脉冲（0→20→0，形状随机）；非玻璃态保留经典滑块动画
-- **卡片式布局**：圆角卡片 + 轻盈层级（`--shadow-1` ~ `--shadow-4`），信息密度克制，留白充足
-- **专注排版**：大数字突出核心数据（今日次数、连续天数），辅助信息用次级灰（`--ink-2`）退后
-- **弹性动效**：统一弹簧曲线（`--ease-spring`）——Tab 滑块跟踪、分段控件滑块、弹层进出场（上滑进入、下滑淡出）、环图分段动画
-- **手势交互**：弹层小横杠可拖拽关闭（超阈值下滑关闭、未达阈值回弹），点击空白处关闭
-- **深色模式**：Material #121212 标准，全色板变量化（含图表色），防闪烁加载
-- **动效降级**：尊重系统 `prefers-reduced-motion`，动画时长压缩
-- **大字体适配**：系统字体缩放下布局保持单行不换行、关键按钮不压缩
+观己默认以本机为中心运行，不要求注册账号，也不把私密记录同步到观己自建的用户云端。
 
-## 隐私设计（核心承诺）
+| 数据 | 处理方式 |
+| --- | --- |
+| 个人记录 | 默认保存在自己的设备；可按需开启本地数据加密。 |
+| 备份 | 用户可选择 WebDAV；加密备份由用户口令保护。 |
+| AI 请求 | 仅在用户配置并使用 AI 时发往所选服务商；内容限于聚合统计与模型证据，不包含单条记录、备注、附件、精确时间或自定义标签原文。 |
 
-- **数据默认仅存本地**：所有记录保存在设备本地（Capacitor Preferences），不注册账号、不上传云端；WebDAV 备份由你自选——上传的是密文，只有你的口令能解开
-- **AI 只接收聚合特征**：发送给 AI 的只有统计摘要（近 7 天次数、时段分布、发生前情况占比、连续天数等），**不含任何单条记录**，更不含时间、备注等原始内容
-- **密钥也只在本地**：API 密钥按提供商分别保存在本机，调用从设备直连
-- 分析报告附隐私说明，App 内「我的」页可随时查看
+AI 输出用于个人观察，不代表因果结论、健康评估或医疗建议。
 
-## 安卓 App 安装与使用
+## 获取与构建
 
-> 面向普通用户。目前通过 APK 直接安装（未上架应用商店）。
+### 安装 APK
 
-### 安装
+前往 [GitHub Releases](https://github.com/photometro/guanji-app/releases) 查看已发布安装包。源码版本与发行版不一定同步；请以具体发行条目的变更说明、签名和 Android 兼容要求为准。
 
-1. 获取正式 `app-release.apk`（开发者见下方「从源码构建」）
-2. 把 APK 传到手机（数据线 / 微信 / 网盘均可）
-3. 手机上点击 APK 安装；若提示「未知来源」，在设置中允许本次安装（各厂商路径不同，一般为「设置 → 安全 → 允许安装未知应用」）
-4. 打开「观己」，桌面长按可添加 5 种 2x2 小组件
+此仓库当前源码最低支持 **Android 8.0（API 26）**。Android 7.x（API 24/25）最后兼容版本为 **v4.2.11（code 133）**；v4.2.12 起要求 API 26，旧系统应继续使用对应兼容版。
 
-### 首次使用
+### 从源码构建（Windows）
 
-- 首页为空时，可到「我的 → 恢复演示数据」体验完整功能（随时可清除）
-- **配置 AI 分析**（可选，需自备密钥）：
-  1. 「我的 → AI 设置」选择提供商（DeepSeek 默认 / OpenAI / 自定义）
-  2. 填入 Base URL、模型和 API 密钥（DeepSeek 密钥在 [platform.deepseek.com](https://platform.deepseek.com) 申请）
-  3. 点「测试连接」验证，再点「保存」——密钥按提供商分别保存，切换提供商自动回显各自配置
-  4. 回到「洞察」页，满足 Key 与近 7 天至少 3 条记录时会自动生成观察；也可在卡片内手动触发
-- 记录提醒：「我的 → 记录提醒」可设置每日温和提醒（默认关闭）
+环境：Node.js 18+、JDK 17 或 21、Android SDK，以及可用的 `ANDROID_HOME`。
 
-## 技术栈
-
-| 层 | 技术 |
-|---|---|
-| 前端 | 原生 HTML / CSS / JavaScript（Apple 风格 UI，无框架依赖） |
-| 壳 | Capacitor 8（Android WebView 包装） |
-| 原生 | Kotlin / Java（core-data/core-stats/core-behavior/core-ai 边界 + 自定义插件 + 5 个 AppWidgetProvider） |
-| 存储 | @capacitor/preferences（本地） |
-| AI | OpenAI 兼容接口（DeepSeek 默认 / OpenAI / 自定义） |
-| 小组件联动 | WebView → SharedPreferences 同步（自定义 Capacitor 插件） |
-
-## 从源码构建（开发者）
-
-### 环境要求
-
-- Node.js 18+
-- JDK 17 或 21
-- Android SDK（`ANDROID_HOME` 环境变量）
-- 安卓 8.0（API 26）以上设备（VC3-R2 起使用单一路径 Noto Sans SC 可变字体）
-- Android 7.0/7.1（API 24/25）设备继续使用最后一个兼容版本 4.2.11；新版本不会覆盖安装到这些系统，旧 APK 与本地数据不受本次字体迁移影响。
-
-### 构建
-
-Windows 开发与真机验证统一使用项目内构建钩子。它会固定 JDK/Android/Gradle 用户目录，先做 Capacitor 同步和资源一致性检查，再离线构建、校验 APK 元数据与签名，并将日志和摘要写入 `debug/`。
-
-```bash
-# 1. 安装依赖
-npm install
-
-# 2. 日常真机调试：正式包名 + 稳定 Android Debug 签名
+```powershell
+npm ci
 npm run build:apk:debug
+```
 
-# 3. 构建并安装到首台在线设备（不清除应用数据）
+构建并安装到当前在线设备：
+
+```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-apk.ps1 -Mode debug -Install
-
-# 4. GitHub 历史发行包（正式包名 + Android Debug 签名；仅用于当前发行渠道）
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-apk.ps1 -Mode release -UseDebugSigning
-
-# 5. 商店/正式签名包（必须先提供 GUANJI_RELEASE_* 签名环境变量）
-npm run build:apk:release
 ```
 
-构建产物：
+项目构建入口会统一处理 Capacitor 同步、Android 资源、签名与 APK 校验；真机验证请使用项目脚本，不要直接调用 `gradlew assemble*`。
 
-- debug：`android/app/build/outputs/apk/debug/app-debug.apk`（包名 `com.guanji.app`，稳定 Android Debug 签名）
-- release（GitHub 历史兼容）：`android/app/build/outputs/apk/release/app-release.apk`（包名 `com.guanji.app`，显式 Android Debug 签名）
-- release（商店/正式签名）：`android/app/build/outputs/apk/release/app-release.apk`（包名 `com.guanji.app`，环境变量指定的正式签名）
+仅预览 Web 前端时，可在仓库根目录运行：
 
-构建日志和最后一次摘要位于 `debug/apk-build-*.log` 与 `debug/apk-build-summary.json`。不要直接调用 `gradlew assemble*` 作为发布或真机验证入口；这样容易丢失固定用户目录、资源同步、签名和 APK 新鲜度校验。
-
-### 浏览器调试（仅前端开发，无需安卓环境）
-
-```bash
+```powershell
 python -m http.server 8123 --directory www
-# 打开 http://localhost:8123
 ```
 
-## 目录结构
+然后打开 <http://localhost:8123>。这只预览 Web 前端，不包含 Android 原生能力。
 
-```
-guanji-app/
-├── www/                  # 前端源码（index.html / styles.css / app.js）
-├── android/              # Capacitor 安卓工程
-│   └── app/src/main/java/com/guanji/app/
-│       ├── MainActivity.java            # 启动 + 小组件/通知意图处理
-│       ├── WidgetStatsPlugin.kt         # WebView → 原生统计同步插件
-│       ├── TimerLiveUpdatePlugin.kt     # 计时实况通知插件（Android 16 / 魅族胶囊）
-│       ├── TimerService.kt              # 计时前台服务（息屏保活 + AlarmManager 兜底）
-│       ├── TimerAlarmReceiver.kt        # 每分钟闹钟兜底（OEM 冻结恢复）
-│       └── Guanji*Widget.kt             # 5 个桌面小组件
-├── assets/               # 应用图标源文件
-├── debug/                # 真机验证脚本（WebView DevTools 驱动）
-├── tools/build-apk.ps1   # 统一 APK 构建/签名/安装钩子
-├── IMPROVEMENTS.md       # 改进意见清单（需求 → 方案 → 实施记录）
-└── CHANGELOG.md          # 更新日志
-```
+## 当前工程状态
 
-## 版本历史
+v4.x 正在分阶段迁移 Android 原生界面。已迁移页面使用 Kotlin 与 Jetpack Compose；部分兼容流程和数据动作仍通过 Capacitor WebView / JavaScript 桥接。WebView 是迁移期的兼容与对照层，不代表最终目标架构。各页面的迁移状态见 [Native Migration Ledger](./docs/native-rewrite/MIGRATION-LEDGER.md)。
 
-见 [CHANGELOG.md](./CHANGELOG.md)——从 v1.0 到 v4.1.5，持续迭代更新。
+主要技术：
 
-## 致谢
+- **Android**：Kotlin、Java、Jetpack Compose、Android SDK
+- **兼容层**：Capacitor 8、HTML、CSS、JavaScript
+- **行为观察**：本地统计、个人基线与可追溯证据；AI 服务为可选项
 
-- **魅族实况通知实现参考**：[Ruyue-Kinsenka/Flyme-Live-Notification-Demo](https://github.com/Ruyue-Kinsenka/Flyme-Live-Notification-Demo) —— 本项目 v3.2 的魅族（Flyme）锁屏胶囊实况通知，基于该开源 Demo 的私有 API 参数逆向实现。感谢作者的无私分享，让「观己」在魅族手机上也能拥有系统级的实况计时。
+## 仓库导航
 
-## 免责声明
+| 路径 | 内容 |
+| --- | --- |
+| `android/` | Android 工程、原生页面与系统集成 |
+| `www/` | WebView 兼容界面及前端逻辑 |
+| `docs/` | 数据契约、迁移状态、设计与研究文档 |
+| `tools/` | APK 构建与安装入口 |
+| `CHANGELOG.md` | 版本变更记录 |
+| `THIRD_PARTY_NOTICES.md` | 第三方依赖、字体与许可证说明 |
 
-App 内所有 AI 分析仅基于聚合统计提供习惯参考，**不构成医疗诊断或建议**。如有持续困扰，建议与专业医生或心理咨询师聊聊。
+## 相关说明
 
----
+- [更新日志](./CHANGELOG.md)
+- [原生迁移状态](./docs/native-rewrite/MIGRATION-LEDGER.md)
+- [第三方许可与 NOTICE](./THIRD_PARTY_NOTICES.md)
 
-*观己 · 数据仅存本地 · AI 只看聚合，不看单条*
-
+感谢 [Flyme Live Notification Demo](https://github.com/Ruyue-Kinsenka/Flyme-Live-Notification-Demo) 提供实况通知实现参考。
